@@ -89,6 +89,31 @@ jobs:
             - ./venv
           key: v1-mac-pip-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
 
+  test_windows:
+    executor: 
+      name: win/default
+      shell: bash
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run: echo ". C:/tools/miniconda3/etc/profile.d/conda.sh" >> ${BASH_ENV}
+      - restore_cache:
+          keys:
+            - v1-conda_windows_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
+            # fallback to using the latest cache if no exact match is found
+            - v1-conda_windows_cache-
+
+      - create_conda_env:
+          use_fenics: false
+      - pip_install_requirements:
+          use_fenics: false
+      - run_tests:
+          use_fenics: false
+
+      - save_cache:
+          paths:
+            - C:\Users\circleci\.conda_envs\
+          key: v1-conda_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
 
   deploy_pypi:
     docker:
