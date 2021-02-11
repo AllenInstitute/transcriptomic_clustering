@@ -22,7 +22,7 @@ jobs:
       - run: echo ". /opt/conda/etc/profile.d/conda.sh" >> ${BASH_ENV}
       - restore_cache:
           keys:
-            - v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}-{{ checksum "optional_requirements.txt"}}
+            - v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
             # fallback to using the latest cache if no exact match is found
             - v1-linux_cache-
 
@@ -52,7 +52,7 @@ jobs:
       - save_cache:
           paths:
             - ~/.conda_envs/
-          key: v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}-{{ checksum "optional_requirements.txt"}}
+          key: v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
 
   test_mac:
     executor: mac
