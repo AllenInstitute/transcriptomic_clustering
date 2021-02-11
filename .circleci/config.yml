@@ -1,0 +1,163 @@
+version: 2.1
+
+# executors to run tests on
+executors:
+  #windows executor provided by circleci/windows@2.2.0 orb
+
+  linux:
+    docker:
+      - image: continuumio/miniconda3:4.7.12
+
+  mac:
+    macos:
+      xcode: "12.3"
+
+
+jobs:
+  test_linux:
+    executor: linux
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run: echo ". /opt/conda/etc/profile.d/conda.sh" >> ${BASH_ENV}
+      - restore_cache:
+          keys:
+            - v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}-{{ checksum "optional_requirements.txt"}}
+            # fallback to using the latest cache if no exact match is found
+            - v1-linux_cache-
+
+      - run: 
+          name: create conda env
+          command: |
+            if [ ! -d ~/.conda_envs/build_env_tx_clustering ]; then
+              conda create -c conda-forge python=3.8 \
+              -p ~/.conda_envs/build_env_tx_clustering/
+            fi
+            conda activate ~/.conda_envs/build_env_tx_clustering
+            pip install -r requirements.txt -U
+            pip install -r test_requirements.txt -U
+            pip install .
+
+      - run: 
+          name: run tests
+          command: |
+            conda activate ~/.conda_envs/build_env_tx_clustering
+            set -e
+            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=transcriptomic_clustering
+            codecov -t ${codecov_key}
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports
+
+      - save_cache:
+          paths:
+            - ~/.conda_envs/
+          key: v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}-{{ checksum "optional_requirements.txt"}}
+
+  test_mac:
+    executor: mac
+    working_directory: ~/repo
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-mac-pip-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
+            # fallback to using the latest cache if no exact match is found
+            - v1-mac-pip-dependencies-
+      - run:
+          name: create pip env
+          command: |
+            pip install virtualenv
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt -U
+            pip install -r test_requirements.txt -U
+            pip install .
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=transcriptomic_clustering
+            codecov -t ${codecov_key}
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports 
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-mac-pip-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
+
+
+  deploy_pypi:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - run:
+          name: configure pypirc
+          command: |
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = $PYPI_USERNAME" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+
+      - run:
+          name: setup_venv
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -U twine setuptools wheel
+
+      - run:
+          name: check_version
+          command: |
+            . venv/bin/activate
+            python setup.py check_version -e $CIRCLE_TAG
+
+      - run:
+          name: build wheels
+          command: |
+            . venv/bin/activate
+            python setup.py sdist
+            python setup.py bdist_wheel
+
+      - run:
+          name: deploy
+          command: |
+            . venv/bin/activate
+            twine upload dist/* --verbose --config-file ~/.pypirc
+
+
+workflows:
+  Test_Workflow:
+    jobs:
+      - test_linux
+      - test_mac
+
+  Deploy_Workflow:
+    jobs:
+      - test_linux:
+          filters:
+            tags: 
+              only: /v\d+(\.\d+)*(.[A-Za-z][0-9A-Za-z]*)*/
+            branches:
+              ignore: /.*/
+      - test_mac:
+          filters:
+            tags: 
+              only: /v\d+(\.\d+)*(.[A-Za-z][0-9A-Za-z]*)*/
+            branches:
+              ignore: /.*/
+      - deploy_pypi:
+          requires:
+            - test_linux
+            # - test_mac
+          filters:
+            tags: 
+              only: /v\d+(\.\d+)*(.[A-Za-z][0-9A-Za-z]*)*/
+            branches:
+              ignore: /.*/
