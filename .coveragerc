@@ -1,6 +1,6 @@
 [run]
-
-omit = /*/tests/*
+include = */transcriptomic_clustering/*
+omit = */tests/*
 branch = True
 
 [report]
