@@ -43,7 +43,7 @@ jobs:
           command: |
             conda activate ~/.conda_envs/build_env_tx_clustering
             set -e
-            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=src
+            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=transcriptomic_clustering
             codecov -t ${codecov_key}
       - store_artifacts:
           path: test-reports
@@ -79,7 +79,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=src
+            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=transcriptomic_clustering
             codecov -t ${codecov_key}
       - store_artifacts:
           path: test-reports

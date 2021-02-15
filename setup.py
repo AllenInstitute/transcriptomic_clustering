@@ -6,6 +6,7 @@ import os
 
 version_path = os.path.join(
     os.path.dirname(__file__),
+    "transcriptomic_clustering",
     "VERSION.txt"
 )
 with open(version_path, "r") as version_file:
