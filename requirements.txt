@@ -2,7 +2,5 @@ pandas
 numpy
 scipy
 six
-allensdk
-argschema==3.0.0a0
-boto3>=1.12.42
+anndata
 scanpy
