@@ -6,4 +6,3 @@ argschema==3.0.0a0
 boto3
 anndata
 scanpy
-setuptools_git
