@@ -17,7 +17,7 @@ class TestNormalization(unittest.TestCase):
                         [ 6, 11,  3, 26, 26],
                         [ 0,  0, 19,  9,  0]])
 
-        arr_norm = np.array([[17.35, 17.35, 16.76, 15.76, 18.93],
+        expected_norm = np.array([[17.35, 17.35, 16.76, 15.76, 18.93],
                             [15.35,  0.  , 17.35, 18.35, 18.81],
                             [16.35, 17.22, 15.35, 18.46, 18.46],
                             [ 0. ,  0. , 19.37, 18.29,  0. ]])
@@ -26,4 +26,4 @@ class TestNormalization(unittest.TestCase):
         a_data.X = csr_matrix(a_data.X)
         result = normalize_cell_expresions(a_data)
         result.X = csr_matrix.toarray(result.X)
-        self.assertAlmostEqual(result.X.all(), arr_norm.all())
+        self.assertAlmostEqual(result.X.all(), expected_norm.all())

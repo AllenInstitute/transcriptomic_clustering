@@ -18,6 +18,11 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
     """
         Compute the normalization of cell expressions
 
+            (1) compute cpm (counts per million normalization): scanpy.pp.normalize_total,
+                which computes "single_expression/sum(all_expressions_per_cell)*1e6"
+            (2) compute log2: scipy.sparse.csr_matrix.log1p(x)/np.log(2.0),
+                which computes log(x+1)/log(2)
+
         Parameters
         ----------
         cell_expressions: AnnData  

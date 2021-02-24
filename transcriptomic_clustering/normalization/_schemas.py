@@ -1,4 +1,3 @@
-import marshmallow as mm
 from argschema.schemas import ArgSchema, DefaultSchema
 from argschema.fields import (
     InputFile, List, Float, Int, Nested
