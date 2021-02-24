@@ -22,8 +22,8 @@ class TestNormalization(unittest.TestCase):
                             [16.35, 17.22, 15.35, 18.46, 18.46],
                             [ 0. ,  0. , 19.37, 18.29,  0. ]])
 
-        aData = ad.AnnData(arr)
-        aData.X = csr_matrix(aData.X)
-        result = normalize_cell_expresions(aData)
+        a_data = ad.AnnData(arr)
+        a_data.X = csr_matrix(a_data.X)
+        result = normalize_cell_expresions(a_data)
         result.X = csr_matrix.toarray(result.X)
         self.assertAlmostEqual(result.X.all(), arr_norm.all())
