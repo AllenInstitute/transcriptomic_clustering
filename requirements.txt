@@ -2,7 +2,5 @@ pandas
 numpy
 scipy
 six
-argschema==3.0.0a0
-boto3
 anndata
 scanpy
