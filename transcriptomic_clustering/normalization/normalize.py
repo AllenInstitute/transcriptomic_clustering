@@ -3,9 +3,6 @@ from typing import Dict, Optional, List, Any
 import logging
 import copy as cp
 
-from transcriptomic_clustering.normalization._schemas import (
-    InputParameters, OutputParameters)
-
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -17,7 +14,8 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
     """
         Compute the normalization of cell expressions
 
-            (1) compute cpm: count up the total reads in a sample and divide that number by 1,000,000
+            (1) compute cpm (counts per million): The counts per gene were normalized to CPM 
+                by dividing it by the total number of mapped reads per sample and multiplying by 1,000,000
             (2) compute log2: computes log(x+1)/log(2)
 
         Parameters
