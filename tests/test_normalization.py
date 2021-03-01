@@ -4,7 +4,7 @@ import numpy as np
 import anndata as ad
 from scipy.sparse import csr_matrix
 
-from transcriptomic_clustering.normalization.normalize import normalize_cell_expresions
+from transcriptomic_clustering.normalize import normalize_cell_expresions
 
 
 def test_normalization():
