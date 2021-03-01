@@ -20,7 +20,9 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
 
         Parameters
         ----------
-        cell_expressions: input in AnnData format with sparse matrix (csr_matrix) 
+        cell_expressions: input in AnnData format preferred with sparse matrix (csr_matrix)
+            The annotated data matrix of shape n_obs × n_vars.
+            Rows correspond to cells and columns to genes
 
         Returns
         -------
