@@ -38,7 +38,7 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
         if cell_expressions.X.getformat() == 'csr':
             cell_expressions.X = csr_matrix.log1p(cell_expressions.X)/np.log(2.0)
         else:
-            print('only csr_matrix is currently supported')
+            raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
     else:
         cell_expressions.X = np.log2(cell_expressions.X+1)
 
