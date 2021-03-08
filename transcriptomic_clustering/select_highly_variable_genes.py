@@ -33,7 +33,7 @@ def compute_z_scores(dispersion: np.array):
     return (dispersion  - m_iqr) / delta
 
 def select_hvg(ad_norm:ad.AnnData, selected_cells:Optional[List], 
-                low_thresh: int = 1, min_cells: int = 4, max_genes: int = 3000):
+                low_thresh: Optional[int] = 1, min_cells: Optional[int] = 4, max_genes: Optional[int] = 3000):
     """
         select highly variable genes using Brennecke's method
 
