@@ -8,7 +8,7 @@ import pandas as pd
 import anndata as ad
 import scanpy as sc
 from scipy.sparse import csr_matrix, issparse
-
+from transcriptomic_clustering.memory_exception import log_exception
 
 def normalize_cell_expresions(cell_expressions: ad.AnnData):
     """
@@ -30,18 +30,25 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
 
     """
 
-    # cpm
-    sc.pp.normalize_total(cell_expressions, target_sum=1e6, inplace=True)
+    try:
+        # cpm
+        sc.pp.normalize_total(cell_expressions, target_sum=1e6, inplace=True)
 
-    # log
-    if issparse(cell_expressions.X):
-        if cell_expressions.X.getformat() == 'csr':
-            sc.pp.log1p(cell_expressions)
-            cell_expressions.X /= np.log(2.0)
+        # log
+        if issparse(cell_expressions.X):
+            if cell_expressions.X.getformat() == 'csr':
+                sc.pp.log1p(cell_expressions)
+                cell_expressions.X /= np.log(2.0)
+            else:
+                raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
         else:
-            raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
-    else:
-        cell_expressions.X = np.log2(cell_expressions.X+1)
+            cell_expressions.X = np.log2(cell_expressions.X+1)
+    except MemoryError as error:
+        log_exception(error)
+        raise MemoryError("Reach system memory limit. Must try other methods to run normalization.")
+    except Exception as exception:
+        log_exception(exception, False)
+        raise Exception("Unexpected exception.")
 
     return cell_expressions
 
