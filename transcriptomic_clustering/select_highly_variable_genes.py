@@ -157,7 +157,6 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
         raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument, ')
 
     # sampling by cells
-    # sampling by cells
     if selected_cells is not None:
         adata_cellsampled = ad_norm[selected_cells, :]
         
