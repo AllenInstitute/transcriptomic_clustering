@@ -2,11 +2,10 @@ from typing import Optional, List, Literal
 
 import numpy as np
 import pandas as pd
-import anndata as ad
 import scanpy as sc
-from scipy.sparse import csr_matrix, issparse
-from skmisc.loess import loess, loess_anova
-from scipy.stats import rankdata, norm
+from scipy.sparse import csr_matrix, csc_matrix
+from skmisc.loess import loess
+from scipy.stats import norm
 
 from statsmodels.stats.multitest import fdrcorrection
 
@@ -30,23 +29,30 @@ def compute_z_scores(dispersion: np.array):
     
     return (dispersion  - m_iqr) / delta
 
-def hicat_hvg(mtx: csr_matrix, genes: List[str], max_genes: Optional[int] = 3000):
+def hicat_hvg(mtx: csc_matrix, genes: np.ndarray, max_genes: Optional[int] = 3000):
     """
         select highly variable genes
 
         Parameters
         ----------
-        mtx: transposed norm of cell expressions, rows correspond to genes and columns to cells
+        mtx: transposed norm of cell expressions
+            rows correspond to genes and columns to cells
         genes: list of genes
-        max_genes: max number of genes to be selected, default is 3000
+        max_genes: number of highly variable genes to keep, default is 3000
 
         Returns
         -------
-        highly variable genes: list of genes, with means and dispersions
+        dataframe of highly variable genes:
+            df['highly_variable']: boolean indicator of highly variable genes
+            df['means']: means per gene
+            df['dispersions']: dispersions per gene
 
     """
 
-    mtx.data = 2**mtx.data -1
+    if mtx.getformat() == 'csc':
+        mtx.data = 2**mtx.data -1
+    else:
+        raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
 
     # means
     means = np.squeeze(np.asarray(mtx.mean(axis=1)))
@@ -119,8 +125,8 @@ def hicat_hvg(mtx: csr_matrix, genes: List[str], max_genes: Optional[int] = 3000
     
     return df_hvg
 
-def select_hvg(ad_norm: ad.AnnData, 
-            selected_cells: Optional[List], 
+def select_highly_variable_genes(ad_norm: sc.AnnData,
+            selected_cells: Optional[List] = None, 
             low_thresh: Optional[int] = 1, 
             min_cells: Optional[int] = 4, 
             max_genes: Optional[int] = 3000,
@@ -134,43 +140,60 @@ def select_hvg(ad_norm: ad.AnnData,
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
 
-        selected_cells: interest cells specified
-        low_thresh: lower threshold, uesed for pre-select hvg
-        min_cells: mininum cells, used for pre-select hvg
-        max_genes: number of genes to be selected, default is 3000
+        selected_cells: interested cells
+        low_thresh: lower threshold, uesed for pre-select highly variable genes
+        min_cells: mininum cells, used for pre-select highly variable genes
+        max_genes: number of highly variable genes to keep
         flavor: highly variable genes method, default uses "hicat"
 
         Returns
         -------
-        highly variable genes: added var['highly_variable'] to the the input AnnData
+        highly variable genes: boolean indicator of highly variable genes
+                            var['highly_variable'] in AnnData
 
     """
 
+    if not isinstance(ad_norm, sc.AnnData):
+        raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument, ')
+
     # sampling by cells
-    if not selected_cells:
+    # sampling by cells
+    if selected_cells is not None:
         adata_cellsampled = ad_norm[selected_cells, :]
+        
+        # pre select hvg
+        mtx_high = ad_norm.X > low_thresh
+        arr_high = mtx_high.sum(axis=0) >= min_cells
+        
+        list_high = arr_high.tolist()[0]
+        indices_high = [i for i, x in enumerate(list_high) if x == True]
 
-    # pre select hvg
-    m_high = adata_cellsampled.X
-    m_high.data = m_high.data > low_thresh
+        all_genes = adata_cellsampled.var_names
+        pre_selected_genes = all_genes[indices_high].tolist()
 
-    mtx_high = m_high.sum(axis=0) >= min_cells
-    l_high = mtx_high.tolist()[0]
-    indices_high = [i for i, x in enumerate(l_high) if x == True]
+        ad_norm_hvg = adata_cellsampled[:, pre_selected_genes]
+        
+    else:
+        # pre select hvg
+        mtx_high = ad_norm.X > low_thresh
+        arr_high = mtx_high.sum(axis=0) >= min_cells
+        
+        list_high = arr_high.tolist()[0]
+        indices_high = [i for i, x in enumerate(list_high) if x == True]
 
-    all_genes = adata_cellsampled.var_names
-    pre_selected_genes = all_genes[indices_high].tolist()
+        all_genes = ad_norm.var_names
+        pre_selected_genes = all_genes[indices_high].tolist()
 
-    ad_norm_hvg = adata_cellsampled[:, pre_selected_genes]
+        ad_norm_hvg = ad_norm[:, pre_selected_genes]
 
     # hvg
     if flavor == 'hicat':
 
         sampled_genes = ad_norm_hvg.var_names
-        df_hvg = hicat_hvg(ad_norm_hvg.X.transpose(), sampled_genes, max_genes)
+        df_hvg = hicat_hvg(ad_norm_hvg.X.transpose(), sampled_genes.to_numpy(), max_genes)
 
         ad_norm_hvg.uns['hvg'] = {'flavor', 'hicat'}
-        ad_norm_hvg.var['highly_variable'] = df_hvg['highly_variable'].values
+        ad_norm_hvg.var['highly_variable'] = df_hvg['highly_variable']
         ad_norm_hvg.var['means'] = df_hvg['means'].values
         ad_norm_hvg.var['dispersions'] = df_hvg['dispersions'].values
     
