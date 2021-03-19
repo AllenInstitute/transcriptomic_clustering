@@ -49,10 +49,10 @@ def hicat_hvg(mtx: csc_matrix, genes: np.ndarray, max_genes: Optional[int] = 300
 
     """
 
-    if mtx.getformat() == 'csc':
+    if isinstance(mtx, csc_matrix):
         mtx.data = 2**mtx.data -1
     else:
-        raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
+        raise ValueError("Unsupported format for cell_expression matrix. Must be in CSC format")
 
     # means
     means = np.squeeze(np.asarray(mtx.mean(axis=1)))
@@ -191,7 +191,7 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
         sampled_genes = ad_norm_hvg.var_names
         df_hvg = hicat_hvg(ad_norm_hvg.X.transpose(), sampled_genes.to_numpy(), max_genes)
 
-        ad_norm_hvg.uns['hvg'] = {'flavor', 'hicat'}
+        ad_norm_hvg.uns['hvg'] = {'flavor': 'hicat'}
         ad_norm_hvg.var['highly_variable'] = df_hvg['highly_variable']
         ad_norm_hvg.var['means'] = df_hvg['means'].values
         ad_norm_hvg.var['dispersions'] = df_hvg['dispersions'].values
