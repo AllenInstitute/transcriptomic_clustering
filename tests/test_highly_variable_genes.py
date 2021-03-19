@@ -94,21 +94,23 @@ def test_highly_variable_genes():
     # test select_highly_variable_genes
     ad_hvg = select_highly_variable_genes(ad_norm = adata, low_thresh = 0, min_cells = 1, max_genes=2)
 
+    expected_hvg = ['Plp1', 'Npy']
+
     np.testing.assert_array_equal(
-        ad_hvg.var['highly_variable'],
-        expected_highly_varialbe,
+        np.sort(ad_hvg.var['highly_variable'].loc[ad_hvg.var['highly_variable'].values == True].index),
+        np.sort(expected_hvg),
     )
 
     np.testing.assert_allclose(
-        ad_hvg.var['means'],
-        expected_means,
+        np.sort(ad_hvg.var['means']),
+        np.sort(expected_means),
         rtol=2e-05,
         atol=2e-05,
     )
 
     np.testing.assert_allclose(
-        ad_hvg.var['dispersions'],
-        expected_dispersions,
+        np.sort(ad_hvg.var['dispersions']),
+        np.sort(expected_dispersions),
         rtol=2e-05,
         atol=2e-05,
     )

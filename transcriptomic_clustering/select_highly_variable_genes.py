@@ -9,7 +9,38 @@ from scipy.stats import norm
 
 from statsmodels.stats.multitest import fdrcorrection
 
-def compute_z_scores(dispersion: np.array):
+
+def filter_genes(mtx_high: np.matrix,
+            genes: List[str],
+            low_thresh: Optional[int] = 1,
+            min_cells: Optional[int] = 4,):
+    """
+        pre-select highly variable genes
+
+        Parameters
+        ----------
+        mtx_high: matrix of cell expressions greater than the threshold "low_thresh"
+        genes: all genes from the input
+        low_thresh: lower threshold, uesed for pre-select highly variable genes
+        min_cells: mininum cells, used for pre-select highly variable genes
+
+
+        Returns
+        -------
+        highly variable genes: list of highly variable genes
+
+    """
+
+    arr_high = mtx_high.sum(axis=0) >= min_cells
+
+    list_high = arr_high.tolist()[0]
+    indices_high = [i for i, x in enumerate(list_high) if x == True]
+
+    pre_selected_genes = genes[indices_high].tolist()
+
+    return list(set(pre_selected_genes))
+
+def compute_z_scores(dispersion: np.ndarray):
     """
         Compute dispersion z-scores for each gene in a gene x sample matrix
 
@@ -158,31 +189,27 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
 
     # sampling by cells
     if selected_cells is not None:
+        selected_cells = list(set(selected_cells))
+        ad_norm.obs_names_make_unique()
         adata_cellsampled = ad_norm[selected_cells, :]
         
-        # pre select hvg
-        mtx_high = ad_norm.X > low_thresh
-        arr_high = mtx_high.sum(axis=0) >= min_cells
-        
-        list_high = arr_high.tolist()[0]
-        indices_high = [i for i, x in enumerate(list_high) if x == True]
+        # filtering genes
+        pre_selected_genes = filter_genes(adata_cellsampled.X > low_thresh,
+                                    adata_cellsampled.var_names,
+                                    low_thresh,
+                                    min_cells)
 
-        all_genes = adata_cellsampled.var_names
-        pre_selected_genes = all_genes[indices_high].tolist()
-
+        adata_cellsampled.var_names_make_unique()
         ad_norm_hvg = adata_cellsampled[:, pre_selected_genes]
         
     else:
-        # pre select hvg
-        mtx_high = ad_norm.X > low_thresh
-        arr_high = mtx_high.sum(axis=0) >= min_cells
+        # filtering genes
+        pre_selected_genes = filter_genes(ad_norm.X > low_thresh,
+                                    ad_norm.var_names,
+                                    low_thresh,
+                                    min_cells)
         
-        list_high = arr_high.tolist()[0]
-        indices_high = [i for i, x in enumerate(list_high) if x == True]
-
-        all_genes = ad_norm.var_names
-        pre_selected_genes = all_genes[indices_high].tolist()
-
+        ad_norm.var_names_make_unique()
         ad_norm_hvg = ad_norm[:, pre_selected_genes]
 
     # hvg
@@ -191,7 +218,7 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
         sampled_genes = ad_norm_hvg.var_names
         df_hvg = hicat_hvg(ad_norm_hvg.X.transpose(), sampled_genes.to_numpy(), max_genes)
 
-        ad_norm_hvg.uns['hvg'] = {'flavor': 'hicat'}
+        ad_norm_hvg.uns['hvg'] = {'flavor': flavor}
         ad_norm_hvg.var['highly_variable'] = df_hvg['highly_variable']
         ad_norm_hvg.var['means'] = df_hvg['means'].values
         ad_norm_hvg.var['dispersions'] = df_hvg['dispersions'].values
