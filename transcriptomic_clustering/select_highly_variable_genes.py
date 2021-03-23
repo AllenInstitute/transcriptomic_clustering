@@ -36,17 +36,16 @@ def hicat_hvg(adata: sc.AnnData, max_genes: Optional[int] = 3000, is_norm: bool 
 
         Parameters
         ----------
-        mtx: transposed norm of cell expressions
-            rows correspond to genes and columns to cells
-        genes: list of genes
+        adata: cell expression
         max_genes: number of highly variable genes to keep, default is 3000
+        is_norm: whether input is normalized
 
         Returns
         -------
-        dataframe of highly variable genes:
-            df['highly_variable']: boolean indicator of highly variable genes
-            df['means']: means per gene
-            df['dispersions']: dispersions per gene
+        AnnData with highly variable genes:
+            .var['highly_variable']: boolean indicator of highly variable genes
+            .var['means']: means per gene
+            .var['dispersions']: dispersions per gene
 
     """
 
