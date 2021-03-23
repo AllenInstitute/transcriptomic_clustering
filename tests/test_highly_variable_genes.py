@@ -70,24 +70,24 @@ def test_highly_variable_genes():
     )
 
     # test hicat_hvg
-    df_hvg = hicat_hvg(mtx = adata.X.transpose(), genes = adata.var_names, max_genes = 2)
+    ad_norm_hvg = hicat_hvg(adata, max_genes = 2)
 
     np.testing.assert_allclose(
-        df_hvg['means'],
+        ad_norm_hvg.var['means'].values,
         expected_means,
         rtol=2e-05,
         atol=2e-05,
     )
 
     np.testing.assert_allclose(
-        df_hvg['dispersions'],
+        ad_norm_hvg.var['dispersions'].values,
         expected_dispersions,
         rtol=2e-05,
         atol=2e-05,
     )
 
     np.testing.assert_array_equal(
-        df_hvg['highly_variable'],
+        ad_norm_hvg.var['highly_variable'],
         expected_highly_varialbe,
     )
 
