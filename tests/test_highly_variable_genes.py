@@ -45,6 +45,7 @@ def test_highly_variable_genes():
           0.        ,  9.001685  , 11.029551  ,  0.        ,  0.31337234]])
 
     adata = sc.AnnData(X=csr_matrix(mat), obs=obs, var=var)
+    ad_dense = sc.AnnData(X=mat, obs=obs, var=var)
     
     # expected results to be compared
     expected_means = np.array([1783.3291, 2278.613,  626.99536,  360.11676,  329.88107,
@@ -93,4 +94,27 @@ def test_highly_variable_genes():
         atol=1e-06,
     )
 
+    # test dense matrix case
+    select_highly_variable_genes(ad_norm = ad_dense, low_thresh = 0, min_cells = 1, max_genes=2)
+
+    np.testing.assert_array_equal(
+        np.sort(ad_dense.var_names),
+        np.sort(expected_hvg),
+    )
+
+    print(ad_dense.var['means'])
+
+    np.testing.assert_allclose(
+        np.sort(ad_dense.var['means']),
+        np.sort(expected_top2_means),
+        rtol=1e-06,
+        atol=1e-06,
+    )
+
+    np.testing.assert_allclose(
+        np.sort(ad_dense.var['dispersions']),
+        np.sort(expected_top2_dispersions),
+        rtol=1e-06,
+        atol=1e-06,
+    )
 

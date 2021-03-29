@@ -70,9 +70,6 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
     if not isinstance(ad_norm, sc.AnnData):
         raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument')
 
-    if not isinstance(ad_norm.X, csr_matrix):
-        raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
-
     # sampling by cells
     if selected_cells is not None:
         selected_cells = list(set(selected_cells))
@@ -81,8 +78,13 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
  
     # filtering genes
     mtx_high = (ad_norm.X > low_thresh).sum(axis=0) >= min_cells
-    list_high = mtx_high.tolist()[0]
-    indices_high = [i for i, x in enumerate(list_high) if x == True]
+
+    if isinstance(ad_norm.X, csr_matrix):
+        list_high = mtx_high.tolist()[0]
+        indices_high = [i for i, x in enumerate(list_high) if x == True]
+    else:
+        list_high = mtx_high.tolist()
+        indices_high = [i for i, x in enumerate(list_high) if x == True]
 
     pre_selected_genes = ad_norm.var_names[indices_high].tolist()
     pre_selected_genes = list(set(pre_selected_genes))
@@ -93,7 +95,12 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
     #
     if is_norm:
         mtx = ad_norm.X.transpose()
-        mtx.data = 2**mtx.data -1
+
+        if isinstance(ad_norm.X, csr_matrix):
+            mtx.data = 2**mtx.data -1
+        else:
+            mtx = np.exp2(mtx) - 1
+
     else:
         sc.pp.normalize_total(ad_norm, target_sum=1e6, inplace=True)
         mtx = ad_norm.X.transpose()
@@ -102,7 +109,11 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
     means = np.squeeze(np.asarray(mtx.mean(axis=1)))
 
     # variances
-    mtx.data **= 2
+    if isinstance(ad_norm.X, csr_matrix):
+        mtx.data **= 2
+    else:
+        mtx = np.power(mtx, 2)
+
     variances = np.squeeze(np.asarray(mtx.mean(axis=1))) - np.square(means)
 
     #  dispersions
