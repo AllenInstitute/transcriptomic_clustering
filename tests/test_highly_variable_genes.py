@@ -5,7 +5,7 @@ import pandas as pd
 import scanpy as sc
 from scipy.sparse import csr_matrix
 
-from transcriptomic_clustering.select_highly_variable_genes import select_highly_variable_genes, hicat_hvg, compute_z_scores
+from transcriptomic_clustering.select_highly_variable_genes import select_highly_variable_genes, compute_z_scores
 
 
 def test_highly_variable_genes():
@@ -53,66 +53,44 @@ def test_highly_variable_genes():
     expected_dispersions = np.array([4.0860877, 4.1462183, 3.6927953, 3.510686, 3.4726, 
                                     3.823604, 3.9517627, 3.9920075, 3.137657, 0.2717548])
 
-    expected_highly_varialbe = np.array([ True, True, False, False, False, 
-                                         False, False, False, False, False])
-
     expected_z_scores = np.array([ 0.95555746,  1.11784422, -0.10590124, -0.59739689, -0.70018737,
                                 0.24713897,  0.59302709,  0.70164397, -1.60416661, -9.33896352])
 
-    # test compute_z_scores func
+    expected_top2_means = np.array([1783.329102, 2278.613037])
+    expected_top2_dispersions = np.array([4.086088, 4.146218])
+
+    expected_hvg = ['Plp1', 'Npy']
+
+    # test compute_z_scores
     z_scores = compute_z_scores(expected_dispersions)
 
     np.testing.assert_allclose(
         z_scores,
         expected_z_scores,
-        rtol=2e-05,
-        atol=2e-05,
-    )
-
-    # test hicat_hvg
-    ad_norm_hvg = hicat_hvg(adata, max_genes = 2)
-
-    np.testing.assert_allclose(
-        ad_norm_hvg.var['means'].values,
-        expected_means,
-        rtol=2e-05,
-        atol=2e-05,
-    )
-
-    np.testing.assert_allclose(
-        ad_norm_hvg.var['dispersions'].values,
-        expected_dispersions,
-        rtol=2e-05,
-        atol=2e-05,
-    )
-
-    np.testing.assert_array_equal(
-        ad_norm_hvg.var['highly_variable'],
-        expected_highly_varialbe,
+        rtol=1e-06,
+        atol=1e-06,
     )
 
     # test select_highly_variable_genes
-    ad_hvg = select_highly_variable_genes(ad_norm = adata, low_thresh = 0, min_cells = 1, max_genes=2)
-
-    expected_hvg = ['Plp1', 'Npy']
+    select_highly_variable_genes(ad_norm = adata, low_thresh = 0, min_cells = 1, max_genes=2)
 
     np.testing.assert_array_equal(
-        np.sort(ad_hvg.var['highly_variable'].loc[ad_hvg.var['highly_variable'].values == True].index),
+        np.sort(adata.var_names),
         np.sort(expected_hvg),
     )
 
     np.testing.assert_allclose(
-        np.sort(ad_hvg.var['means']),
-        np.sort(expected_means),
-        rtol=2e-05,
-        atol=2e-05,
+        np.sort(adata.var['means']),
+        np.sort(expected_top2_means),
+        rtol=1e-06,
+        atol=1e-06,
     )
 
     np.testing.assert_allclose(
-        np.sort(ad_hvg.var['dispersions']),
-        np.sort(expected_dispersions),
-        rtol=2e-05,
-        atol=2e-05,
+        np.sort(adata.var['dispersions']),
+        np.sort(expected_top2_dispersions),
+        rtol=1e-06,
+        atol=1e-06,
     )
 
 
