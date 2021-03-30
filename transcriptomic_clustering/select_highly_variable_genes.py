@@ -97,7 +97,8 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
         mtx = ad_norm.X.transpose()
 
         if isinstance(ad_norm.X, csr_matrix):
-            mtx.data = 2**mtx.data -1
+            np.exp2(mtx.data, mtx.data)
+            mtx.data -= 1
         else:
             mtx = np.exp2(mtx) - 1
 
