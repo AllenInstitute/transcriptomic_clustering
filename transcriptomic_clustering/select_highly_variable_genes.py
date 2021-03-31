@@ -1,9 +1,9 @@
-from typing import Optional, List, Literal
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse import csr_matrix, issparse
 from skmisc.loess import loess
 from scipy.stats import norm
 
@@ -30,29 +30,20 @@ def compute_z_scores(dispersion: np.ndarray):
     
     return (dispersion  - m_iqr) / delta
 
-def select_highly_variable_genes(ad_norm: sc.AnnData,
-            selected_cells: Optional[List] = None,
-            low_thresh: Optional[int] = 1,
-            min_cells: Optional[int] = 4,
+def select_highly_variable_genes(adata: sc.AnnData,
             max_genes: Optional[int] = 3000,
-            in_place: bool = True,
-            is_norm: bool = True
+            inplace: bool = True
             ) -> Optional[pd.DataFrame]:
     """
         select highly variable genes using the method in scrattch.hicat
 
         Parameters
         ----------
-        ad_norm: normalization of cell expression in AnnData format (csr_matrix is supported)
+        adata: CPM normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
-
-        selected_cells: interested cells
-        low_thresh: lower threshold, uesed for pre-select highly variable genes
-        min_cells: mininum cells, used for pre-select highly variable genes
         max_genes: number of highly variable genes to keep
-        in_place: if True it will update the input AnnData varialbe
-        is_norm: check whether input the normalizaition of cell expression
+        inplace: whether to place calculated metrics in `.var` or return them.
 
         Returns
         -------
@@ -67,55 +58,15 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
 
     """
 
-    if not isinstance(ad_norm, sc.AnnData):
+    if not isinstance(adata, sc.AnnData):
         raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument')
 
-    # sampling by cells
-    if selected_cells is not None:
-        selected_cells = list(set(selected_cells))
-        ad_norm.obs_names_make_unique()
-        ad_norm._inplace_subset_obs(selected_cells)
- 
-    # filtering genes
-    mtx_high = (ad_norm.X > low_thresh).sum(axis=0) >= min_cells
+    if issparse(adata.X):
+        if not isinstance(adata.X, csr_matrix):
+            raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
 
-    if isinstance(ad_norm.X, csr_matrix):
-        list_high = mtx_high.tolist()[0]
-        indices_high = [i for i, x in enumerate(list_high) if x == True]
-    else:
-        list_high = mtx_high.tolist()
-        indices_high = [i for i, x in enumerate(list_high) if x == True]
-
-    pre_selected_genes = ad_norm.var_names[indices_high].tolist()
-    pre_selected_genes = list(set(pre_selected_genes))
-
-    ad_norm.var_names_make_unique()
-    ad_norm._inplace_subset_var(pre_selected_genes)
-
-    #
-    if is_norm:
-        mtx = ad_norm.X.transpose()
-
-        if isinstance(ad_norm.X, csr_matrix):
-            np.exp2(mtx.data, mtx.data)
-            mtx.data -= 1
-        else:
-            mtx = np.exp2(mtx) - 1
-
-    else:
-        sc.pp.normalize_total(ad_norm, target_sum=1e6, inplace=True)
-        mtx = ad_norm.X.transpose()
-
-    # means
-    means = np.squeeze(np.asarray(mtx.mean(axis=1)))
-
-    # variances
-    if isinstance(ad_norm.X, csr_matrix):
-        mtx.data **= 2
-    else:
-        mtx = np.power(mtx, 2)
-
-    variances = np.squeeze(np.asarray(mtx.mean(axis=1))) - np.square(means)
+    # means, variances
+    means, variances = sc.pp._utils._get_mean_var(adata.X)
 
     #  dispersions
     dispersions = np.log10(variances / (means + 1e-10))
@@ -128,7 +79,7 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
 
     means_filtered = means[positive_filter]
     dispersions_filtered = dispersions[positive_filter]
-    genes_filtered = ad_norm.var_names[positive_filter]
+    genes_filtered = adata.var_names[positive_filter]
 
     x = np.log10(means_filtered)
     y = dispersions_filtered
@@ -167,16 +118,16 @@ def select_highly_variable_genes(ad_norm: sc.AnnData,
     df.highly_variable.iloc[:max_genes] = True
     df = df[0:max_genes]
 
-    if in_place:
-        # filtered by hvgs
-        ad_norm._inplace_subset_var(df.gene.tolist())
+    if inplace:
+        # filter by hvgs
+        adata._inplace_subset_var(df.gene.tolist())
 
-        ad_norm.uns['hvg'] = {'flavor': 'hicat'}
-        ad_norm.var['highly_variable'] = df['highly_variable'].values
-        ad_norm.var['p_adj'] = df['p_adj'].values
-        ad_norm.var['z_score'] = df['z_score'].values
-        ad_norm.var['means'] = df['means'].values
-        ad_norm.var['dispersions'] = df['dispersions'].values
+        adata.uns['hvg'] = {'flavor': 'hicat'}
+        adata.var['highly_variable'] = df['highly_variable'].values
+        adata.var['p_adj'] = df['p_adj'].values
+        adata.var['z_score'] = df['z_score'].values
+        adata.var['means'] = df['means'].values
+        adata.var['dispersions'] = df['dispersions'].values
     else:
         return df
 
