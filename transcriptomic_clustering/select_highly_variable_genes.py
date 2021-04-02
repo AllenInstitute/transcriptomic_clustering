@@ -99,15 +99,15 @@ def select_highly_variable_genes(adata: sc.AnnData,
     rejected,p_adj = fdrcorrection(p_vals)
 
     # select highly variable genes
-    indices = [i for i, x in enumerate(p_adj) if x < 1]
+    qval_indices = [i for i, x in enumerate(p_adj) if x < 1]
 
-    df = pd.DataFrame(index=indices)
+    df = pd.DataFrame(index=qval_indices)
 
-    df['gene'] = genes_filtered[indices]
-    df['p_adj'] = p_adj[indices]
-    df['z_score'] = z_scores[indices]
-    df['means'] = means_filtered[indices]
-    df['dispersions'] = dispersions_filtered[indices]
+    df['gene'] = genes_filtered[qval_indices]
+    df['p_adj'] = p_adj[qval_indices]
+    df['z_score'] = z_scores[qval_indices]
+    df['means'] = means_filtered[qval_indices]
+    df['dispersions'] = dispersions_filtered[qval_indices]
     
     df.sort_values(
         ['p_adj', 'z_score'],
@@ -116,9 +116,8 @@ def select_highly_variable_genes(adata: sc.AnnData,
         inplace=True,
     )
 
-    df['highly_variable'] = False
-    df.highly_variable.iloc[:max_genes] = True
     df = df[0:max_genes]
+    df['highly_variable'] = True
 
     if inplace:
         # filter by hvgs
