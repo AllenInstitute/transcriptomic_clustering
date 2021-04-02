@@ -96,7 +96,7 @@ def select_highly_variable_genes(adata: sc.AnnData,
     p_vals = 1 - norm.cdf(loess_z)
     
     # p.adjust using BH method
-    p_adj = fdrcorrection(p_vals)[1]
+    rejected,p_adj = fdrcorrection(p_vals)
 
     # select highly variable genes
     indices = [i for i, x in enumerate(p_adj) if x < 1]
