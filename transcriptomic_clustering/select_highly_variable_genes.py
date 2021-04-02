@@ -35,7 +35,9 @@ def select_highly_variable_genes(adata: sc.AnnData,
             inplace: bool = True
             ) -> Optional[pd.DataFrame]:
     """
-        select highly variable genes using the method in scrattch.hicat
+        select highly variable genes using the method in scrattch.hicat that
+        is based on brennecke’s method, which assumes the reads follow a negative binomial distribution, 
+        in which case, using loess fit to fine a relationship between mean and dispersions
 
         Parameters
         ----------
