@@ -54,7 +54,7 @@ def select_highly_variable_genes(adata: sc.AnnData,
 
         highly_variable: boolean indicator of highly-variable genes
         p_adj: p-adjust per gene
-        z_score; z-score per gene
+        z_score: z-score per gene
         means: means per gene
         dispersions: dispersions per gene
 
