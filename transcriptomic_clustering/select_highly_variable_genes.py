@@ -70,21 +70,15 @@ def select_highly_variable_genes(adata: sc.AnnData,
     # means, variances
     means, variances = sc.pp._utils._get_mean_var(adata.X)
 
-    #  dispersions
-    dispersions = np.log10(variances / (means + 1e-10))
+    # dispersions
+    dispersions = np.log(variances / (means + 1e-10) + 1)
 
     # z-scores
     z_scores = compute_z_scores(dispersions)
 
     # Loess regression
-    positive_filter = (not np.isnan(dispersions).all()) and (dispersions > 0)
-
-    means_filtered = means[positive_filter]
-    dispersions_filtered = dispersions[positive_filter]
-    genes_filtered = adata.var_names[positive_filter]
-
-    x = np.log10(means_filtered)
-    y = dispersions_filtered
+    x = np.log(means+1)
+    y = dispersions
 
     loess_regression = loess(x, y)
     loess_regression.fit()
@@ -103,11 +97,11 @@ def select_highly_variable_genes(adata: sc.AnnData,
 
     df = pd.DataFrame(index=qval_indices)
 
-    df['gene'] = genes_filtered[qval_indices]
+    df['gene'] = adata.var_names[qval_indices]
     df['p_adj'] = p_adj[qval_indices]
     df['z_score'] = z_scores[qval_indices]
-    df['means'] = means_filtered[qval_indices]
-    df['dispersions'] = dispersions_filtered[qval_indices]
+    df['means_log'] = x[qval_indices]
+    df['dispersions_log'] = dispersions[qval_indices]
     
     df.sort_values(
         ['p_adj', 'z_score'],
@@ -127,8 +121,8 @@ def select_highly_variable_genes(adata: sc.AnnData,
         adata.var['highly_variable'] = df['highly_variable'].values
         adata.var['p_adj'] = df['p_adj'].values
         adata.var['z_score'] = df['z_score'].values
-        adata.var['means'] = df['means'].values
-        adata.var['dispersions'] = df['dispersions'].values
+        adata.var['means_log'] = df['means_log'].values
+        adata.var['dispersions_log'] = df['dispersions_log'].values
     else:
         return df
 

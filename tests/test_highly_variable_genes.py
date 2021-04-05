@@ -58,22 +58,19 @@ def test_highly_variable_genes():
     ad_dense = sc.AnnData(X=mat, obs=obs, var=var)
     
     # expected results to be compared
-    expected_means = np.array([1783.3291, 2278.613,  626.99536,  360.11676,  329.88107,
-                            1180.1404, 2486.7698 , 8472.947,  325.87897, 0.29706])
-    
-    expected_dispersions = np.array([4.0860877, 4.1462183, 3.6927953, 3.510686, 3.4726, 
+    dispersions = np.array([4.0860877, 4.1462183, 3.6927953, 3.510686, 3.4726, 
                                     3.823604, 3.9517627, 3.9920075, 3.137657, 0.2717548])
 
     expected_z_scores = np.array([ 0.95555746,  1.11784422, -0.10590124, -0.59739689, -0.70018737,
                                 0.24713897,  0.59302709,  0.70164397, -1.60416661, -9.33896352])
 
-    expected_top2_means = np.array([1783.329102, 2278.613037])
-    expected_top2_dispersions = np.array([4.191976, 4.131845])
+    expected_top2_means_log = np.array([7.731761, 7.486798])
+    expected_top2_dispersions_log = np.array([9.652446, 9.513999])
 
     expected_hvg = ['Npy','Plp1']
 
     # test compute_z_scores
-    z_scores = compute_z_scores(expected_dispersions)
+    z_scores = compute_z_scores(dispersions)
 
     np.testing.assert_allclose(
         z_scores,
@@ -91,17 +88,15 @@ def test_highly_variable_genes():
     )
 
     np.testing.assert_allclose(
-        np.sort(adata.var['means']),
-        np.sort(expected_top2_means),
+        np.sort(adata.var['means_log']),
+        np.sort(expected_top2_means_log),
         rtol=1e-06,
         atol=1e-06,
     )
 
-    print(adata.var['dispersions'])
-
     np.testing.assert_allclose(
-        np.sort(adata.var['dispersions']),
-        np.sort(expected_top2_dispersions),
+        np.sort(adata.var['dispersions_log']),
+        np.sort(expected_top2_dispersions_log),
         rtol=1e-06,
         atol=1e-06,
     )
@@ -114,18 +109,16 @@ def test_highly_variable_genes():
         np.sort(expected_hvg),
     )
 
-    print(ad_dense.var['means'])
-
     np.testing.assert_allclose(
-        np.sort(ad_dense.var['means']),
-        np.sort(expected_top2_means),
+        np.sort(ad_dense.var['means_log']),
+        np.sort(expected_top2_means_log),
         rtol=1e-06,
         atol=1e-06,
     )
 
     np.testing.assert_allclose(
-        np.sort(ad_dense.var['dispersions']),
-        np.sort(expected_top2_dispersions),
+        np.sort(ad_dense.var['dispersions_log']),
+        np.sort(expected_top2_dispersions_log),
         rtol=1e-06,
         atol=1e-06,
     )
