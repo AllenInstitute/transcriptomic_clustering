@@ -4,3 +4,4 @@ scipy
 six
 anndata
 scanpy
+scikit-misc
