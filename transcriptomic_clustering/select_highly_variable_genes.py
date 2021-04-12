@@ -33,6 +33,8 @@ def compute_z_scores(dispersion: np.ndarray):
 
 def select_highly_variable_genes(adata: sc.AnnData,
             max_genes: Optional[int] = 3000,
+            means: Optional[np.array] = None,
+            variances: Optional[np.array] = None,
             inplace: bool = True
             ) -> Optional[pd.DataFrame]:
     """
@@ -69,7 +71,8 @@ def select_highly_variable_genes(adata: sc.AnnData,
             raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
 
     # means, variances
-    means, variances = sc.pp._utils._get_mean_var(adata.X)
+    if (means is None) or (variances is None):
+        means, variances = sc.pp._utils._get_mean_var(adata.X)
 
     # dispersions
     dispersions = np.log(variances / (means + 1e-10) + 1)
