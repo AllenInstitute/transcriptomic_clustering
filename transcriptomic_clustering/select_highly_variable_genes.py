@@ -48,6 +48,8 @@ def select_highly_variable_genes(adata: sc.AnnData,
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
         max_genes: number of highly variable genes to keep
+        means: means of CPM normalization of cell expression
+        variances: variances of CPM normalization of cell expression
         inplace: whether to place calculated metrics in `.var` or return them.
 
         Returns
