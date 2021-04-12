@@ -6,6 +6,7 @@ import scanpy as sc
 from scipy.sparse import csr_matrix, issparse
 from skmisc.loess import loess
 from scipy.stats import norm
+from welford import Welford
 
 from statsmodels.stats.multitest import fdrcorrection
 
@@ -126,3 +127,33 @@ def select_highly_variable_genes(adata: sc.AnnData,
     else:
         return df
 
+def chunking_mean_vars(file_name_cpm: str, chunk_size: Optional[int] = 3000):
+    """
+        Aggregate compute means and variances for each gene using Welford's algorithm.
+
+        Parameters
+        ----------
+        file_name_cpm: file name of CPM normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
+            The annotated data matrix of shape n_obs × n_vars.
+            Rows correspond to cells and columns to genes
+        chunk_size: chunk size
+
+        Returns
+        -------
+        means: numpy array
+        variances: numpy array
+
+    """
+    w_mat = Welford()
+
+    adata = sc.read_h5ad(file_name_cpm, backed='r')
+
+    for chunk, start, end in adata.chunked_X(chunk_size):
+        obs_chunk = adata.obs[start:end]
+        adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
+
+        w_mat.add_all(adata_chunk.X.toarray())
+
+        del adata_chunk
+
+    return w_mat.mean, w_mat.var_p
