@@ -1,5 +1,6 @@
 from typing import Optional, List
 
+import numpy as np
 import scanpy as sc
 from scipy.sparse import csr_matrix
 
@@ -65,7 +66,7 @@ def select_genes(adata: sc.AnnData,
         adata._inplace_subset_var(selected_genes)
 
 def filter_genes(adata: sc.AnnData,
-            low_thresh: Optional[int] = 2,
+            low_thresh: Optional[int] = 1,
             min_cells: Optional[int] = 4):
     """
         filter by genes
@@ -101,3 +102,51 @@ def filter_genes(adata: sc.AnnData,
 
     adata.var_names_make_unique()
     adata._inplace_subset_var(pre_selected_genes)
+
+def filter_genes_by_chunking(input_cpm_file: str,
+                            low_thresh: Optional[int] = 1,
+                            min_cells: Optional[int] = 4,
+                            chunk_size: Optional[int] = 3000):
+    """
+        filter by genes
+
+        Parameters
+        ----------
+        input_cpm_file: file name of the CPM normalization cell expression in AnnData format (csr_matrix is perferred)
+            The annotated data matrix of shape n_obs × n_vars.
+            Rows correspond to cells and columns to genes
+
+        low_thresh: lowest value required for a gene to pass filtering.
+        min_cells: minimum number of cells expressed required for a gene to pass filtering.
+        chunk_size: chunk size
+
+        Returns
+        -------
+        filtered genes: list
+
+    """
+    adata = sc.read_h5ad(input_cpm_file, backed='r')
+
+    # init sum of high cpm genes > low threshold
+    sum_hcpm = np.zeros(adata.n_vars).transpose()
+
+    # update sum_hcpm by chunking
+    for chunk, start, end in adata.chunked_X(chunk_size):
+
+        obs_chunk = adata.obs[start:end]
+        adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
+
+        sum_hcpm_chunk = (adata_chunk.X > low_thresh).sum(axis=0)
+        sum_hcpm += np.squeeze(np.asarray(sum_hcpm_chunk))
+
+        del adata_chunk
+
+    adata.file.close()
+
+    mtx_high = sum_hcpm >= min_cells
+    list_high = mtx_high.tolist()
+    indices_high = [i for i, x in enumerate(list_high) if x == True]
+
+    pre_selected_genes = adata.var_names[indices_high].tolist()
+
+    return list(set(pre_selected_genes))
