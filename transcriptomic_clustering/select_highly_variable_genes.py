@@ -161,4 +161,6 @@ def chunking_mean_vars(file_name_cpm: str, chunk_size: Optional[int] = 3000):
 
         del adata_chunk
 
+    adata.file.close()
+
     return w_mat.mean, w_mat.var_p
