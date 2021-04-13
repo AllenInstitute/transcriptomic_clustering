@@ -132,7 +132,7 @@ def select_highly_variable_genes(adata: sc.AnnData,
     else:
         return df
 
-def chunking_mean_vars(file_name_cpm: str, chunk_size: Optional[int] = 3000):
+def get_mean_var_by_chunking(file_name_cpm: str, chunk_size: Optional[int] = 3000):
     """
         Aggregate compute means and variances for each gene using Welford's algorithm.
 
