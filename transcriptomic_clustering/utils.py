@@ -1,8 +1,9 @@
 from typing import Optional, List
 
 import numpy as np
+import pandas as pd
 import scanpy as sc
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, vstack
 
 
 def select_cells(adata: sc.AnnData,
@@ -65,6 +66,51 @@ def select_genes(adata: sc.AnnData,
         selected_genes = list(set(selected_genes))
         adata._inplace_subset_var(selected_genes)
 
+def select_genes_by_chunking(input_cpm_file: str,
+            selected_genes: Optional[List] = None,
+            chunk_size: Optional[int] = 3000):
+    """
+        select genes by chunking
+
+        Parameters
+        ----------
+        input_cpm_file: file name of the CPM normalization of cell expression in AnnData format (csr_matrix is perferred)
+            The annotated data matrix of shape n_obs × n_vars.
+            Rows correspond to cells and columns to genes
+
+        selected_genes: interested genes
+        chunk_size: chunk size
+
+        Returns
+        -------
+        adata with only seleceted genes
+
+    """
+    adata = sc.read_h5ad(input_cpm_file, backed='r')
+    adata.var_names_make_unique()
+
+    for chunk, start, end in adata.chunked_X(chunk_size):
+
+        obs_chunk = adata.obs[start:end]
+        adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
+        adata_chunk._inplace_subset_var(selected_genes)
+
+        if start == 0:
+            var = adata_chunk.var
+            obs = obs_chunk
+            x_mat = adata_chunk.X
+        else:
+            obs = pd.concat([obs, obs_chunk])
+            x_mat = vstack((x_mat, adata_chunk.X), format='csr')
+
+        del adata_chunk
+
+    adata.file.close()
+
+    adata_genefiltered = sc.AnnData(X=x_mat, obs=obs, var=var)
+
+    return adata_genefiltered
+
 def filter_genes(adata: sc.AnnData,
             low_thresh: Optional[int] = 1,
             min_cells: Optional[int] = 4):
@@ -108,7 +154,7 @@ def filter_genes_by_chunking(input_cpm_file: str,
                             min_cells: Optional[int] = 4,
                             chunk_size: Optional[int] = 3000):
     """
-        filter by genes
+        filter genes by chunking
 
         Parameters
         ----------
