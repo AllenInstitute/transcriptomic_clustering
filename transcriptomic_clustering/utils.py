@@ -138,10 +138,10 @@ def filter_genes(adata: sc.AnnData,
 
     if isinstance(adata.X, csr_matrix):
         list_high = mtx_high.tolist()[0]
-        indices_high = [i for i, x in enumerate(list_high) if x == True]
+        indices_high = [i_gene for i_gene, high_gene in enumerate(list_high) if high_gene == True]
     else:
         list_high = mtx_high.tolist()
-        indices_high = [i for i, x in enumerate(list_high) if x == True]
+        indices_high = [i_gene for i_gene, high_gene in enumerate(list_high) if high_gene == True]
 
     pre_selected_genes = adata.var_names[indices_high].tolist()
     pre_selected_genes = list(set(pre_selected_genes))
@@ -191,7 +191,7 @@ def filter_genes_by_chunking(input_cpm_file: str,
 
     mtx_high = sum_hcpm >= min_cells
     list_high = mtx_high.tolist()
-    indices_high = [i for i, x in enumerate(list_high) if x == True]
+    indices_high = [i_gene for i_gene, high_gene in enumerate(list_high) if high_gene == True]
 
     pre_selected_genes = adata.var_names[indices_high].tolist()
 
