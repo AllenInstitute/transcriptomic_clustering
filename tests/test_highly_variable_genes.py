@@ -5,7 +5,8 @@ import pandas as pd
 import scanpy as sc
 from scipy.sparse import csr_matrix
 
-from transcriptomic_clustering.highly_variable_genes import get_gene_means_variances, highly_variable_genes, compute_z_scores
+from transcriptomic_clustering.utils import get_gene_means_variances
+from transcriptomic_clustering.highly_variable_genes import highly_variable_genes, compute_z_scores
 
 
 def test_highly_variable_genes():
@@ -23,7 +24,7 @@ def test_highly_variable_genes():
     var_names = ['Plp1', 'Npy', 'Cnp', 'Mal', 'Trf', 'Enpp2', 'Penk', 'Cnr1', 'Cd9', 'Rgs5']
     var = pd.DataFrame(index=var_names)
 
-    mat = np.array([[ 9.6650405 ,  0.33695615,  8.68121165,  8.18929134,  8.1016207 ,
+    mat = np.matrix([[ 9.6650405 ,  0.33695615,  8.68121165,  8.18929134,  8.1016207 ,
          9.15809275,  0.47063873,  9.72234714,  7.16551018,  0.        ],
        [ 6.77953048,  0.        ,  5.9422073 ,  0.        ,  0.        ,
          6.50688935,  6.68938565,  8.35676263,  7.58414682,  0.        ],
@@ -45,8 +46,10 @@ def test_highly_variable_genes():
          0.        ,  6.23949258,  7.64510218,  0.        ,  0.21721315]])
 
     adata = sc.AnnData(X=csr_matrix(mat), obs=obs, var=var)
+    adata.uns['log1p'] = {'base': None}
     ad_dense = sc.AnnData(X=mat, obs=obs, var=var)
-    
+    ad_dense.uns['log1p'] = {'base': None}
+
     # expected results to be compared
     dispersions = np.array([4.0860877, 4.1462183, 3.6927953, 3.510686, 3.4726, 
                                     3.823604, 3.9517627, 3.9920075, 3.137657, 0.2717548])
@@ -55,7 +58,7 @@ def test_highly_variable_genes():
                                 0.24713897,  0.59302709,  0.70164397, -1.60416661, -9.33896352])
 
     expected_top2_means_log = np.array([7.731761, 7.486798])
-    expected_top2_dispersions_log = np.array([9.652446, 9.513999])
+    expected_top2_dispersions_log = np.array([9.547092, 9.408647])
 
     expected_hvg = ['Npy','Plp1']
 
@@ -70,7 +73,7 @@ def test_highly_variable_genes():
     )
 
     # test select_highly_variable_genes
-    means, variances = get_gene_means_variances(adata = adata)
+    means, variances = get_gene_means_variances(adata = adata, chunk_size = 10)
     highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
@@ -93,7 +96,7 @@ def test_highly_variable_genes():
     )
 
     # test dense matrix case
-    means, variances = get_gene_means_variances(adata = ad_dense)
+    means, variances = get_gene_means_variances(adata = ad_dense, chunk_size = 10)
     highly_variable_genes(adata = ad_dense, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(

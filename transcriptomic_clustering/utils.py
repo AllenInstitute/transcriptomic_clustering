@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy.sparse import csr_matrix, vstack
+from welford import Welford
 
 
 def select_cells(adata: sc.AnnData,
@@ -104,3 +105,57 @@ def filter_genes(adata: sc.AnnData,
     adata.var_names_make_unique()
     adata._inplace_subset_var(pre_selected_genes)
 
+def estimate_chunk_size(memory_required_to_run: Optional[int]):
+    """
+        esitmate chunk size
+
+        TODO function, will be updated in the other issue
+    """
+    return 10000
+
+def get_required_memory_in_GB(adata: sc.AnnData):
+    """
+        get required memory (GB)
+
+        TODO function, will be updated in the other issue
+    """
+    return 5.0 # in GB
+
+
+def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None):
+    """
+        Aggregate compute means and variances for each gene using Welford's algorithm.
+
+        Parameters
+        ----------
+        adata: log(CPM+1) normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
+            The annotated data matrix of shape n_obs × n_vars.
+            Rows correspond to cells and columns to genes
+        chunk_size: chunk size
+
+        Returns
+        -------
+        means: numpy array
+        variances: numpy array
+
+    """
+    memory_required_to_run = get_required_memory_in_GB(adata)
+
+    if chunk_size is None:
+        chunk_size = estimate_chunk_size(memory_required_to_run)
+
+    if not isinstance(adata, sc.AnnData):
+        raise ValueError('`get_gene_means_variances` expects an `AnnData` argument')
+
+    w_mat = Welford()
+
+    for chunk, start, end in adata.chunked_X(chunk_size):
+        if adata.uns['log1p']:
+            if isinstance(adata.X, csr_matrix):
+                w_mat.add_all(np.expm1(chunk).toarray())
+            else:
+                w_mat.add_all(np.expm1(chunk))
+        else:
+            raise ValueError("normalization log(cpm+1) input is required")
+
+    return w_mat.mean, w_mat.var_p
