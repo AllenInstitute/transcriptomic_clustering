@@ -113,18 +113,12 @@ def highly_variable_genes(adata: sc.AnnData,
         inplace=True,
     )
 
-    hvg_list = df['gene'][0:max_genes].tolist()
-
-    hvg_dict = {}
-    for iter_gene in adata.var_names:
-        if iter_gene in hvg_list:
-            hvg_dict[iter_gene] = True
-        else:
-            hvg_dict[iter_gene] = False
+    hvg_set = set(df['gene'][0:max_genes].tolist())
+    hvg_dict = {gene: (gene in hvg_set) for gene in adata.var_names}
 
     if inplace:
         adata.uns['hvg'] = {'flavor': 'hicat'}
-        adata.var['highly_variable'] = pd.Series(data=hvg_dict, index=hvg_dict.keys())
+        adata.var['highly_variable'] = pd.Series(data=hvg_dict)
         adata.var['p_adj'] = df['p_adj'].values
         adata.var['z_score'] = df['z_score'].values
         adata.var['means_log'] = df['means_log'].values
