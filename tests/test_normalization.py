@@ -4,7 +4,7 @@ import numpy as np
 import scanpy as sc
 from scipy.sparse import csr_matrix
 
-from transcriptomic_clustering.normalize import normalize_cell_expresions
+from transcriptomic_clustering.normalize import normalize
 
 
 def test_normalization():
@@ -23,14 +23,14 @@ def test_normalization():
 
     # dense matrix
     anndata_dense = sc.AnnData(arr)
-    result_dense = normalize_cell_expresions(anndata_dense)
+    result_dense = normalize(anndata_dense)
 
     np.testing.assert_almost_equal(result_dense.X, expected_norm, decimal = 6)
 
     # sparse matrix
     anndata_sparse = sc.AnnData(arr)
     anndata_sparse.X = csr_matrix(anndata_sparse.X)
-    result_sparse = normalize_cell_expresions(anndata_sparse)
+    result_sparse = normalize(anndata_sparse)
     result_sparse.X = csr_matrix.toarray(result_sparse.X)
     
     np.testing.assert_almost_equal(result_sparse.X, expected_norm, decimal = 6)

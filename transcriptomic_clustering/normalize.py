@@ -10,7 +10,7 @@ import scanpy as sc
 from scipy.sparse import csr_matrix, issparse, vstack
 
 
-def normalize_cell_expresions(cell_expressions: ad.AnnData):
+def normalize(cell_expressions: ad.AnnData):
     """
         Compute the normalization of cell expressions
 
@@ -44,34 +44,4 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
 
     return cell_expressions
 
-def normalize_cell_expresions_by_chunking(input_cell_expressions_file: str, chunk_size: Optional[int] = 3000):
-    
-    adata = sc.read_h5ad(input_cell_expressions_file, backed='r')
 
-    for chunk, start, end in adata.chunked_X(chunk_size):
-        obs_chunk = adata.obs[start:end]
-        adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
-
-        if issparse(adata_chunk.X):
-            if adata_chunk.X.getformat() == 'csr':
-                sc.pp.log1p(adata_chunk)
-            else:
-                raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
-        else:
-            adata_chunk.X = np.log1p(adata_chunk.X)
-
-        if start == 0:
-            var = adata_chunk.var
-            obs = obs_chunk
-            x_mat = adata_chunk.X
-        else:
-            obs = pd.concat([obs, obs_chunk])
-            x_mat = vstack((x_mat, adata_chunk.X), format='csr')
-
-        del adata_chunk
-
-    adata.file.close()
-
-    adata_norm = sc.AnnData(X=x_mat, obs=obs, var=var)
-
-    return adata_norm

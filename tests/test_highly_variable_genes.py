@@ -5,7 +5,7 @@ import pandas as pd
 import scanpy as sc
 from scipy.sparse import csr_matrix
 
-from transcriptomic_clustering.select_highly_variable_genes import select_highly_variable_genes, compute_z_scores
+from transcriptomic_clustering.highly_variable_genes import get_gene_means_variances, highly_variable_genes, compute_z_scores
 
 
 def test_highly_variable_genes():
@@ -70,7 +70,8 @@ def test_highly_variable_genes():
     )
 
     # test select_highly_variable_genes
-    select_highly_variable_genes(adata = adata, max_genes=2)
+    means, variances = get_gene_means_variances(adata = adata)
+    highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
         np.sort(adata.var_names[adata.var['highly_variable']]),
@@ -92,7 +93,8 @@ def test_highly_variable_genes():
     )
 
     # test dense matrix case
-    select_highly_variable_genes(adata = ad_dense, max_genes=2)
+    means, variances = get_gene_means_variances(adata = ad_dense)
+    highly_variable_genes(adata = ad_dense, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
         np.sort(ad_dense.var_names[adata.var['highly_variable']]),
