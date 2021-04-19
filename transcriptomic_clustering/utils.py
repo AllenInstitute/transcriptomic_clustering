@@ -119,7 +119,7 @@ def filter_genes(adata: sc.AnnData,
 
         Parameters
         ----------
-        adata: CPM normalization cell expression in AnnData format (csr_matrix is perferred)
+        adata: log(CPM+1) normalization cell expression in AnnData format (csr_matrix is perferred)
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
 
@@ -158,7 +158,7 @@ def filter_genes_by_chunking(input_cpm_file: str,
 
         Parameters
         ----------
-        input_cpm_file: file name of the CPM normalization cell expression in AnnData format (csr_matrix is perferred)
+        input_cpm_file: file name of the log(CPM+1)s normalization cell expression in AnnData format (csr_matrix is perferred)
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
 

@@ -31,10 +31,10 @@ def compute_z_scores(dispersion: np.ndarray):
     
     return (dispersion  - m_iqr) / delta
 
-def select_highly_variable_genes(adata: sc.AnnData,
+def select_highly_variable_genes(adata: sc.AnnData = None,
             max_genes: Optional[int] = 3000,
-            means: Optional[np.array] = None,
-            variances: Optional[np.array] = None,
+            norm_cell_expression_file: str = None, 
+            chunk_size: Optional[int] = 3000,
             inplace: bool = True
             ) -> Optional[pd.DataFrame]:
     """
@@ -44,12 +44,12 @@ def select_highly_variable_genes(adata: sc.AnnData,
 
         Parameters
         ----------
-        adata: CPM normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
+        adata: log(CPM+1) normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
         max_genes: number of highly variable genes to keep
-        means: means of CPM normalization of cell expression
-        variances: variances of CPM normalization of cell expression
+        norm_cell_expression_file: file name of the normalization log(CPM+1) of cell expression
+        chunk_size: size of the chunk
         inplace: whether to place calculated metrics in `.var` or return them.
 
         Returns
@@ -64,17 +64,36 @@ def select_highly_variable_genes(adata: sc.AnnData,
         dispersions: dispersions per gene
 
     """
+    if adata is not None:
+        # select highly variable genes without chunking
+        if not isinstance(adata, sc.AnnData):
+            raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument')
 
-    if not isinstance(adata, sc.AnnData):
-        raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument')
+        if issparse(adata.X):
+            if not isinstance(adata.X, csr_matrix):
+                raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
 
-    if issparse(adata.X):
-        if not isinstance(adata.X, csr_matrix):
-            raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
+        # cpm normalization
+        x_cpm = np.expm1(adata.X)
 
-    # means, variances
-    if (means is None) or (variances is None):
-        means, variances = sc.pp._utils._get_mean_var(adata.X)
+        # means, variances
+        means, variances = sc.pp._utils._get_mean_var(x_cpm)
+    elif norm_cell_expression_file is not None:
+        w_mat = Welford()
+
+        adata = sc.read_h5ad(norm_cell_expression_file, backed='r')
+
+        for chunk, start, end in adata.chunked_X(chunk_size):
+            obs_chunk = adata.obs[start:end]
+            adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
+            adata_chunk.X = np.expm1(adata_chunk.X)
+            w_mat.add_all(adata_chunk.X.toarray())
+            del adata_chunk
+
+        adata.file.close()
+        means, variances = w_mat.mean, w_mat.var_p
+    else:
+        raise ValueError("Either AnnData object or file name of the normalization need to be provided")
 
     # dispersions
     dispersions = np.log(variances / (means + 1e-10) + 1)
@@ -99,7 +118,7 @@ def select_highly_variable_genes(adata: sc.AnnData,
     rejected,p_adj = fdrcorrection(p_vals)
 
     # select highly variable genes
-    qval_indices = [i for i, x in enumerate(p_adj) if x < 1]
+    qval_indices = [i_gene for i_gene, padj_val in enumerate(p_adj) if padj_val < 1]
 
     df = pd.DataFrame(index=qval_indices)
 
@@ -116,51 +135,27 @@ def select_highly_variable_genes(adata: sc.AnnData,
         inplace=True,
     )
 
-    df = df[0:max_genes]
-    df['highly_variable'] = True
+    hvg_list = df['gene'][0:max_genes].tolist()
+
+    hvg_dict = {}
+    for iter_gene in adata.var_names:
+        if iter_gene in hvg_list:
+            hvg_dict[iter_gene] = True
+        else:
+            hvg_dict[iter_gene] = False
 
     if inplace:
-        # filter by hvgs
-        adata._inplace_subset_var(df.gene.tolist())
+        if norm_cell_expression_file is not None:
+            adata = sc.read_h5ad(norm_cell_expression_file)
 
         adata.uns['hvg'] = {'flavor': 'hicat'}
-        adata.var['highly_variable'] = df['highly_variable'].values
+        adata.var['highly_variable'] = pd.Series(data=hvg_dict, index=hvg_dict.keys())
         adata.var['p_adj'] = df['p_adj'].values
         adata.var['z_score'] = df['z_score'].values
         adata.var['means_log'] = df['means_log'].values
         adata.var['dispersions_log'] = df['dispersions_log'].values
     else:
+        df = df[0:max_genes]
+        df['highly_variable'] = True
         return df
 
-def get_mean_var_by_chunking(file_name_cpm: str, chunk_size: Optional[int] = 3000):
-    """
-        Aggregate compute means and variances for each gene using Welford's algorithm.
-
-        Parameters
-        ----------
-        file_name_cpm: file name of CPM normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
-            The annotated data matrix of shape n_obs × n_vars.
-            Rows correspond to cells and columns to genes
-        chunk_size: chunk size
-
-        Returns
-        -------
-        means: numpy array
-        variances: numpy array
-
-    """
-    w_mat = Welford()
-
-    adata = sc.read_h5ad(file_name_cpm, backed='r')
-
-    for chunk, start, end in adata.chunked_X(chunk_size):
-        obs_chunk = adata.obs[start:end]
-        adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
-
-        w_mat.add_all(adata_chunk.X.toarray())
-
-        del adata_chunk
-
-    adata.file.close()
-
-    return w_mat.mean, w_mat.var_p

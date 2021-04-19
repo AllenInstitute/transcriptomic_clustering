@@ -1,7 +1,7 @@
 import pytest
 
 import numpy as np
-import anndata as ad
+import scanpy as sc
 from scipy.sparse import csr_matrix
 
 from transcriptomic_clustering.normalize import normalize_cell_expresions
@@ -16,19 +16,19 @@ def test_normalization():
                     [ 6, 11,  3, 26, 26],
                     [ 0,  0, 19,  9,  0]])
 
-    expected_norm = np.array([[17.3466147, 17.3466147, 16.7616566, 15.7616695, 18.9315715],
-                        [15.3466407,  0.0000000, 17.3466147, 18.3466104, 18.8060408],
-                        [16.3466234, 17.2210846, 15.3466407, 18.4620873, 18.4620873],
-                        [ 0.0000000,  0.0000000, 19.3721433, 18.2941431,  0.0000000]])
+    expected_norm = np.array([[12.023757, 12.023757, 11.618295, 10.925157, 13.122365],
+                            [10.637481,  0.      , 12.023757, 12.716901, 13.035354],
+                            [11.330616, 11.936747, 10.637481, 12.796944, 12.796944],
+                            [ 0.      ,  0.      , 13.427747, 12.680533,  0.      ]])
 
     # dense matrix
-    anndata_dense = ad.AnnData(arr)
+    anndata_dense = sc.AnnData(arr)
     result_dense = normalize_cell_expresions(anndata_dense)
 
     np.testing.assert_almost_equal(result_dense.X, expected_norm, decimal = 6)
 
     # sparse matrix
-    anndata_sparse = ad.AnnData(arr)
+    anndata_sparse = sc.AnnData(arr)
     anndata_sparse.X = csr_matrix(anndata_sparse.X)
     result_sparse = normalize_cell_expresions(anndata_sparse)
     result_sparse.X = csr_matrix.toarray(result_sparse.X)
