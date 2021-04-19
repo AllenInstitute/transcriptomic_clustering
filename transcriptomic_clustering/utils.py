@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy.sparse import csr_matrix, vstack
+from welford import Welford
 
 
 def select_cells(adata: sc.AnnData,
@@ -196,3 +197,26 @@ def filter_genes_by_chunking(input_cpm_file: str,
     pre_selected_genes = adata.var_names[indices_high].tolist()
 
     return list(set(pre_selected_genes))
+
+def estimate_chunk_size():
+    return 10000
+
+def get_required_memory_in_GB():
+    return 5.0 # in GB
+
+
+def get_gene_mean_variance(adata: AnnData):
+
+    memory_required_to_run = get_required_memory_in_GB(adata)
+    chunk_size = estimate_chunk_size(memory_required_to_run)
+
+    w = Welford()
+
+    for chunk, start, end in adata.chunked_X(chunk_size):
+        if adata.uns['log_scale']:
+            np.expm1(chunk)
+
+        w.add_all(chunk.toarray())
+
+    return w.mean, w.var_p
+
