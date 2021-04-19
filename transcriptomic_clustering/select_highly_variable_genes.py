@@ -78,7 +78,9 @@ def select_highly_variable_genes(adata: sc.AnnData = None,
 
         # means, variances
         means, variances = sc.pp._utils._get_mean_var(x_cpm)
+
     elif norm_cell_expression_file is not None:
+        #  select highly variable genes with chunking
         w_mat = Welford()
 
         adata = sc.read_h5ad(norm_cell_expression_file, backed='r')
@@ -92,6 +94,7 @@ def select_highly_variable_genes(adata: sc.AnnData = None,
 
         adata.file.close()
         means, variances = w_mat.mean, w_mat.var_p
+
     else:
         raise ValueError("Either AnnData object or file name of the normalization need to be provided")
 
