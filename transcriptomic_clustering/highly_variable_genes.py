@@ -152,13 +152,8 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = 3000
         w_mat = Welford()
 
         for chunk, start, end in adata.chunked_X(chunk_size):
-            obs_chunk = adata.obs[start:end]
-            adata_chunk = sc.AnnData(chunk, obs=obs_chunk, var=adata.var)
-
-            x_cpm_chunk = np.expm1(adata_chunk.X)
+            x_cpm_chunk = np.expm1(chunk)
             w_mat.add_all(x_cpm_chunk.toarray())
-
-            del adata_chunk
 
         return w_mat.mean, w_mat.var_p
     else:
