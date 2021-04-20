@@ -6,7 +6,6 @@ import scanpy as sc
 from scipy.sparse import csr_matrix, issparse
 from skmisc.loess import loess
 from scipy.stats import norm
-from welford import Welford
 
 from statsmodels.stats.multitest import fdrcorrection
 
