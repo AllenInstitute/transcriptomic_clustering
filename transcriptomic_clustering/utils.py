@@ -122,7 +122,7 @@ def get_required_memory_in_GB(adata: sc.AnnData):
     return 5.0 # in GB
 
 
-def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None, logarithmized: Optional[bool] = True):
+def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None):
     """
         Calculate means and variances for each gene using Welford's online algorithm.
 
@@ -154,9 +154,7 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
         if isinstance(adata.X, csr_matrix):
             chunk = chunk.toarray()
 
-        if logarithmized:
-            chunk = np.expm1(chunk)
-
+        chunk = np.expm1(chunk)
         w_mat.add_all(chunk)
 
     return w_mat.mean, w_mat.var_p
