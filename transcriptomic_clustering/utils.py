@@ -124,7 +124,7 @@ def get_required_memory_in_GB(adata: sc.AnnData):
 
 def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None):
     """
-        Aggregate compute means and variances for each gene using Welford's algorithm.
+        Calculate means and variances for each gene using Welford's online algorithm.
 
         Parameters
         ----------
