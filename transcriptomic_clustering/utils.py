@@ -128,7 +128,7 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
 
         Parameters
         ----------
-        adata: log(CPM+1) normalization of cell expression in AnnData format (csr_matrix is supported)
+        adata: normalization of cell expression in AnnData format
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
         chunk_size: chunk size

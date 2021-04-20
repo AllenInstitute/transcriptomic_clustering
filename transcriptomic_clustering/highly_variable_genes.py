@@ -43,7 +43,7 @@ def highly_variable_genes(adata: sc.AnnData,
 
         Parameters
         ----------
-        adata: log(CPM+1) normalization of cell expression in AnnData format (csr_matrix is supported)
+        adata: log(CPM+1) normalization of cell expression in AnnData format
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
         max_genes: number of highly variable genes to keep
