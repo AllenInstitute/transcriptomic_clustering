@@ -19,6 +19,7 @@ class Memory:
     """
     memory_limit_GB: int = -1
     allow_chunking: bool = False
+    max_chunks = 5000
 
 
     def set_memory_limit(self,
@@ -66,7 +67,12 @@ class Memory:
             return working_limit
     
 
-    def estimate_n_chunks(self, process_memory, output_memory: Optional[float]=None, percent_available: Optional[float]=100):
+    def estimate_n_chunks(
+            self,
+            process_memory,
+            output_memory: Optional[float]=None,
+            percent_available: Optional[float]=None,
+            process_name: Optional[str]=None):
         """
         Estimates appropriate number of chuncks based on memory need for total processing
 
@@ -75,19 +81,49 @@ class Memory:
         process_memory: amount of memory in GB function is expected to need to process entire data
         output_memory: amount of memory that the function outputs will take
         percent_available: amount of available memory that can be spent on this function (default 50%)
+        process_name: name of function/process to allocate (for error messages)
 
         Returns
         -------
-        Estimate of number of chunks to use. If output memory > available memory, returns -1 
+        Estimate of number of chunks to use.
+        Raises error if allow_chunking is False, if output_memory > available_memory, or n_chunks > max_n_chunks
 
         """
+        if not percent_available:
+            percent_available = 100
+        if not process_name:
+            process_name = "Operation"
+
         available_memory = self.get_available_memory_GB() * (percent_available / 100)
         if output_memory:                
             available_memory -= output_memory
-            if available_memory < 0:
-                return -1 # not enough memory to even store the outputs
+        
+        if available_memory < 0:
+            nchunks = -1
+        else:
+            nchunks = math.ceil(process_memory / available_memory)
 
-        nchunks = math.ceil(process_memory / available_memory)
+        if nchunks == 1:
+            # always fine, no errors
+            return nchunks
+        elif nchunks == -1:
+            raise MemoryError(
+                f'{process_name} can not fit in memory!\n'
+                f'available memory: {available_memory} GB, \n'
+                f'output memory: {output_memory}'
+            )
+        elif self.allow_chunking and (nchunks > self.max_chunks):
+            raise MemoryError(
+                f'Chunking {process_name} requires too many chunks!'
+                f'available memory: {available_memory} GB, '
+                f'output memory: {output_memory}'
+                f'n_chunks: {nchunks} > max_chunks {self.max_chunks}'
+            )
+        elif not self.allow_chunking:
+            raise MemoryError(
+                f'{process_name} could be done using chunking,'
+                'set transcriptomic_clustering.memory.allow_chunking=True'
+            )
         return nchunks
         
 

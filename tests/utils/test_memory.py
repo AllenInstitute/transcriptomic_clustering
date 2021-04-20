@@ -25,6 +25,7 @@ def test_memory(monkeypatch):
     
     test_memory = tc.utils.memory.Memory()
     test_memory.set_memory_limit(GB=100)
+    test_memory.allow_chunking = True
     return test_memory
 
 
@@ -58,7 +59,20 @@ def test_estimate_n_chunks_percent(test_memory):
     assert test_memory.estimate_n_chunks(120, percent_available=80) == 3
 
 def test_estimate_n_chunks_not_enough(test_memory):
-    assert test_memory.estimate_n_chunks(0, 55) == -1
+    with pytest.raises(MemoryError):
+        test_memory.estimate_n_chunks(0, 55)        
+
+def test_chunking_not_allowed(test_memory):
+    test_memory.allow_chunking = False
+    with pytest.raises(MemoryError):
+        test_memory.estimate_n_chunks(500)
+
+def test_too_many_chunks(test_memory):
+    with pytest.raises(MemoryError):
+        # 50 GB available, 49 for output, 1 GB left for processing
+        # 5001 GB requires 5001 chunks > max_chunks = 5000
+        test_memory.estimate_n_chunks(5001,49)
+
 
 def test_import():
     import transcriptomic_clustering as tc
