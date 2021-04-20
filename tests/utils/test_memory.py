@@ -1,0 +1,67 @@
+import pytest
+from unittest import mock
+from collections import namedtuple
+from dataclasses import dataclass
+
+import transcriptomic_clustering as tc
+
+
+@pytest.fixture
+def test_memory(monkeypatch):
+    # limit of 100GB, 70GB available, 50GB used (120 GB total)
+    def mock_virtual_memory():
+        mock_vm_result = mock.MagicMock()
+        mock_vm_result.available = (70 * 1024 ** 3)
+        return mock_vm_result
+    monkeypatch.setattr('psutil.virtual_memory', mock_virtual_memory)
+
+    def mock_process():
+        mock_memory_result = mock.MagicMock()
+        mock_memory_result.rss = 50 * 1024 ** 3
+        mock_process_result = mock.MagicMock()
+        mock_process_result.memory_info = mock.MagicMock(return_value=mock_memory_result)
+        return mock_process_result
+    monkeypatch.setattr('psutil.Process', mock_process) 
+    
+    test_memory = tc.utils.memory.Memory()
+    test_memory.set_memory_limit(GB=100)
+    return test_memory
+
+
+def test_set_memory_GB(test_memory):
+    test_memory.set_memory_limit(GB=100)
+    assert test_memory.memory_limit_GB == 100
+
+def test_set_memory_percent(test_memory):
+    # 100 limit, 50 used, 70 available on system.
+    # using >50 would violate limit, so 50 available.
+    # 50% of 50 = 25
+    test_memory.set_memory_limit(percent_available=50)
+    assert test_memory.memory_limit_GB == 25
+
+def test_get_available_memory_no_limit(test_memory):
+    # 70 available, no limit
+    test_memory.remove_memory_limit()
+    assert test_memory.get_available_memory_GB() == 70
+
+def test_get_available_memory_with_limit(test_memory):
+    # 75 on machine, but only 50 left till limit
+    assert test_memory.get_available_memory_GB() == 50
+
+def test_estimate_n_chunks(test_memory):
+    assert test_memory.estimate_n_chunks(500) == 10
+
+def test_estimate_n_chunks_w_output(test_memory):
+    assert test_memory.estimate_n_chunks(500, 25) == 20
+
+def test_estimate_n_chunks_percent(test_memory):
+    assert test_memory.estimate_n_chunks(120, percent_available=80) == 3
+
+def test_estimate_n_chunks_not_enough(test_memory):
+    assert test_memory.estimate_n_chunks(0, 55) == -1
+
+def test_import():
+    import transcriptomic_clustering as tc
+    tc.memory.set_memory_limit(GB=50)
+    import transcriptomic_clustering as tc
+    assert tc.memory.memory_limit_GB == 50
