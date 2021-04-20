@@ -128,7 +128,7 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
 
         Parameters
         ----------
-        adata: log(CPM+1) normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
+        adata: log(CPM+1) normalization of cell expression in AnnData format (csr_matrix is supported)
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
         chunk_size: chunk size
@@ -150,12 +150,13 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
     w_mat = Welford()
 
     for chunk, start, end in adata.chunked_X(chunk_size):
+
+        if isinstance(adata.X, csr_matrix):
+            chunk = chunk.toarray()
+
         if adata.uns['log1p']:
-            if isinstance(adata.X, csr_matrix):
-                w_mat.add_all(np.expm1(chunk).toarray())
-            else:
-                w_mat.add_all(np.expm1(chunk))
-        else:
-            raise ValueError("normalization log(cpm+1) input is required")
+            chunk = np.expm1(chunk)
+
+        w_mat.add_all(chunk)
 
     return w_mat.mean, w_mat.var_p
