@@ -93,3 +93,5 @@ class Memory:
 
     def get_chunk_size(self, adata: sc.AnnData, n_chunks):
         return math.ceil(adata.n_obs / n_chunks)
+
+memory = Memory()

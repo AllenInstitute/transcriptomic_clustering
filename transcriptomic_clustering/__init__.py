@@ -17,4 +17,4 @@ fileConfig(os.path.join(
 )
 
 # paths
-from .utils.memory import Memory; memory = Memory()
+from .utils.memory import memory
