@@ -63,8 +63,6 @@ def highly_variable_genes(adata: sc.AnnData,
         dispersions: dispersions per gene
 
     """
-    if not isinstance(adata, sc.AnnData):
-        raise ValueError('`highly_variable_genes` expects an `AnnData` argument')
     
     # dispersions
     dispersions = np.log(variances / (means + 1e-10) + 1)
