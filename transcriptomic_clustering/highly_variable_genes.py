@@ -31,9 +31,9 @@ def compute_z_scores(dispersion: np.ndarray):
     return (dispersion  - m_iqr) / delta
 
 def highly_variable_genes(adata: sc.AnnData,
+            means: np.array,
+            variances: np.array,
             max_genes: Optional[int] = 3000,
-            means: Optional[np.array] = None,
-            variances: Optional[np.array] = None,
             inplace: bool = True
             ) -> Optional[pd.DataFrame]:
     """
@@ -65,12 +65,6 @@ def highly_variable_genes(adata: sc.AnnData,
     """
     if not isinstance(adata, sc.AnnData):
         raise ValueError('`highly_variable_genes` expects an `AnnData` argument')
-
-    if means is None:
-        raise ValueError('need means input provided')
-
-    if variances is None:
-        raise ValueError('need variances input provided')
     
     # dispersions
     dispersions = np.log(variances / (means + 1e-10) + 1)
