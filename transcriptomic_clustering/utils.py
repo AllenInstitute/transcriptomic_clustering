@@ -145,7 +145,7 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
         chunk_size = estimate_chunk_size(memory_required_to_run)
 
     if chunk_size >= adata.n_obs:
-        return sc.pp._utils._get_mean_var(adata.X[()], axis=0)
+        return sc.pp._utils._get_mean_var(np.expm1(adata.X[()]), axis=0)
     else:
         w_mat = Welford()
 
