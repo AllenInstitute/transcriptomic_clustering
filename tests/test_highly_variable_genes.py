@@ -73,7 +73,7 @@ def test_highly_variable_genes():
     )
 
     # test select_highly_variable_genes
-    means, variances = get_gene_means_variances(adata = adata, chunk_size = 10)
+    means, variances = get_gene_means_variances(adata = adata, chunk_size = 5)
     highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
@@ -96,7 +96,7 @@ def test_highly_variable_genes():
     )
 
     # test dense matrix case
-    means, variances = get_gene_means_variances(adata = ad_dense, chunk_size = 10)
+    means, variances = get_gene_means_variances(adata = ad_dense, chunk_size = 5)
     highly_variable_genes(adata = ad_dense, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(

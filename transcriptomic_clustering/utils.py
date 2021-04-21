@@ -67,11 +67,11 @@ def select_genes(adata: sc.AnnData,
         selected_genes = list(set(selected_genes))
         adata._inplace_subset_var(selected_genes)
 
-def filter_genes(adata: sc.AnnData,
+def filter_genes_by_thresholds(adata: sc.AnnData,
             low_thresh: Optional[int] = 1,
             min_cells: Optional[int] = 4):
     """
-        filter by genes
+        filter genes by thresholds
 
         Parameters
         ----------
@@ -144,16 +144,18 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
     if chunk_size is None:
         chunk_size = estimate_chunk_size(memory_required_to_run)
 
-    if not isinstance(adata, sc.AnnData):
-        raise ValueError('`get_gene_means_variances` expects an `AnnData` argument')
+    if chunk_size == adata.n_obs:
+        for chunk, start, end in adata.chunked_X(chunk_size):
+            chunk = np.expm1(chunk)
+        return sc.pp._utils._get_mean_var(chunk, axis=0)
+    else:
+        w_mat = Welford()
 
-    w_mat = Welford()
+        for chunk, start, end in adata.chunked_X(chunk_size):
 
-    for chunk, start, end in adata.chunked_X(chunk_size):
+            if isinstance(chunk, csr_matrix):
+                w_mat.add_all(np.expm1(chunk).toarray())
+            else:
+                w_mat.add_all(np.expm1(chunk))
 
-        if isinstance(chunk, csr_matrix):
-            w_mat.add_all(np.expm1(chunk).toarray())
-        else:
-            w_mat.add_all(np.expm1(chunk))
-
-    return w_mat.mean, w_mat.var_p
+        return w_mat.mean, w_mat.var_p
