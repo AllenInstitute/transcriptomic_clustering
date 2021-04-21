@@ -152,9 +152,8 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
     for chunk, start, end in adata.chunked_X(chunk_size):
 
         if isinstance(chunk, csr_matrix):
-            chunk = chunk.toarray()
-
-        chunk = np.expm1(chunk)
-        w_mat.add_all(chunk)
+            w_mat.add_all(np.expm1(chunk).toarray())
+        else:
+            w_mat.add_all(np.expm1(chunk))
 
     return w_mat.mean, w_mat.var_p
