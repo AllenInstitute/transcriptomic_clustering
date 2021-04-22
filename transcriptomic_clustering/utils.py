@@ -3,7 +3,7 @@ from typing import Optional, List
 import numpy as np
 import pandas as pd
 import scanpy as sc
-from scipy.sparse import csr_matrix, vstack
+from scipy.sparse import csr_matrix, issparse
 from welford import Welford
 
 
@@ -151,8 +151,11 @@ def get_gene_means_variances(adata: sc.AnnData, chunk_size: Optional[int] = None
 
         for chunk, start, end in adata.chunked_X(chunk_size):
 
-            if isinstance(chunk, csr_matrix):
-                w_mat.add_all(np.expm1(chunk).toarray())
+            if issparse(chunk):
+                if isinstance(chunk, csr_matrix):
+                    w_mat.add_all(np.expm1(chunk).toarray())
+                else:
+                    raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
             else:
                 w_mat.add_all(np.expm1(chunk))
 
