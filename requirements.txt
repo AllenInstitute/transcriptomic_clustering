@@ -5,3 +5,4 @@ six
 anndata
 scanpy
 scikit-misc
+Welford

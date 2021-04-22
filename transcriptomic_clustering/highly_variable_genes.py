@@ -30,7 +30,9 @@ def compute_z_scores(dispersion: np.ndarray):
     
     return (dispersion  - m_iqr) / delta
 
-def select_highly_variable_genes(adata: sc.AnnData,
+def highly_variable_genes(adata: sc.AnnData,
+            means: np.array,
+            variances: np.array,
             max_genes: Optional[int] = 3000,
             inplace: bool = True
             ) -> Optional[pd.DataFrame]:
@@ -41,10 +43,12 @@ def select_highly_variable_genes(adata: sc.AnnData,
 
         Parameters
         ----------
-        adata: CPM normalization of cell expression (w/o logarithmized) in AnnData format (csr_matrix is supported)
+        adata: log(CPM+1) normalization of cell expression in AnnData format
             The annotated data matrix of shape n_obs × n_vars.
             Rows correspond to cells and columns to genes
         max_genes: number of highly variable genes to keep
+        means: means of CPM normalization of cell expression
+        variances: variances of CPM normalization of cell expression
         inplace: whether to place calculated metrics in `.var` or return them.
 
         Returns
@@ -59,17 +63,7 @@ def select_highly_variable_genes(adata: sc.AnnData,
         dispersions: dispersions per gene
 
     """
-
-    if not isinstance(adata, sc.AnnData):
-        raise ValueError('`select_highly_variable_genes` expects an `AnnData` argument')
-
-    if issparse(adata.X):
-        if not isinstance(adata.X, csr_matrix):
-            raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR format")
-
-    # means, variances
-    means, variances = sc.pp._utils._get_mean_var(adata.X)
-
+    
     # dispersions
     dispersions = np.log(variances / (means + 1e-10) + 1)
 
@@ -93,7 +87,7 @@ def select_highly_variable_genes(adata: sc.AnnData,
     rejected,p_adj = fdrcorrection(p_vals)
 
     # select highly variable genes
-    qval_indices = [i for i, x in enumerate(p_adj) if x < 1]
+    qval_indices = [i_gene for i_gene, padj_val in enumerate(p_adj) if padj_val < 1]
 
     df = pd.DataFrame(index=qval_indices)
 
@@ -110,19 +104,18 @@ def select_highly_variable_genes(adata: sc.AnnData,
         inplace=True,
     )
 
-    df = df[0:max_genes]
-    df['highly_variable'] = True
+    hvg_set = set(df['gene'][0:max_genes].tolist())
+    hvg_dict = {gene: (gene in hvg_set) for gene in adata.var_names}
 
     if inplace:
-        # filter by hvgs
-        adata._inplace_subset_var(df.gene.tolist())
-
         adata.uns['hvg'] = {'flavor': 'hicat'}
-        adata.var['highly_variable'] = df['highly_variable'].values
+        adata.var['highly_variable'] = pd.Series(data=hvg_dict)
         adata.var['p_adj'] = df['p_adj'].values
         adata.var['z_score'] = df['z_score'].values
         adata.var['means_log'] = df['means_log'].values
         adata.var['dispersions_log'] = df['dispersions_log'].values
     else:
+        df = df[0:max_genes]
+        df['highly_variable'] = True
         return df
 
