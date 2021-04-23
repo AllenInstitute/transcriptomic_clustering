@@ -41,7 +41,7 @@ class Memory:
         elif percent_current_available:
             if percent_current_available < 0 or percent_current_available > 100:
                 raise ValueError('percent available must be between 0 and 100')
-            self.memory_limit_GB = (self.get_available_memory_GB() * percent_current_available / 100)
+            self.memory_limit_GB = (self.get_available_system_memory_GB() * percent_current_available / 100)
         else:
             raise ValueError("please provide either percent_current_available or GB")
 
@@ -50,11 +50,16 @@ class Memory:
         self.memory_limit_GB = -1
 
 
+    def get_available_system_memory_GB(self):
+        """Returns available system memory in Gigabytes"""
+        return psutil.virtual_memory().available / (1024 ** 3)
+
+
     def get_available_memory_GB(self):
         """
         Returns available memory or memory limit, which ever is less
         """
-        available_system_memory = psutil.virtual_memory().available / (1024 ** 3)
+        available_system_memory = self.get_available_system_memory_GB()
         if (self.memory_limit_GB == -1):
             return available_system_memory
 

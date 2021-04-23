@@ -42,10 +42,9 @@ def test_set_memory_GB(test_memory):
 
 def test_set_memory_percent(test_memory):
     # 100 limit, 50 used, 70 available on system.
-    # using >50 would violate limit, so 50 available.
-    # 50% of 50 = 25
+    # updates limit to 50% of 70 = 35 GB
     test_memory.set_memory_limit(percent_current_available=50)
-    assert test_memory.memory_limit_GB == 25
+    assert test_memory.memory_limit_GB == 35
 
 def test_get_available_memory_no_limit(test_memory):
     # 70 available, no limit
