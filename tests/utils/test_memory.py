@@ -3,6 +3,9 @@ from unittest import mock
 from collections import namedtuple
 from dataclasses import dataclass
 
+import numpy as np
+import scanpy as sc
+
 import transcriptomic_clustering as tc
 
 
@@ -28,6 +31,10 @@ def test_memory(monkeypatch):
     test_memory.allow_chunking = True
     return test_memory
 
+@pytest.fixture
+def test_adata():
+    return sc.AnnData(np.zeros((40,1)))
+
 
 def test_set_memory_GB(test_memory):
     test_memory.set_memory_limit(GB=100)
@@ -37,7 +44,7 @@ def test_set_memory_percent(test_memory):
     # 100 limit, 50 used, 70 available on system.
     # using >50 would violate limit, so 50 available.
     # 50% of 50 = 25
-    test_memory.set_memory_limit(percent_available=50)
+    test_memory.set_memory_limit(percent_current_available=50)
     assert test_memory.memory_limit_GB == 25
 
 def test_get_available_memory_no_limit(test_memory):
@@ -56,7 +63,7 @@ def test_estimate_n_chunks_w_output(test_memory):
     assert test_memory.estimate_n_chunks(500, 25) == 20
 
 def test_estimate_n_chunks_percent(test_memory):
-    assert test_memory.estimate_n_chunks(120, percent_available=80) == 3
+    assert test_memory.estimate_n_chunks(120, percent_allowed=80) == 3
 
 def test_estimate_n_chunks_not_enough(test_memory):
     with pytest.raises(MemoryError):
@@ -73,6 +80,8 @@ def test_too_many_chunks(test_memory):
         # 5001 GB requires 5001 chunks > max_chunks = 5000
         test_memory.estimate_n_chunks(5001,49)
 
+def test_estimate_chunk_size(test_memory, test_adata):
+    assert test_memory.estimate_chunk_size(test_adata, 500, 25) == 2
 
 def test_import():
     import transcriptomic_clustering as tc

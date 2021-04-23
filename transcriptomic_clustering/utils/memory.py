@@ -66,7 +66,7 @@ class Memory:
 
     def estimate_n_chunks(
             self,
-            process_memory,
+            process_memory: float,
             output_memory: Optional[float]=None,
             percent_allowed: Optional[float]=None,
             process_name: Optional[str]=None):
@@ -126,5 +126,36 @@ class Memory:
 
     def get_chunk_size(self, adata: sc.AnnData, n_chunks):
         return math.ceil(adata.n_obs / n_chunks)
+
+    def estimate_chunk_size(
+            self,
+            adata: sc.AnnData,
+            process_memory: float,
+            output_memory: Optional[float]=None,
+            percent_allowed: Optional[float]=None,
+            process_name: Optional[str]=None):
+        """
+        Estimates chunk size based on memory need for total processing
+
+        Parameters
+        ----------
+        adata: AnnData object
+        process_memory: amount of memory in GB function is expected to need to process entire data
+        output_memory: amount of memory that the function outputs will take
+        percent_allowed: amount of available memory that can be spent on this function (default 50%)
+        process_name: name of function/process to allocate (for error messages)
+
+        Returns
+        -------
+        Estimate of chunk size.
+        Raises error if allow_chunking is False, if output_memory > available_memory, or n_chunks > max_n_chunks
+        """
+        n_chunks = self.estimate_n_chunks(
+            process_memory,
+            output_memory=output_memory,
+            percent_allowed=percent_allowed,
+            process_name=process_name
+        )
+        return self.get_chunk_size(adata, n_chunks)
 
 memory = Memory()
