@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import anndata as ad
 import scanpy as sc
-from scipy.sparse import csr_matrix, issparse
+from scipy.sparse import csr_matrix, issparse, vstack
 
 
-def normalize_cell_expresions(cell_expressions: ad.AnnData):
+def normalize(cell_expressions: ad.AnnData):
     """
         Compute the normalization of cell expressions
 
@@ -26,7 +26,7 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
 
         Returns
         -------
-        normalization result: output in AnnData format
+        normalization result: log(cpm+1) in AnnData format
 
     """
 
@@ -37,11 +37,11 @@ def normalize_cell_expresions(cell_expressions: ad.AnnData):
     if issparse(cell_expressions.X):
         if cell_expressions.X.getformat() == 'csr':
             sc.pp.log1p(cell_expressions)
-            cell_expressions.X /= np.log(2.0)
         else:
             raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
     else:
-        cell_expressions.X = np.log2(cell_expressions.X+1)
+        cell_expressions.X = np.log1p(cell_expressions.X)
 
     return cell_expressions
+
 
