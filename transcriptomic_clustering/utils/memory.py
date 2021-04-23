@@ -24,26 +24,26 @@ class Memory:
 
     def set_memory_limit(self,
             GB: Optional[int]=None,
-            percent_available: Optional[float]=None): 
+            percent_current_available: Optional[float]=None):
         """
         sets memory limit for transcriptomic clustering functions
 
         Parameters:
         -----------
         GB: amount of memory in GB
-        percent_available: percent of available memory
+        percent_current_available: percent of available memory
 
         """
-        if GB and percent_available:
-            raise ValueError("please pass GB or percent_available, not both")
+        if GB and percent_current_available:
+            raise ValueError("please pass GB or percent_current_available, not both")
         elif GB:
             self.memory_limit_GB = GB
-        elif percent_available:
-            if percent_available < 0 or percent_available > 100:
+        elif percent_current_available:
+            if percent_current_available < 0 or percent_current_available > 100:
                 raise ValueError('percent available must be between 0 and 100')
-            self.memory_limit_GB = (self.get_available_memory_GB() * percent_available / 100)
+            self.memory_limit_GB = (self.get_available_memory_GB() * percent_current_available / 100)
         else:
-            raise ValueError("please provide either percent_available or GB")
+            raise ValueError("please provide either percent_current_available or GB")
 
 
     def remove_memory_limit(self):
@@ -54,24 +54,21 @@ class Memory:
         """
         Returns available memory or memory limit, which ever is less
         """
-        available_memory = psutil.virtual_memory().available / (1024 ** 3)
+        available_system_memory = psutil.virtual_memory().available / (1024 ** 3)
         if (self.memory_limit_GB == -1):
-            return available_memory
+            return available_system_memory
 
-        working_limit = ( # memory limit minus memory already used by this process
+        available_process_memory_limited = ( # memory limit minus memory already used by this process
             self.memory_limit_GB - psutil.Process().memory_info().rss / (1024 ** 3)
         )
-        if available_memory < working_limit:
-            return available_memory
-        else:
-            return working_limit
+        return min(available_process_memory_limited, available_system_memory)
     
 
     def estimate_n_chunks(
             self,
             process_memory,
             output_memory: Optional[float]=None,
-            percent_available: Optional[float]=None,
+            percent_allowed: Optional[float]=None,
             process_name: Optional[str]=None):
         """
         Estimates appropriate number of chuncks based on memory need for total processing
@@ -80,7 +77,7 @@ class Memory:
         ----------
         process_memory: amount of memory in GB function is expected to need to process entire data
         output_memory: amount of memory that the function outputs will take
-        percent_available: amount of available memory that can be spent on this function (default 50%)
+        percent_allowed: amount of available memory that can be spent on this function (default 50%)
         process_name: name of function/process to allocate (for error messages)
 
         Returns
@@ -89,12 +86,12 @@ class Memory:
         Raises error if allow_chunking is False, if output_memory > available_memory, or n_chunks > max_n_chunks
 
         """
-        if not percent_available:
-            percent_available = 100
+        if not percent_allowed:
+            percent_allowed = 100
         if not process_name:
             process_name = "Operation"
 
-        available_memory = self.get_available_memory_GB() * (percent_available / 100)
+        available_memory = self.get_available_memory_GB() * (percent_allowed / 100)
         if output_memory:                
             available_memory -= output_memory
         
