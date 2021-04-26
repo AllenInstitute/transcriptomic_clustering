@@ -15,3 +15,6 @@ fileConfig(os.path.join(
     os.path.dirname(__file__), 
     'logging_config.ini')
 )
+
+# paths
+from .utils.memory import memory
