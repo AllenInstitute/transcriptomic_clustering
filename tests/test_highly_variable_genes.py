@@ -5,7 +5,7 @@ import pandas as pd
 import scanpy as sc
 from scipy.sparse import csr_matrix
 
-from transcriptomic_clustering.utils import get_gene_means_variances
+from transcriptomic_clustering.utils import get_means_variances_genes
 from transcriptomic_clustering.highly_variable_genes import highly_variable_genes, compute_z_scores
 
 
@@ -120,9 +120,9 @@ def test_get_gene_means_variances_sparse(test_adata_sparse):
     expected_variances = np.array([21743008.95300661, 31907224.71064702,  3090720.77279484, 1167156.65001471,
         979394.31701207,  7862088.7369532 , 22253464.56608047, 83184372.94313633,   447417.83528121, 0.55539122])
 
-    # test get_gene_means_variances
+    # test get_means_variances_genes
     adata_sparse = test_adata_sparse
-    means, variances = get_gene_means_variances(adata = adata_sparse, chunk_size = 5)
+    means, variances = get_means_variances_genes(adata = adata_sparse, chunk_size = 5)
     np.testing.assert_allclose(
         means,
         expected_means,
@@ -148,9 +148,9 @@ def test_get_gene_means_variances_dense(test_adata_dense):
     expected_variances = np.array([21743008.95300661, 31907224.71064702,  3090720.77279484, 1167156.65001471,
         979394.31701207,  7862088.7369532 , 22253464.56608047, 83184372.94313633,   447417.83528121, 0.55539122])
 
-    # test get_gene_means_variances
+    # test get_means_variances_genes
     adata_dense = test_adata_dense
-    means, variances = get_gene_means_variances(adata = adata_dense, chunk_size = 5)
+    means, variances = get_means_variances_genes(adata = adata_dense, chunk_size = 5)
     np.testing.assert_allclose(
         means,
         expected_means,
@@ -178,7 +178,7 @@ def test_highly_variable_genes_sparse(test_adata_sparse):
     adata = test_adata_sparse
 
     # test highly_variable_genes
-    means, variances = get_gene_means_variances(adata = adata, chunk_size = 5)
+    means, variances = get_means_variances_genes(adata = adata, chunk_size = 5)
     highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
@@ -213,7 +213,7 @@ def test_highly_variable_genes_dense(test_adata_dense):
     adata = test_adata_dense
 
     # test highly_variable_genes
-    means, variances = get_gene_means_variances(adata = adata, chunk_size = 5)
+    means, variances = get_means_variances_genes(adata = adata, chunk_size = 5)
     highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
