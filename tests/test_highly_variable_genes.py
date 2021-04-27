@@ -122,7 +122,7 @@ def test_get_gene_means_variances_sparse(test_adata_sparse):
 
     # test means_vars_genes
     adata_sparse = test_adata_sparse
-    means, variances, genes = tc.utils.means_vars_genes.means_vars_genes(adata = adata_sparse, chunk_size = 5)
+    means, variances, genes = tc.means_vars_genes(adata = adata_sparse, chunk_size = 5)
     np.testing.assert_allclose(
         means,
         expected_means,
@@ -150,7 +150,7 @@ def test_get_gene_means_variances_dense(test_adata_dense):
 
     # test means_vars_genes
     adata_dense = test_adata_dense
-    means, variances, genes = tc.utils.means_vars_genes.means_vars_genes(adata = adata_dense, chunk_size = 5)
+    means, variances, genes = tc.means_vars_genes(adata = adata_dense, chunk_size = 5)
     np.testing.assert_allclose(
         means,
         expected_means,
@@ -178,7 +178,7 @@ def test_highly_variable_genes_sparse(test_adata_sparse):
     adata = test_adata_sparse
 
     # test highly_variable_genes
-    means, variances, genes = tc.utils.means_vars_genes.means_vars_genes(adata = adata, chunk_size = 5)
+    means, variances, genes = tc.means_vars_genes(adata = adata, chunk_size = 5)
     highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
@@ -213,7 +213,7 @@ def test_highly_variable_genes_dense(test_adata_dense):
     adata = test_adata_dense
 
     # test highly_variable_genes
-    means, variances, genes = tc.utils.means_vars_genes.means_vars_genes(adata = adata, chunk_size = 5)
+    means, variances, genes = tc.means_vars_genes(adata = adata, chunk_size = 5)
     highly_variable_genes(adata = adata, means = means, variances = variances, max_genes=2)
 
     np.testing.assert_array_equal(
