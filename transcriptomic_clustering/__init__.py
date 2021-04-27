@@ -19,3 +19,5 @@ fileConfig(os.path.join(
 # paths
 from .utils.memory import memory
 from .pca import pca
+from .normalize import normalize
+from .utils.means_vars_genes import means_vars_genes
