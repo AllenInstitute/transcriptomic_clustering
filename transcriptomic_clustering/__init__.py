@@ -18,3 +18,4 @@ fileConfig(os.path.join(
 
 # paths
 from .utils.memory import memory
+from .utils.means_vars_genes import means_vars_genes
