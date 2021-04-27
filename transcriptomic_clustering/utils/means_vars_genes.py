@@ -6,89 +6,14 @@ import scanpy as sc
 from scipy.sparse import csr_matrix, issparse
 from welford import Welford
 
-
-def select_cells(adata: sc.AnnData,
-            selected_cells: Optional[List] = None):
-    """
-        select cells
-
-        Parameters
-        ----------
-        adata: cell expression in AnnData format (csr_matrix is preferred)
-            The annotated data matrix of shape n_obs × n_vars.
-            Rows correspond to cells and columns to genes
-
-        selected_cells: interested cells
-
-        Returns
-        -------
-        adata with only seleceted cells
-
-    """
-
-    if not isinstance(adata, sc.AnnData):
-        raise ValueError('`select_cells` expects an `AnnData` argument')
-
-    # make cells' names unique
-    adata.obs_names_make_unique()
-    
-    # sampling by interested cells
-    if selected_cells is not None:
-        selected_cells = list(set(selected_cells))
-        adata._inplace_subset_obs(selected_cells)
-
-def select_genes(adata: sc.AnnData,
-            selected_genes: Optional[List] = None):
-    """
-        select genes
-
-        Parameters
-        ----------
-        adata: cell expression in AnnData format (csr_matrix is preferred)
-            The annotated data matrix of shape n_obs × n_vars.
-            Rows correspond to cells and columns to genes
-
-        selected_genes: interested genes
-
-        Returns
-        -------
-        adata with only seleceted genes
-
-    """
-
-    if not isinstance(adata, sc.AnnData):
-        raise ValueError('`select_genes` expects an `AnnData` argument')
-
-    # make genes' names unique
-    adata.var_names_make_unique()
-    
-    # sampling by interested genes
-    if selected_genes is not None:
-        selected_genes = list(set(selected_genes))
-        adata._inplace_subset_var(selected_genes)
+import transcriptomic_clustering as tc
 
 
-def estimate_chunk_size(memory_required_to_run: Optional[int]):
-    """
-        esitmate chunk size
-
-        TODO function, will be updated in the other issue
-    """
-    return 10000
-
-def get_required_memory_in_GB(adata: sc.AnnData):
-    """
-        get required memory (GB)
-
-        TODO function, will be updated in the other issue
-    """
-    return 5.0 # in GB
-
-
-def get_means_variances_genes(adata: sc.AnnData,
-                            low_thresh: Optional[int] = 1,
-                            min_cells: Optional[int] = 4,
-                            chunk_size: Optional[int] = None):
+def means_vars_genes(adata: sc.AnnData,
+                    low_thresh: Optional[int] = 1,
+                    min_cells: Optional[int] = 4,
+                    chunk_size: Optional[int] = None,
+                    process_memory: Optional[float]=None):
     """
         Calculate means and variances for each gene using Welford's online algorithm. 
         And filter genes by thresholds.
@@ -101,6 +26,7 @@ def get_means_variances_genes(adata: sc.AnnData,
         low_thresh: lowest value required for a gene to pass filtering.
         min_cells: minimum number of cells expressed required for a gene to pass filtering.
         chunk_size: chunk size
+        process_memory: amount of memory in GB function is expected to need to process entire data
 
         Returns
         -------
@@ -109,17 +35,18 @@ def get_means_variances_genes(adata: sc.AnnData,
         filtered genes: list of genes
 
     """
-    memory_required_to_run = get_required_memory_in_GB(adata)
 
     if chunk_size is None:
-        chunk_size = estimate_chunk_size(memory_required_to_run)
+        memory = tc.utils.memory.Memory()
+        if not process_memory:
+            raise ValueError("please input either chunk_size or process_memory to run means_vars_genes")
+        chunk_size = memory.estimate_chunk_size(adata, process_memory, percent_allowed = 50)
 
     if chunk_size >= adata.n_obs:
         
         means, variances = sc.pp._utils._get_mean_var(np.expm1(adata.X[()]), axis=0)
         
         mtx_high = (adata.X[()] > low_thresh).sum(axis=0) >= min_cells
-        
         if hasattr(adata.X, "format_str"):
             if adata.X.format_str == "csr":
                 list_high = mtx_high.tolist()[0]
