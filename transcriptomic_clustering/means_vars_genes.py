@@ -12,8 +12,7 @@ import transcriptomic_clustering as tc
 def means_vars_genes(adata: sc.AnnData,
                     low_thresh: Optional[int] = 1,
                     min_cells: Optional[int] = 4,
-                    chunk_size: Optional[int] = None,
-                    process_memory: Optional[float]=None):
+                    chunk_size: Optional[int] = None):
     """
         Calculate means and variances for each gene using Welford's online algorithm. 
         And filter genes by thresholds.
@@ -37,9 +36,8 @@ def means_vars_genes(adata: sc.AnnData,
     """
 
     if chunk_size is None:
-        memory = tc.utils.memory.Memory()
-        if not process_memory:
-            raise ValueError("please input either chunk_size or process_memory to run means_vars_genes")
+        memory = tc.memory.Memory()
+        process_memory = (adata.n_obs * adata.n_vars) * 8 / (1024 ** 3)
         chunk_size = memory.estimate_chunk_size(adata, process_memory, percent_allowed = 50)
 
     if chunk_size >= adata.n_obs:

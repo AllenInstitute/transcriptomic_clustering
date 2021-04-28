@@ -34,12 +34,12 @@ def highly_variable_genes(adata: sc.AnnData,
             means: np.array,
             variances: np.array,
             max_genes: Optional[int] = 3000,
-            inplace: bool = True
+            annotate: bool = True
             ) -> Optional[pd.DataFrame]:
     """
         select highly variable genes using the method in scrattch.hicat that
         is based on brennecke’s method, which assumes the reads follow a negative binomial distribution, 
-        in which case, using loess fit to fine a relationship between mean and dispersions
+        in which case, using loess fit to fine a relationship between means and dispersions
 
         Parameters
         ----------
@@ -49,18 +49,18 @@ def highly_variable_genes(adata: sc.AnnData,
         max_genes: number of highly variable genes to keep
         means: means of CPM normalization of cell expression
         variances: variances of CPM normalization of cell expression
-        inplace: whether to place calculated metrics in `.var` or return them.
+        annotate: whether to place calculated metrics in `.var` or return them.
 
         Returns
         -------
-        Depending on `inplace` returns calculated metrics (:class:`pandas.DataFrame`) or
+        Depending on `annotate` returns calculated metrics (:class:`pandas.DataFrame`) or
         updates `.var` with the following fields
 
         highly_variable: boolean indicator of highly-variable genes
         p_adj: p-adjust per gene
         z_score: z-score per gene
-        means: means per gene
-        dispersions: dispersions per gene
+        means_log: log(means) per gene
+        dispersions_log: log(dispersions) per gene
 
     """
     
@@ -107,7 +107,7 @@ def highly_variable_genes(adata: sc.AnnData,
     hvg_set = set(df['gene'][0:max_genes].tolist())
     hvg_dict = {gene: (gene in hvg_set) for gene in adata.var_names}
 
-    if inplace:
+    if annotate:
         adata.uns['hvg'] = {'flavor': 'hicat'}
         adata.var['highly_variable'] = pd.Series(data=hvg_dict)
         adata.var['p_adj'] = df['p_adj'].values
