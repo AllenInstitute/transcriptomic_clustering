@@ -21,9 +21,8 @@ def test_pca_tasic():
     set_selected_cells = set(selected_cells)
     cell_mask = [i for i, obs in enumerate(normalized_data.obs['cells']) if obs in set_selected_cells]
 
-    output_adata = tc.pca(normalized_data, cell_select=cell_mask, gene_mask=selected_genes, n_comps=5)
-    # x_pca_tc = output_adata.obsm['X_pca']
-    pcs_tc = output_adata.varm['PCs']
+    pcs_tc, _, _ = tc.pca(normalized_data, cell_select=cell_mask, gene_mask=selected_genes, n_comps=5, svd_solver='arpack')
+    pcs_tc = pcs_tc.T
     
     cos_siml = []
     for i_pc in range(pcs_tc.shape[1]):
