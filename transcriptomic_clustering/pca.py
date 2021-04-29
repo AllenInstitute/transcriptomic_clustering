@@ -40,7 +40,7 @@ def pca(
             Will use 'gene_mask' cells for pca.
     use_highly_variable:
         Will only use highly variable genes 
-        (if gene_select is also set, will only use highly variable genes in gene_select)
+        (cannot be used with gene_mask)
     svd_solver:
         supports several methods, with restrictions:
             'auto':
@@ -85,10 +85,13 @@ def pca(
     # Mask adata
     if cell_mask or gene_mask or use_highly_variable:
         cell_mask = slice(None) if not cell_mask else cell_mask
-        gene_mask = slice(None) if not gene_mask else gene_mask
+        if gene_mask and use_highly_variable:
+            raise ValueError('Cannot use gene_mask and use_highly_variable together')
+        elif use_highly_variable:
+            gene_mask = adata.var['highly_variable']
+        elif not gene_mask:
+            gene_mask = slice(None)
         adata_masked = adata[cell_mask, gene_mask]
-        if use_highly_variable:
-            adata_masked = adata_masked[:, adata_masked.var['highly_variable']]
     else:
         adata_masked = adata
     
