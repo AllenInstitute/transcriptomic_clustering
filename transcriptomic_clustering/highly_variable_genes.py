@@ -33,6 +33,7 @@ def compute_z_scores(dispersion: np.ndarray):
 def highly_variable_genes(adata: sc.AnnData,
             means: np.array,
             variances: np.array,
+            gene_mask: list,
             max_genes: Optional[int] = 3000,
             annotate: bool = True
             ) -> Optional[pd.DataFrame]:
@@ -49,6 +50,7 @@ def highly_variable_genes(adata: sc.AnnData,
         max_genes: number of highly variable genes to keep
         means: means of CPM normalization of cell expression
         variances: variances of CPM normalization of cell expression
+        gene_mask: boolean indicator of filtered genes
         annotate: whether to place calculated metrics in `.var` or return them.
 
         Returns
@@ -57,21 +59,16 @@ def highly_variable_genes(adata: sc.AnnData,
         updates `.var` with the following fields
 
         highly_variable: boolean indicator of highly-variable genes
-        p_adj: p-adjust per gene
-        z_score: z-score per gene
-        means_log: log(means) per gene
-        dispersions_log: log(dispersions) per gene
-
     """
     
     # dispersions
-    dispersions = np.log(variances / (means + 1e-10) + 1)
+    dispersions = np.log1p(variances / (means + 1e-10))
 
     # z-scores
     z_scores = compute_z_scores(dispersions)
 
     # Loess regression
-    x = np.log(means+1)
+    x = np.log1p(means)
     y = dispersions
 
     loess_regression = loess(x, y)
@@ -91,11 +88,11 @@ def highly_variable_genes(adata: sc.AnnData,
 
     df = pd.DataFrame(index=qval_indices)
 
-    df['gene'] = adata.var_names[qval_indices]
+    select_genes = adata.var_names[gene_mask]
+
+    df['gene'] = select_genes[qval_indices]
     df['p_adj'] = p_adj[qval_indices]
     df['z_score'] = z_scores[qval_indices]
-    df['means_log'] = x[qval_indices]
-    df['dispersions_log'] = dispersions[qval_indices]
     
     df.sort_values(
         ['p_adj', 'z_score'],
@@ -110,10 +107,6 @@ def highly_variable_genes(adata: sc.AnnData,
     if annotate:
         adata.uns['hvg'] = {'flavor': 'hicat'}
         adata.var['highly_variable'] = pd.Series(data=hvg_dict)
-        adata.var['p_adj'] = df['p_adj'].values
-        adata.var['z_score'] = df['z_score'].values
-        adata.var['means_log'] = df['means_log'].values
-        adata.var['dispersions_log'] = df['dispersions_log'].values
     else:
         df = df[0:max_genes]
         df['highly_variable'] = True
