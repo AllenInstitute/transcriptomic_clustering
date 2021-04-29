@@ -124,7 +124,13 @@ def pca(
         if svd_solver != 'auto':
             logging.warning('Ignoring svd_solver, using IncrementalPCA')
         _pca = IncrementalPCA(n_components=n_comps, batch_size=chunk_size)
+
+        print('_oidx', adata_masked._oidx.shape)
+        print('_vidx', adata_masked._vidx.shape)
+
         for chunk, _, _ in adata_masked.chunked_X(chunk_size):
+            if scp.sparse.issparse(chunk):
+                chunk = chunk.toarray()
             _pca.partial_fit(chunk)
 
     return (
