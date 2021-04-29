@@ -1,6 +1,5 @@
 import os
 import pytest
-import tempfile
 
 import numpy as np
 import pandas as pd
@@ -53,7 +52,7 @@ def test_pca_auto(tasic):
     pcs_tc, _, _ = tc.pca(
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
-        n_comps=5,
+        n_comps=5, random_state=1,
     )
     pcs_tc = pcs_tc.T
 
@@ -73,15 +72,13 @@ def test_pca_chunked(tasic):
     set_selected_cells = set(tasic['selected_cells'])
     cell_mask = [i for i, obs in enumerate(tasic['adata'].obs['cells']) if obs in set_selected_cells]
 
-    with tempfile.NamedTemporaryFile() as fp:
-        tasic['adata'].filename = fp.name
-
-        pcs_tc, _, _ = tc.pca(
-            tasic['adata'],
-            cell_select=cell_mask, gene_mask=tasic['selected_genes'],
-            n_comps=5, chunk_size=50,
-        )
-        pcs_tc = pcs_tc.T
+    tasic['adata'] = sc.read_h5ad(os.path.join(DATA_DIR, "input", "input_normalize_result.h5"), 'r')
+    pcs_tc, _, _ = tc.pca(
+        tasic['adata'],
+        cell_select=cell_mask, gene_mask=tasic['selected_genes'],
+        n_comps=5, chunk_size=50,
+    )
+    pcs_tc = pcs_tc.T
 
     cos_siml = []
     for i_pc in range(pcs_tc.shape[1]):
@@ -92,4 +89,4 @@ def test_pca_chunked(tasic):
 
     # 1 or -1 equally acceptable
     cos_siml = np.abs(cos_siml)
-    np.testing.assert_allclose(cos_siml, np.ones(cos_siml.shape), rtol=1e-4)
+    np.testing.assert_allclose(cos_siml, np.ones(cos_siml.shape), rtol=2e-1)
