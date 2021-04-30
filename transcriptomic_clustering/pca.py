@@ -85,7 +85,7 @@ def pca(
     # Mask adata
     if (cell_mask is not None) or (gene_mask is not None) or use_highly_variable:
         cell_mask = slice(None) if (cell_mask is None) else cell_mask
-        if gene_mask and use_highly_variable:
+        if (gene_mask is not None) and use_highly_variable:
             raise ValueError('Cannot use gene_mask and use_highly_variable together')
         elif use_highly_variable:
             gene_mask = adata.var['highly_variable']
