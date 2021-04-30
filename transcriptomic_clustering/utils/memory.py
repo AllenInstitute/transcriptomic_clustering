@@ -130,6 +130,8 @@ class Memory:
         
 
     def get_chunk_size(self, adata: sc.AnnData, n_chunks):
+        if n_chunks != 1 and not adata.isbacked:
+            raise MemoryError('Can not chunk in-memory AnnData')
         return math.ceil(adata.n_obs / n_chunks)
 
     def estimate_chunk_size(
