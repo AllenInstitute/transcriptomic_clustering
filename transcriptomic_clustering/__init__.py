@@ -21,4 +21,4 @@ from .utils.memory import memory
 from .normalization import normalize
 from .pca import pca
 from .highly_variable_genes import highly_variable_genes
-from .utils.means_vars_genes import means_vars_genes
+from .means_vars_genes import means_vars_genes
