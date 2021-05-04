@@ -36,9 +36,10 @@ def means_vars_genes(adata: sc.AnnData,
 
     # Estimate chunk size
     if not chunk_size:
-       process_memory_est = adata.n_obs * adata.n_vars * (adata.X.dtype / 1024 ** 2)
+       process_memory_est = adata.n_obs * adata.n_vars * (adata.X.dtype.itemsize / 1024 ** 2)
        chunk_size = tc.memory.estimate_chunk_size(
-                        process_memory_est,
+                        adata = adata,
+                        process_memory=process_memory_est,
                         percent_allowed=50,
                         process_name='means_vars_genes'
                      )
