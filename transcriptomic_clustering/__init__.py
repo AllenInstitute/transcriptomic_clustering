@@ -18,3 +18,4 @@ fileConfig(os.path.join(
 
 # paths
 from .utils.memory import memory
+from .projection import project
