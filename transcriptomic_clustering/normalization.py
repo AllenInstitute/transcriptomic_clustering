@@ -130,8 +130,8 @@ def normalize_backed(
     Normalize file-backed data in chunks
     See description of normalize() for details
     """
-    process_memory_est = 1.0
-    output_memory_est = 0.1
+    process_memory_est = adata.n_obs * adata.n_vars * adata.X.dtype.itemsize/(1024**3)
+    output_memory_est = 0.1 * process_memory_est
 
     estimated_chunk_size = tc.memory.estimate_chunk_size(
         adata,
