@@ -64,7 +64,8 @@ class Memory:
             return available_system_memory
 
         available_process_memory_limited = ( # memory limit minus memory already used by this process
-            self.memory_limit_GB - psutil.Process().memory_info().rss / (1024 ** 3)
+#            self.memory_limit_GB - psutil.Process().memory_info().rss / (1024 ** 3)
+            self.memory_limit_GB
         )
         return min(available_process_memory_limited, available_system_memory)
     
@@ -123,8 +124,9 @@ class Memory:
             )
         elif not self.allow_chunking:
             raise MemoryError(
-                f'{process_name} could be done using chunking,'
-                'set transcriptomic_clustering.memory.allow_chunking=True'
+                f'The process: `{process_name}` cannot fit in memory, '
+                'but could be done using chunking.\n'
+                'Set transcriptomic_clustering.memory.allow_chunking=True'
             )
         return nchunks
         

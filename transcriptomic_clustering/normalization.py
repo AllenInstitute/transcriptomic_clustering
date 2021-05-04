@@ -41,7 +41,7 @@ def copy_anndata_without_X(
 
     f = h5py.File(filename, "w")
 
-    ad._io.h5ad.write_attribute(f, "X", csr_matrix((0, adata.n_vars)))
+    ad._io.h5ad.write_attribute(f, "X", csr_matrix((0, adata.n_vars), dtype='float32'))
     ad._io.h5ad.write_attribute(f, "obs", adata.obs)
     ad._io.h5ad.write_attribute(f, "var", adata.var)
     f.close()
@@ -97,6 +97,8 @@ def normalize(
 
         adata_output = normalize_inmemory(adata, inplace)
 
+    adata_output.uns['normalized'] = {}
+
     return adata_output
 
 
@@ -128,7 +130,7 @@ def normalize_backed(
     See description of normalize() for details
     """
     process_memory_est = 1.0
-    output_memory_est = 1.0
+    output_memory_est = 0.1
 
     estimated_chunk_size = tc.memory.estimate_chunk_size(
         adata,
