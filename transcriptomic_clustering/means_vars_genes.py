@@ -12,10 +12,9 @@ import transcriptomic_clustering as tc
 def means_vars_genes(adata: sc.AnnData,
                     low_thresh: Optional[int] = 1,
                     min_cells: Optional[int] = 4,
-                    chunk_size: Optional[int] = None,
-                    process_memory: Optional[float]=None):
+                    chunk_size: Optional[int] = None):
     """
-        Calculate means and variances for each gene using Welford's online algorithm. 
+        Calculate means and variances for each gene using Welford's online algorithm.
         And filter genes by thresholds.
 
         Parameters
@@ -26,42 +25,41 @@ def means_vars_genes(adata: sc.AnnData,
         low_thresh: lowest value required for a gene to pass filtering.
         min_cells: minimum number of cells expressed required for a gene to pass filtering.
         chunk_size: chunk size
-        process_memory: amount of memory in GB function is expected to need to process entire data
 
         Returns
         -------
         means: numpy array
         variances: numpy array
-        filtered genes: list of genes
+        gene_mask: boolean indicator of filtered genes
 
     """
 
-    if chunk_size is None:
-        memory = tc.utils.memory.Memory()
-        if not process_memory:
-            raise ValueError("please input either chunk_size or process_memory to run means_vars_genes")
-        chunk_size = memory.estimate_chunk_size(adata, process_memory, percent_allowed = 50)
+    # Estimate chunk size
+    if not chunk_size:
+       process_memory_est = adata.n_obs * adata.n_vars * (adata.X.dtype / 1024 ** 2)
+       chunk_size = tc.memory.estimate_chunk_size(
+                        process_memory_est,
+                        percent_allowed=50,
+                        process_name='means_vars_genes'
+                     )
 
     if chunk_size >= adata.n_obs:
         
         means, variances = sc.pp._utils._get_mean_var(np.expm1(adata.X[()]), axis=0)
         
-        mtx_high = (adata.X[()] > low_thresh).sum(axis=0) >= min_cells
+        mtx_hg = (adata.X[()] > low_thresh).sum(axis=0) >= min_cells
         if hasattr(adata.X, "format_str"):
             if adata.X.format_str == "csr":
-                list_high = mtx_high.tolist()[0]
+                gene_mask = mtx_hg.tolist()[0]
             else:
-                list_high = mtx_high.tolist()
+                gene_mask = mtx_hg.tolist()
         else:
             if issparse(adata.X):
-                list_high = mtx_high.tolist()[0]
+                gene_mask = mtx_hg.tolist()[0]
             else:
-                list_high = mtx_high.tolist()
-            
-        indices_high = [i_gene for i_gene, high_gene in enumerate(list_high) if high_gene == True]
-        pre_selected_genes = adata.var_names[indices_high].tolist()
+                gene_mask = mtx_hg.tolist()
 
-        return means, variances, list(set(pre_selected_genes))
+        return means[gene_mask], variances[gene_mask], gene_mask
     else:
         w_mat = Welford()
         sum_hcpm = np.zeros(adata.n_vars).transpose()
@@ -79,10 +77,7 @@ def means_vars_genes(adata: sc.AnnData,
             else:
                 w_mat.add_all(np.expm1(chunk))
                 
-        mtx_high = sum_hcpm >= min_cells
-        list_high = mtx_high.tolist()
-        indices_high = [i_gene for i_gene, high_gene in enumerate(list_high) if high_gene == True]
-
-        pre_selected_genes = adata.var_names[indices_high].tolist()
-
-        return w_mat.mean, w_mat.var_p, list(set(pre_selected_genes))
+        mtx_hg = sum_hcpm >= min_cells
+        gene_mask = mtx_hg.tolist()
+        
+        return w_mat.mean[gene_mask], w_mat.var_p[gene_mask], gene_mask
