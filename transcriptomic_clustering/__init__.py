@@ -19,3 +19,4 @@ fileConfig(os.path.join(
 # paths
 from .utils.memory import memory
 from .normalization import normalize
+from .pca import pca
