@@ -32,7 +32,8 @@ def test_memory(monkeypatch):
     return test_memory
 
 @pytest.fixture
-def test_adata():
+def test_adata(monkeypatch):
+    monkeypatch.setattr('scanpy.AnnData.isbacked', True)
     return sc.AnnData(np.zeros((40,1)))
 
 
