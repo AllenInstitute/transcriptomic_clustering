@@ -9,7 +9,7 @@ from welford import Welford
 import transcriptomic_clustering as tc
 
 
-def means_vars_genes(adata: sc.AnnData,
+def get_means_vars_genes(adata: sc.AnnData,
                     low_thresh: Optional[int] = 1,
                     min_cells: Optional[int] = 4,
                     chunk_size: Optional[int] = None):
@@ -28,8 +28,8 @@ def means_vars_genes(adata: sc.AnnData,
 
         Returns
         -------
-        means: numpy array
-        variances: numpy array
+        means: numpy array of mean expression for genes that pass threshold
+        variances: numpy array of variances for genes that pass threshold
         gene_mask: boolean indicator of filtered genes
 
     """

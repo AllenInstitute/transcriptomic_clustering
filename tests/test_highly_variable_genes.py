@@ -135,7 +135,7 @@ def test_z_score(test_dispersion_data):
 
 def test_get_gene_means_variances_sparse(test_adata_sparse):
     """
-        test means_vars_genes function with sparse matrix in AnnData
+        test get_means_vars_genes function with sparse matrix in AnnData
     """
 
     expected_means = np.array([1783.32848206, 2278.61309851, 1180.14047895, 2486.7697696,
@@ -148,9 +148,9 @@ def test_get_gene_means_variances_sparse(test_adata_sparse):
                     124907.24296245, 172951.41672484, 10052863.13058035])
 
 
-    # test means_vars_genes
+    # test get_means_vars_genes
     adata_sparse = test_adata_sparse
-    means, variances, gene_mask = tc.means_vars_genes(adata = adata_sparse)
+    means, variances, gene_mask = tc.get_means_vars_genes(adata = adata_sparse)
     np.testing.assert_allclose(
         means,
         expected_means,
@@ -167,7 +167,7 @@ def test_get_gene_means_variances_sparse(test_adata_sparse):
 
 def test_get_gene_means_variances_dense(test_adata_dense):
     """
-        test means_vars_genes function with dense matrix in AnnData
+        test get_means_vars_genes function with dense matrix in AnnData
     """
 
     expected_means = np.array([1783.32848206, 2278.61309851, 1180.14047895, 2486.7697696,
@@ -179,9 +179,9 @@ def test_get_gene_means_variances_dense(test_adata_dense):
                     28041.36235863, 175094.93196007, 15236.32455233,
                     124907.24296245, 172951.41672484, 10052863.13058035])
 
-    # test means_vars_genes
+    # test get_means_vars_genes
     adata_dense = test_adata_dense
-    means, variances, gene_mask = tc.means_vars_genes(adata = adata_dense)
+    means, variances, gene_mask = tc.get_means_vars_genes(adata = adata_dense)
     np.testing.assert_allclose(
         means,
         expected_means,
@@ -205,7 +205,7 @@ def test_gene_mask(test_adata_sparse):
                     False, True, True, True, True, True, True, False, False, True]
     
     adata = test_adata_sparse
-    means, variances, gene_mask = tc.means_vars_genes(adata = adata, chunk_size = 5)
+    means, variances, gene_mask = tc.get_means_vars_genes(adata = adata, chunk_size = 5)
 
     np.testing.assert_array_equal(
         gene_mask,
@@ -221,7 +221,7 @@ def test_gene_mask(test_adata_dense):
                     False, True, True, True, True, True, True, False, False, True]
     
     adata = test_adata_dense
-    means, variances, gene_mask = tc.means_vars_genes(adata = adata, chunk_size = 5)
+    means, variances, gene_mask = tc.get_means_vars_genes(adata = adata, chunk_size = 5)
 
     np.testing.assert_array_equal(
         gene_mask,
@@ -238,7 +238,7 @@ def test_highly_variable_genes_sparse(test_adata_sparse):
     adata = test_adata_sparse
 
     # test highly_variable_genes
-    means, variances, gene_mask = tc.means_vars_genes(adata = adata, chunk_size = 5)
+    means, variances, gene_mask = tc.get_means_vars_genes(adata = adata, chunk_size = 5)
     tc.highly_variable_genes(adata = adata, means = means, variances = variances, gene_mask=gene_mask, max_genes=2)
 
     np.testing.assert_array_equal(
@@ -256,7 +256,7 @@ def test_highly_variable_genes_dense(test_adata_dense):
     adata = test_adata_dense
 
     # test highly_variable_genes
-    means, variances, gene_mask = tc.means_vars_genes(adata = adata, chunk_size = 5)
+    means, variances, gene_mask = tc.get_means_vars_genes(adata = adata, chunk_size = 5)
     tc.highly_variable_genes(adata = adata, means = means, variances = variances, gene_mask=gene_mask, max_genes=2)
 
     np.testing.assert_array_equal(
