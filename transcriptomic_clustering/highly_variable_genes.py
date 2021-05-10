@@ -40,7 +40,7 @@ def highly_variable_genes(adata: sc.AnnData,
     """
         select highly variable genes using the method in scrattch.hicat that
         is based on brennecke’s method, which assumes the reads follow a negative binomial distribution, 
-        in which case, using loess fit to fine a relationship between means and dispersions
+        in which case, using loess fit to find a relationship between means and dispersions
 
         Parameters
         ----------

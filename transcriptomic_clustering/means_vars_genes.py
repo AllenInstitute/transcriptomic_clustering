@@ -37,39 +37,40 @@ def means_vars_genes(adata: sc.AnnData,
     if adata.isbacked:
         # Estimate chunk size
         if not chunk_size:
-            process_memory_est = adata.n_obs * adata.n_vars * (adata.X.dtype.itemsize / 1024 ** 2)
+            process_memory_est = adata.n_obs * adata.n_vars * (adata.X.dtype.itemsize / 1024 ** 3)
             chunk_size = tc.memory.estimate_chunk_size(
                                 adata = adata,
                                 process_memory=process_memory_est,
-                                percent_allowed=50,
+                                percent_allowed=25,
                                 process_name='means_vars_genes'
                             )
+            print('chunk_size', chunk_size)
 
         if chunk_size >= adata.n_obs:
             
             means, variances = sc.pp._utils._get_mean_var(np.expm1(adata.X[()]), axis=0)
             
-            mtx_hg = (adata.X[()] > low_thresh).sum(axis=0) >= min_cells
+            matrix_gene_mask = (adata.X[()] > low_thresh).sum(axis=0) >= min_cells
             if hasattr(adata.X, "format_str"):
                 if adata.X.format_str == "csr":
-                    gene_mask = mtx_hg.tolist()[0]
+                    gene_mask = matrix_gene_mask.tolist()[0]
                 else:
-                    gene_mask = mtx_hg.tolist()
+                    gene_mask = matrix_gene_mask.tolist()
             else:
                 if issparse(adata.X):
-                    gene_mask = mtx_hg.tolist()[0]
+                    gene_mask = matrix_gene_mask.tolist()[0]
                 else:
-                    gene_mask = mtx_hg.tolist()
+                    gene_mask = matrix_gene_mask.tolist()
 
             return means[gene_mask], variances[gene_mask], gene_mask
         else:
             w_mat = Welford()
-            sum_hcpm = np.zeros(adata.n_vars).transpose()
+            num_cells_above_thresh = np.zeros(adata.n_vars).transpose()
 
             for chunk, start, end in adata.chunked_X(chunk_size):
                 
-                sum_hcpm_chunk = (chunk > low_thresh).sum(axis=0)
-                sum_hcpm += np.squeeze(np.asarray(sum_hcpm_chunk))
+                num_cells_above_thresh_chunk = (chunk > low_thresh).sum(axis=0)
+                num_cells_above_thresh += np.squeeze(np.asarray(num_cells_above_thresh_chunk))
 
                 if issparse(chunk):
                     if isinstance(chunk, csr_matrix):
@@ -79,17 +80,17 @@ def means_vars_genes(adata: sc.AnnData,
                 else:
                     w_mat.add_all(np.expm1(chunk))
                     
-            mtx_hg = sum_hcpm >= min_cells
-            gene_mask = mtx_hg.tolist()
+            matrix_gene_mask = num_cells_above_thresh >= min_cells
+            gene_mask = matrix_gene_mask.tolist()
             
             return w_mat.mean[gene_mask], w_mat.var_p[gene_mask], gene_mask
     else:
         means, variances = sc.pp._utils._get_mean_var(np.expm1(adata.X), axis=0)
             
-        mtx_hg = (adata.X > low_thresh).sum(axis=0) >= min_cells
+        matrix_gene_mask = (adata.X > low_thresh).sum(axis=0) >= min_cells
         if issparse(adata.X):
-            gene_mask = mtx_hg.tolist()[0]
+            gene_mask = matrix_gene_mask.tolist()[0]
         else:
-            gene_mask = mtx_hg.tolist()
+            gene_mask = matrix_gene_mask.tolist()
 
         return means[gene_mask], variances[gene_mask], gene_mask
