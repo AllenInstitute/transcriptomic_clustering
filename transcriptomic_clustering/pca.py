@@ -82,53 +82,55 @@ def pca(
         cell_mask.sort()
     else:
         cell_mask = cell_select
+    if cell_mask:
+        adata = adata[cell_mask, :]
     
     # Mask adata
-    if (cell_mask is not None) or (gene_mask is not None) or use_highly_variable:
-        cell_mask = slice(None) if (cell_mask is None) else cell_mask
+    if (gene_mask is not None) or use_highly_variable:
         if (gene_mask is not None) and use_highly_variable:
             raise ValueError('Cannot use gene_mask and use_highly_variable together')
         elif use_highly_variable:
             gene_mask = adata.var['highly_variable']
         elif gene_mask is None:
             gene_mask = slice(None)
-        adata_masked = adata[cell_mask, gene_mask]
-    else:
-        adata_masked = adata
+    _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
+    n_gens = len(vidx)
     
     # select n_comps
     if not n_comps:
-        n_comps = min(adata_masked.n_obs, adata_masked.n_vars, 51) - 1
+        n_comps = min(adata.n_obs, n_genes, 51) - 1
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
     if not chunk_size:
-        n_obs = adata_masked.n_obs
-        n_vars = adata_masked.n_vars
+        n_obs = adata.n_obs
+        n_vars = adata.n_vars
         process_memory_estimate = (n_obs * n_vars) * 8 / (1024 ** 3)
         output_memory_estimate = ((n_obs * n_comps) + (n_vars * n_comps) + (n_comps * 2)) * 8 / (1024 ** 3)
         
         chunk_size = memory.estimate_chunk_size(
-            adata_masked,
+            adata,
             process_memory=process_memory_estimate,
             output_memory=output_memory_estimate,
         )
 
     # Run PCA
-    if chunk_size >= adata_masked.n_obs:
+    if chunk_size >= adata.n_obs:
         _pca = PCA(n_components=n_comps, svd_solver=svd_solver, random_state=random_state)
-        X = adata_masked.X
+        X = adata.X
         if scp.sparse.isspmatrix(X):
             X = X.toarray()
+        X = X[:, vidx]
         _pca.fit(X)
     else:
         if svd_solver != 'auto':
             logging.warning('Ignoring svd_solver, using IncrementalPCA')
         _pca = IncrementalPCA(n_components=n_comps, batch_size=chunk_size)
 
-        for chunk, _, _ in adata_masked.chunked_X(chunk_size):
+        for chunk, _, _ in adata.chunked_X(chunk_size):
             if scp.sparse.issparse(chunk):
                 chunk = chunk.toarray()
+            chunk = chunk[:, vidx]
             _pca.partial_fit(chunk)
 
     return (
