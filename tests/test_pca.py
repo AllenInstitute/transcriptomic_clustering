@@ -34,16 +34,9 @@ def test_pca_tasic(tasic):
     )
     pcs_tc = pcs_tc.T
     
-    cos_siml = []
-    for i_pc in range(pcs_tc.shape[1]):
-        pc_tc = pcs_tc[:, i_pc]
-        pc_r = tasic['pcs'][:, i_pc]
-        # cos_siml.append(np.dot(pc_tc, pc_r) / (np.linalg.norm(pc_tc) * np.linalg.norm(pc_r)))
-        cos_siml.append(1 - scipy.spatial.distance.cosine(pc_tc, pc_r))
-    
-    # 1 or -1 equally acceptable
+    cos_siml = pcs_tc.T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
-    np.testing.assert_allclose(cos_siml, np.ones(cos_siml.shape))
+    np.testing.assert_allclose(cos_siml, np.eye(cos_siml.shape[0]), rtol=1e-7, atol=1e-7)
 
 def test_pca_auto(tasic):
     set_selected_cells = set(tasic['selected_cells'])
@@ -56,16 +49,9 @@ def test_pca_auto(tasic):
     )
     pcs_tc = pcs_tc.T
 
-    cos_siml = []
-    for i_pc in range(pcs_tc.shape[1]):
-        pc_tc = pcs_tc[:, i_pc]
-        pc_r = tasic['pcs'][:, i_pc]
-        # cos_siml.append(np.dot(pc_tc, pc_r) / (np.linalg.norm(pc_tc) * np.linalg.norm(pc_r)))
-        cos_siml.append(1 - scipy.spatial.distance.cosine(pc_tc, pc_r))
-
-    # 1 or -1 equally acceptable
+    cos_siml = pcs_tc.T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
-    np.testing.assert_allclose(cos_siml, np.ones(cos_siml.shape), rtol=1e-4)
+    np.testing.assert_allclose(cos_siml, np.eye(cos_siml.shape[0]), rtol=1e-4, atol=1e-4)
 
 
 def test_pca_chunked(tasic):
@@ -80,13 +66,6 @@ def test_pca_chunked(tasic):
     )
     pcs_tc = pcs_tc.T
 
-    cos_siml = []
-    for i_pc in range(pcs_tc.shape[1]):
-        pc_tc = pcs_tc[:, i_pc]
-        pc_r = tasic['pcs'][:, i_pc]
-        # cos_siml.append(np.dot(pc_tc, pc_r) / (np.linalg.norm(pc_tc) * np.linalg.norm(pc_r)))
-        cos_siml.append(1 - scipy.spatial.distance.cosine(pc_tc, pc_r))
-
-    # 1 or -1 equally acceptable
+    cos_siml = pcs_tc.T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
-    np.testing.assert_allclose(cos_siml, np.ones(cos_siml.shape), rtol=2e-1)
+    np.testing.assert_allclose(cos_siml, np.eye(cos_siml.shape[0]), rtol=0.15, atol=0.15)
