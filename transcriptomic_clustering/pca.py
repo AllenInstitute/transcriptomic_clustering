@@ -105,8 +105,9 @@ def pca(
     if not chunk_size:
         n_obs = adata.n_obs
         n_vars = adata.n_vars
-        process_memory_estimate = (n_obs * n_vars) * 8 / (1024 ** 3)
-        output_memory_estimate = ((n_obs * n_comps) + (n_vars * n_comps) + (n_comps * 2)) * 8 / (1024 ** 3)
+        itemsize = adata.X.dtype.itemsize
+        process_memory_estimate = (n_obs * n_vars) * itemsize / (1024 ** 3)
+        output_memory_estimate = ((n_obs * n_comps) + (n_vars * n_comps) + (n_comps * 2)) * itemsize / (1024 ** 3)
         
         chunk_size = memory.estimate_chunk_size(
             adata,
