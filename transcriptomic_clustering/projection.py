@@ -35,17 +35,12 @@ def project(
         gene_mask = adata.var['highly_variable']
     elif gene_mask is None:
         gene_mask = slice(None)
+    _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
     
-    adata_masked = adata[:, gene_mask]
-
-    n_obs = adata_masked.n_obs
+    n_obs = adata.n_obs
     n_comps = principle_comps.shape[0]
     n_genes = principle_comps.shape[1]
-    if adata_masked.n_vars != n_genes:
-        raise ValueError(
-            'number of genes in principle comps and masked adata dont match:\n'
-            f'comps: {n_genes}, masked: {adata_masked.n_vars})'
-        )
+
     issparse = False
     if adata.isbacked and hasattr(adata.X, "format_str") and adata.X.format_str == "csr":
         issparse = True
@@ -59,7 +54,7 @@ def project(
 
         output_memory = n_obs * n_comps * itemsize / (1024 ** 3)
         chunk_size = tc.memory.estimate_chunk_size(
-            adata_masked,
+            adata,
             process_memory=process_memory,
             output_memory=output_memory,
             percent_allowed=70,
@@ -69,16 +64,18 @@ def project(
     # Transform
     pcs_T = principle_comps.T
     if chunk_size >= n_obs:
-        X = adata_masked.X
+        X = adata.X
         if issparse:
             X = X.toarray()
+        X = X[:, vidx]
         X -= X.mean(0)
         X_proj = X @ pcs_T
 
-    for chunk, start, end in adata[:, gene_mask].chunked_X(chunk_size):
+    for chunk, start, end in adata.chunked_X(chunk_size):
         X_proj = np.zeros((adata.n_obs, n_comps))
         if scp.sparse.issparse(chunk):
             chunk = chunk.toarray()
+        chunk = chunk[:, vidx]
         chunk -= chunk.mean(0)
         X_proj[start:end,:] = chunk @ pcs_T
 
