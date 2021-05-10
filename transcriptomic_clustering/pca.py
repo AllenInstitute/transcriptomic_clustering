@@ -42,8 +42,17 @@ def pca(
         Will only use highly variable genes 
         (cannot be used with gene_mask)
     svd_solver:
-        supports several methods, with restrictions:
+        supports several methods:
             'auto':
+                Selects based on data size (see scikit)
+            'full':
+                Does full SVD, and then selects top n_comps (not recommended for large data)
+            'arpack':
+                Uses ARPACK Fortran SVD solver
+            'randomized':
+                Uses Halko, 2009 randomized SVD algorithm (recommended for large data)
+            'iterative':
+                Iteratively constructs a PCA solution chunk by chunk, requires chunk_size arg
     n_comps:
         number of principle components to calculate
         defaults to min(n_obs, n_vars)
@@ -86,13 +95,12 @@ def pca(
         adata = adata[cell_mask, :]
     
     # Mask adata
-    if (gene_mask is not None) or use_highly_variable:
-        if (gene_mask is not None) and use_highly_variable:
-            raise ValueError('Cannot use gene_mask and use_highly_variable together')
-        elif use_highly_variable:
-            gene_mask = adata.var['highly_variable']
-        elif gene_mask is None:
-            gene_mask = slice(None)
+    if (gene_mask is not None) and use_highly_variable:
+        raise ValueError('Cannot use gene_mask and use_highly_variable together')
+    elif use_highly_variable:
+        gene_mask = adata.var['highly_variable']
+    elif gene_mask is None:
+        gene_mask = slice(None)
     _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
     n_gens = len(vidx)
     
