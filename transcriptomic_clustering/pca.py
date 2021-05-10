@@ -82,7 +82,7 @@ def pca(
         cell_mask.sort()
     else:
         cell_mask = cell_select
-    if cell_mask:
+    if cell_mask is not None:
         adata = adata[cell_mask, :]
     
     # Mask adata
