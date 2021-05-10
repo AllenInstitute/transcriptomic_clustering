@@ -18,6 +18,7 @@ fileConfig(os.path.join(
 
 # paths
 from .utils.memory import memory
-from .normalize import normalize
+from .normalization import normalize
 from .highly_variable_genes import highly_variable_genes
 from .means_vars_genes import get_means_vars_genes
+
