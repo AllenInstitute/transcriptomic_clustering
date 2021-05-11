@@ -10,6 +10,7 @@ from sklearn.utils import check_random_state
 from .utils.memory import memory
 
 Mask = Union[Sequence[int], slice, np.ndarray]
+DEFAULT_NCOMPS = 50
 
 def pca(
         adata: sc.AnnData,
@@ -106,7 +107,7 @@ def pca(
     
     # select n_comps
     if not n_comps:
-        n_comps = min(adata.n_obs, n_genes, 51) - 1 # default to 50, or min dim - 1
+        n_comps = min(adata.n_obs - 1, n_genes -1, DEFAULT_NCOMPS)
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
