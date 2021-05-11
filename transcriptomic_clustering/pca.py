@@ -107,7 +107,7 @@ def pca(
     
     # select n_comps
     if not n_comps:
-        n_comps = min(adata.n_obs - 1, n_genes -1, DEFAULT_NCOMPS)
+        n_comps = min(adata.n_obs - 1, n_genes - 1, DEFAULT_NCOMPS)
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
