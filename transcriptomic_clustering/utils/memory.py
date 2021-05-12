@@ -123,13 +123,16 @@ class Memory:
             )
         elif not self.allow_chunking:
             raise MemoryError(
-                f'{process_name} could be done using chunking,'
-                'set transcriptomic_clustering.memory.allow_chunking=True'
+                f'The process: `{process_name}` cannot fit in memory, '
+                'but could be done using chunking.\n'
+                'Set transcriptomic_clustering.memory.allow_chunking=True'
             )
         return nchunks
         
 
     def get_chunk_size(self, adata: sc.AnnData, n_chunks):
+        if n_chunks != 1 and not adata.isbacked:
+            raise MemoryError('Can not chunk in-memory AnnData')
         return math.ceil(adata.n_obs / n_chunks)
 
     def estimate_chunk_size(
