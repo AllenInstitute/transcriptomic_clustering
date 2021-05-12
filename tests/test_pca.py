@@ -27,11 +27,11 @@ def test_pca_tasic(tasic):
     set_selected_cells = set(tasic['selected_cells'])
     cell_mask = [i for i, obs in enumerate(tasic['adata'].obs['cells']) if obs in set_selected_cells]
 
-    pcs_tc_T, _, _ = tc.pca(
+    pcs_tc_T = tc.pca(
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, svd_solver='arpack'
-    )
+    )[0]
     
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
@@ -41,11 +41,11 @@ def test_pca_auto(tasic):
     set_selected_cells = set(tasic['selected_cells'])
     cell_mask = [i for i, obs in enumerate(tasic['adata'].obs['cells']) if obs in set_selected_cells]
 
-    pcs_tc_T, _, _ = tc.pca(
+    pcs_tc_T= tc.pca(
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, random_state=1,
-    )
+    )[0]
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
@@ -57,11 +57,11 @@ def test_pca_chunked(tasic):
     cell_mask = [i for i, obs in enumerate(tasic['adata'].obs['cells']) if obs in set_selected_cells]
 
     tasic['adata'] = sc.read_h5ad(os.path.join(DATA_DIR, "input", "input_normalize_result.h5"), 'r')
-    pcs_tc_T, _, _ = tc.pca(
+    pcs_tc_T = tc.pca(
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, chunk_size=50,
-    )
+    )[0]
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)

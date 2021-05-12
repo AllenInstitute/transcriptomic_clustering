@@ -11,9 +11,9 @@ Mask = Union[Sequence[int], slice, np.ndarray]
 def project(
         adata: ad.AnnData,
         principle_comps: np.ndarray,
+        mean: Optional[np.ndarray]=None,
         gene_mask: Optional[Mask]=None,
         use_highly_variable: bool=False,
-        zero_center: bool=True,
         chunk_size: Optional[int]=None) -> np.ndarray:
     """
     Projects data into principle component space
@@ -24,6 +24,8 @@ def project(
         adata to project into principle component space
     principle_comps: 
         principle component matrix (n_comps x n_genes)
+    mean:
+        mean used for zero centering (pca output)
 
     Returns
     -------
@@ -69,8 +71,9 @@ def project(
         if issparse:
             X = X.toarray()
         X = X[:, vidx]
-        if zero_center:
-            X -= X.mean(0)
+        print(X)
+        if mean is not None:
+            X -= mean
         X_proj = X @ pcs_T
 
     else:
@@ -79,8 +82,8 @@ def project(
             if scp.sparse.issparse(chunk):
                 chunk = chunk.toarray()
             chunk = chunk[:, vidx]
-            if zero_center:
-                chunk -= chunk.mean(0)
+            if mean is not None:
+                chunk -= mean
             X_proj[start:end,:] = chunk @ pcs_T
 
     return X_proj

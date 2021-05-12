@@ -72,6 +72,8 @@ def pca(
     explained_variance
         Explained variance, equivalent to the eigenvalues of the
         covariance matrix.
+    mean
+        Subtracted mean (or None if zero_center=False)
 
     """
     # Handle defaults
@@ -147,4 +149,5 @@ def pca(
         _pca.components_,
         _pca.explained_variance_ratio_,
         _pca.explained_variance_,
+        _pca.mean_
     )
