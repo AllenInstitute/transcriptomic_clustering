@@ -13,14 +13,15 @@ def project(
         principle_comps: np.ndarray,
         gene_mask: Optional[Mask]=None,
         use_highly_variable: bool=False,
+        zero_center: bool=True,
         chunk_size: Optional[int]=None) -> np.ndarray:
     """
-    Projects data into normalized space
+    Projects data into principle component space
 
     Parameters
     ----------
     adata:
-        adata to project into new space
+        adata to project into principle component space
     principle_comps: 
         principle component matrix (n_comps x n_genes)
 
@@ -58,7 +59,7 @@ def project(
             process_memory=process_memory,
             output_memory=output_memory,
             percent_allowed=70,
-            process_name='pca_project',
+            process_name='project',
         )
 
     # Transform
@@ -68,15 +69,18 @@ def project(
         if issparse:
             X = X.toarray()
         X = X[:, vidx]
-        X -= X.mean(0)
+        if zero_center:
+            X -= X.mean(0)
         X_proj = X @ pcs_T
 
-    for chunk, start, end in adata.chunked_X(chunk_size):
+    else:
         X_proj = np.zeros((adata.n_obs, n_comps))
-        if scp.sparse.issparse(chunk):
-            chunk = chunk.toarray()
-        chunk = chunk[:, vidx]
-        chunk -= chunk.mean(0)
-        X_proj[start:end,:] = chunk @ pcs_T
+        for chunk, start, end in adata.chunked_X(chunk_size):
+            if scp.sparse.issparse(chunk):
+                chunk = chunk.toarray()
+            chunk = chunk[:, vidx]
+            if zero_center:
+                chunk -= chunk.mean(0)
+            X_proj[start:end,:] = chunk @ pcs_T
 
     return X_proj
