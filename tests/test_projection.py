@@ -2,6 +2,7 @@ import os
 import pytest
 
 import numpy as np
+import scipy as scp
 import scanpy as sc
 import anndata as ad
 import transcriptomic_clustering as tc
@@ -36,6 +37,22 @@ def test_chunk_proj(test_adata, tmpdir_factory):
     adata = sc.read_h5ad(input_file_name, backed='r')
 
     X_proj = tc.project(adata, pcs, mean, chunk_size=2)
+    adata.file.close()
+
+    np.testing.assert_allclose(X_proj, X_expected)
+
+def test_file_notchunked_proj(test_adata, tmpdir_factory):
+    X_expected = -test_adata.X.copy()
+
+    pcs = -np.eye(10)
+    mean = np.zeros((1,10))
+
+    tmpdir = str(tmpdir_factory.mktemp("test_proj"))
+    input_file_name = os.path.join(tmpdir, "input.h5ad")
+    ad.AnnData(scp.sparse.csr_matrix(test_adata.X)).write(input_file_name)
+    adata = sc.read_h5ad(input_file_name, backed='r')
+
+    X_proj = tc.project(adata, pcs, mean)
     adata.file.close()
 
     np.testing.assert_allclose(X_proj, X_expected)
