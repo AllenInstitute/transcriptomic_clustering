@@ -18,6 +18,12 @@ jobs:
     executor: linux
     working_directory: ~/repo
     steps:
+     - run:
+          name: install git-lfs
+          command: |
+            curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+            apt-get install -y git-lfs
+            git lfs install
       - checkout
       - run: echo ". /opt/conda/etc/profile.d/conda.sh" >> ${BASH_ENV}
       - restore_cache:
