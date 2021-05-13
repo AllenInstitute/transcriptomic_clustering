@@ -105,7 +105,7 @@ def pca(
     elif gene_mask is None:
         gene_mask = slice(None)
     _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
-    n_gens = len(vidx)
+    n_genes = len(vidx)
     
     # select n_comps
     if not n_comps:
