@@ -18,7 +18,7 @@ jobs:
     executor: linux
     working_directory: ~/repo
     steps:
-     - run:
+      - run:
           name: install git-lfs
           command: |
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
