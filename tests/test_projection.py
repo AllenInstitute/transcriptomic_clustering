@@ -1,0 +1,41 @@
+import os
+import pytest
+
+import numpy as np
+import scanpy as sc
+import anndata as ad
+import transcriptomic_clustering as tc
+
+
+@pytest.fixture
+def test_adata():
+    rng = np.random.default_rng(1)
+    adata = ad.AnnData(rng.random((20,10)))
+    return adata
+
+
+def test_simple_proj(test_adata):
+    X_expected = -test_adata.X.copy()
+
+    pcs = -np.eye(10)
+    mean = np.zeros((1,10))
+
+    X_proj = tc.project(test_adata, pcs, mean)
+
+    np.testing.assert_allclose(X_proj, X_expected)
+
+def test_chunk_proj(test_adata, tmpdir_factory):
+    X_expected = -test_adata.X.copy()
+
+    pcs = -np.eye(10)
+    mean = np.zeros((1,10))
+
+    tmpdir = str(tmpdir_factory.mktemp("test_proj"))
+    input_file_name = os.path.join(tmpdir, "input.h5ad")
+    ad.AnnData(test_adata.X).write(input_file_name)
+    adata = sc.read_h5ad(input_file_name, backed='r')
+
+    X_proj = tc.project(adata, pcs, mean, chunk_size=2)
+    adata.file.close()
+
+    np.testing.assert_allclose(X_proj, X_expected)
