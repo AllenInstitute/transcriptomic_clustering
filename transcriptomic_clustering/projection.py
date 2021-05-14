@@ -66,12 +66,11 @@ def project(
 
     # Transform
     pcs_T = principle_comps.T
-    if chunk_size >= n_obs:
+    if not adata.isbacked and chunk_size >= n_obs:
         X = adata.X
         if issparse:
             X = X.toarray()
         X = X[:, vidx]
-        print(X)
         if mean is not None:
             X -= mean
         X_proj = X @ pcs_T
