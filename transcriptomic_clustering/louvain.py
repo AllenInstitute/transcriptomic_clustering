@@ -31,7 +31,7 @@ def cluster_louvain(
     pca_data = None
 
     if isinstance(adata, AnnData):
-        pca_data = adata.X
+        pca_data = adata.X.value
     else:
         pca_data = adata
 
