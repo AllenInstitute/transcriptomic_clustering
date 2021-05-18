@@ -67,7 +67,7 @@ def pca(
     Returns
     -------
     components
-        Dataframe containing the principal components as columns
+        Dataframe of principle components (rows=genes, columns=components)
     explained_variance_ratio
         Ratio of explained variance.
     explained_variance

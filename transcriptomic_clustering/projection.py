@@ -22,9 +22,9 @@ def project(
     adata:
         adata to project into principal component space
     principal_comps: 
-        principal component Dataframe (principal component loadings indexed by genes)
+        principal component Dataframe (rows=genes, columns=components)
     mean:
-        mean used for zero centering (pca output)
+        mean used for zero centering (rows=genes, column=mean)
 
     Returns
     -------
