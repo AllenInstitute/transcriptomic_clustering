@@ -9,7 +9,7 @@ import transcriptomic_clustering as tc
 @pytest.fixture
 def genes():
     """
-        test genes
+        genes
     """
     genes = ['Plp1', 'Npy', 'Cnp', 'Mal', 'Trf', 'Enpp2', 'Penk', 'Cnr1', 'Cd9',
                 'Rgs5', 'Krt73', 'Myl1', 'Lpar1', 'Arhgap36', 'Vip', 'Rgs4',
@@ -18,9 +18,9 @@ def genes():
     return genes
 
 @pytest.fixture
-def test_principal_components(genes):
+def principal_components(genes):
     """
-        test principal components
+        principal components
     """
     mat_pcs = np.array([[0.002857591636481942, -0.0354102055296144, 0.03249323043004619,
         0.055205398305197745, 0.04305623050772404],
@@ -73,9 +73,9 @@ def test_principal_components(genes):
     return df_pcs
 
 @pytest.fixture
-def test_known_modes(genes):
+def known_modes(genes):
     """
-        test known modes
+        known modes
     """
     mat_kns = np.array([[-0.14016657, -0.2187239 ,  0.01292835,  0.0528603 , -0.13300103,
         0.115241  ,  0.54783094,  0.03878433,  0.01508748, -0.15944897,
@@ -125,13 +125,13 @@ def expected_filter_result(genes):
     return df_result
 
 
-def test_filter_known_modes(test_principal_components, test_known_modes, expected_filter_result):
+def test_filter_known_modes(principal_components, known_modes, expected_filter_result):
     """
         test filter_known_modes function
     """
 
-    df_pcs = test_principal_components
-    df_kns = test_known_modes
+    df_pcs = principal_components
+    df_kns = known_modes
 
     expected_result = expected_filter_result
 

@@ -8,7 +8,7 @@ def filter_known_modes(principal_components: pd.DataFrame,
                     known_modes: pd.DataFrame,
                     similarity_threshold: Optional[float] = 0.7):
     """
-        Filtering out principal components correlated to input eigen vectors
+        Filtering out principal components which correlate strongly with the provided know modes
 
         Parameters
         ----------
@@ -16,7 +16,7 @@ def filter_known_modes(principal_components: pd.DataFrame,
                         index is gene names, columns are principal components
         known_modes: eigen vectors of gene expressions to filter out
                         index is gene names, columns are known modes
-        similarity_threshold: threshold of correlation coefficients, default is set to 0.7
+        similarity_threshold: threshold of correlation coefficients
 
         Returns
         -------
