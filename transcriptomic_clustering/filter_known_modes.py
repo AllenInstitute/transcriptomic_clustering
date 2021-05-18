@@ -8,7 +8,7 @@ def filter_known_modes(principal_components: pd.DataFrame,
                     known_modes: pd.DataFrame,
                     similarity_threshold: Optional[float] = 0.7):
     """
-        Filtering out principal components which correlate strongly with the provided know modes
+        Filters out principal components which correlate strongly with the known modes
 
         Parameters
         ----------
