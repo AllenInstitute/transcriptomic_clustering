@@ -23,4 +23,5 @@ from .highly_variable_genes import highly_variable_genes
 from .means_vars_genes import get_means_vars_genes
 from .pca import pca
 from .projection import project
+from .louvain import cluster_louvain
 from .filter_known_modes import filter_known_modes

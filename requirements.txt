@@ -7,3 +7,4 @@ scanpy
 scikit-misc
 psutil
 Welford
+Phenograph
