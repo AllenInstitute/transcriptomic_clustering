@@ -21,8 +21,6 @@ def test_simple_proj(test_adata):
 
     pcs = pd.DataFrame(-np.eye(10), index=test_adata.var_names)
     mean = pd.DataFrame(np.zeros((10,)), index=test_adata.var_names)
-    print('pcs', pcs)
-    print('mean', mean)
 
     X_proj = tc.project(test_adata, pcs, mean)
 
@@ -33,8 +31,6 @@ def test_chunk_proj(test_adata, tmpdir_factory):
 
     pcs = pd.DataFrame(-np.eye(10), index=test_adata.var_names)
     mean = pd.DataFrame(np.zeros((10,)), index=test_adata.var_names)
-    print('pcs', pcs)
-    print('mean', mean)
 
     tmpdir = str(tmpdir_factory.mktemp("test_proj"))
     input_file_name = os.path.join(tmpdir, "input.h5ad")
@@ -51,8 +47,6 @@ def test_file_notchunked_proj(test_adata, tmpdir_factory):
 
     pcs = pd.DataFrame(-np.eye(10), index=test_adata.var_names)
     mean = pd.DataFrame(np.zeros((10,)), index=test_adata.var_names)
-    print('pcs', pcs)
-    print('mean', mean)
 
     tmpdir = str(tmpdir_factory.mktemp("test_proj"))
     input_file_name = os.path.join(tmpdir, "input.h5ad")

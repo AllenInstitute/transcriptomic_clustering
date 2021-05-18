@@ -11,35 +11,35 @@ Mask = Union[Sequence[int], slice, np.ndarray]
 
 def project(
         adata: ad.AnnData,
-        principle_comps: pd.DataFrame,
+        principal_comps: pd.DataFrame,
         mean: Optional[pd.DataFrame]=None,
         chunk_size: Optional[int]=None) -> np.ndarray:
     """
-    Projects data into principle component space
+    Projects data into principal component space
 
     Parameters
     ----------
     adata:
-        adata to project into principle component space
-    principle_comps: 
-        principle component Dataframe (principle component loadings indexed by genes)
+        adata to project into principal component space
+    principal_comps: 
+        principal component Dataframe (principal component loadings indexed by genes)
     mean:
         mean used for zero centering (pca output)
 
     Returns
     -------
-    Adata object in principle component space
+    Adata object in principal component space
     """
 
-    if not mean.index.equals(principle_comps.index):
-        raise ValueError('mean and principle comps have different genes')
-    _, vidx = adata._normalize_indices((slice(None), principle_comps.index)) # handle gene mask like anndata would
-    principle_comps = principle_comps.to_numpy()
+    if not mean.index.equals(principal_comps.index):
+        raise ValueError('mean and principal comps have different genes')
+    _, vidx = adata._normalize_indices((slice(None), principal_comps.index)) # handle gene mask like anndata would
+    principal_comps = principal_comps.to_numpy()
     mean = mean.to_numpy().T
 
     n_obs = adata.n_obs
-    n_comps = principle_comps.shape[0]
-    n_genes = principle_comps.shape[1]
+    n_comps = principal_comps.shape[0]
+    n_genes = principal_comps.shape[1]
 
     issparse = False
     if adata.isbacked and hasattr(adata.X, "format_str") and adata.X.format_str == "csr":
@@ -62,7 +62,7 @@ def project(
         )
 
     # Transform
-    pcs_T = principle_comps.T
+    pcs_T = principal_comps.T
     if not adata.isbacked and chunk_size >= n_obs:
         X = adata.X
         if issparse:

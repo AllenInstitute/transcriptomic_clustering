@@ -56,7 +56,7 @@ def pca(
             'iterative':
                 Iteratively constructs a PCA solution chunk by chunk, requires chunk_size arg
     n_comps:
-        number of principle components to calculate
+        number of principal components to calculate
         defaults to min(n_obs, n_vars)
     random_state:
         sets random state for repeatability
