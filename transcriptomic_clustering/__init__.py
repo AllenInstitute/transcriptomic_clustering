@@ -24,3 +24,4 @@ from .means_vars_genes import get_means_vars_genes
 from .pca import pca
 from .projection import project
 from .filter_known_modes import filter_known_modes
+from .hierarchical_sorting import hclust
