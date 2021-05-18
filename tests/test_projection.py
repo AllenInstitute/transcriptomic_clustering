@@ -3,6 +3,7 @@ import pytest
 
 import numpy as np
 import scipy as scp
+import pandas as pd
 import scanpy as sc
 import anndata as ad
 import transcriptomic_clustering as tc
@@ -18,8 +19,8 @@ def test_adata():
 def test_simple_proj(test_adata):
     X_expected = -test_adata.X.copy()
 
-    pcs = -np.eye(10)
-    mean = np.zeros((1,10))
+    pcs = pd.DataFrame(-np.eye(10), index=test_adata.var_names)
+    mean = pd.DataFrame(np.zeros((10,)), index=test_adata.var_names)
 
     X_proj = tc.project(test_adata, pcs, mean)
 
@@ -28,8 +29,8 @@ def test_simple_proj(test_adata):
 def test_chunk_proj(test_adata, tmpdir_factory):
     X_expected = -test_adata.X.copy()
 
-    pcs = -np.eye(10)
-    mean = np.zeros((1,10))
+    pcs = pd.DataFrame(-np.eye(10), index=test_adata.var_names)
+    mean = pd.DataFrame(np.zeros((10,)), index=test_adata.var_names)
 
     tmpdir = str(tmpdir_factory.mktemp("test_proj"))
     input_file_name = os.path.join(tmpdir, "input.h5ad")
@@ -44,8 +45,8 @@ def test_chunk_proj(test_adata, tmpdir_factory):
 def test_file_notchunked_proj(test_adata, tmpdir_factory):
     X_expected = -test_adata.X.copy()
 
-    pcs = -np.eye(10)
-    mean = np.zeros((1,10))
+    pcs = pd.DataFrame(-np.eye(10), index=test_adata.var_names)
+    mean = pd.DataFrame(np.zeros((10,)), index=test_adata.var_names)
 
     tmpdir = str(tmpdir_factory.mktemp("test_proj"))
     input_file_name = os.path.join(tmpdir, "input.h5ad")
