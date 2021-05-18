@@ -15,6 +15,7 @@ def filter_known_modes(principal_components: pd.DataFrame,
         principal_components: pincipal components from dimension reduction,
                         index is gene names, columns are principal components
         known_modes: eigen vectors of gene expressions to filter out
+                        index is gene names, columns are known modes
         similarity_threshold: threshold of correlation coefficients, default is set to 0.7
 
         Returns
