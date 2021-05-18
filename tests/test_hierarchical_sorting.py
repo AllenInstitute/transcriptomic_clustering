@@ -4,7 +4,7 @@ import numpy as np
 from transcriptomic_clustering.hierarchical_sorting import hclust
 
 @pytest.fixture
-def test_cluster_means():
+def cluster_means():
     """
         test cluster means
     """
@@ -27,7 +27,7 @@ def test_cluster_means():
     return cluster_means
 
 
-def test_hclust(test_cluster_means):
+def test_hclust(cluster_means):
 
     expected_cluster_names = np.array(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'])
     expected_linkage_matrix = np.array([
@@ -45,7 +45,7 @@ def test_hclust(test_cluster_means):
         [6, 23, 9.8403522, 13]
     ])
 
-    linkage_matrix, cluster_names = hclust(test_cluster_means)
+    linkage_matrix, cluster_names = hclust(cluster_means)
 
     np.testing.assert_equal(cluster_names, expected_cluster_names)
     np.testing.assert_almost_equal(linkage_matrix, expected_linkage_matrix, decimal=6)
