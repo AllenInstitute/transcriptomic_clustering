@@ -4,6 +4,7 @@ import logging
 import scanpy as sc
 import scipy as scp
 import numpy as np
+import pandas as pd
 from sklearn.decomposition import PCA, IncrementalPCA
 from sklearn.utils import check_random_state
 
@@ -66,14 +67,14 @@ def pca(
     Returns
     -------
     components
-        The principal components containing the loadings.
+        Dataframe containing the principal components as columns
     explained_variance_ratio
         Ratio of explained variance.
     explained_variance
         Explained variance, equivalent to the eigenvalues of the
         covariance matrix.
     mean
-        Subtracted mean (or None if zero_center=False)
+        Dataframe containing the subtracted mean (or None if zero_center=False)
 
     """
     # Handle defaults
@@ -146,8 +147,8 @@ def pca(
             _pca.partial_fit(chunk)
 
     return (
-        _pca.components_,
+        pd.DataFrame(_pca.components_.T, index=adata.var_names[vidx]),
         _pca.explained_variance_ratio_,
         _pca.explained_variance_,
-        _pca.mean_
+        pd.DataFrame(_pca.mean_, index=adata.var_names[vidx])
     )

@@ -31,7 +31,7 @@ def test_pca_tasic(tasic):
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, svd_solver='arpack'
-    )[0]
+    )[0].to_numpy().T
     
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
@@ -45,7 +45,7 @@ def test_pca_auto(tasic):
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, random_state=1,
-    )[0]
+    )[0].to_numpy().T
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
@@ -61,7 +61,7 @@ def test_pca_chunked(tasic):
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, chunk_size=50,
-    )[0]
+    )[0].to_numpy().T
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)

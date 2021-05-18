@@ -2,6 +2,7 @@ from typing import Optional, Union, Sequence
 
 import numpy as np
 import scipy as scp
+import pandas as pd
 import scanpy as sc
 import anndata as ad
 import transcriptomic_clustering as tc
@@ -10,10 +11,8 @@ Mask = Union[Sequence[int], slice, np.ndarray]
 
 def project(
         adata: ad.AnnData,
-        principle_comps: np.ndarray,
-        mean: Optional[np.ndarray]=None,
-        gene_mask: Optional[Mask]=None,
-        use_highly_variable: bool=False,
+        principle_comps: pd.DataFrame,
+        mean: Optional[pd.DataFrame]=None,
         chunk_size: Optional[int]=None) -> np.ndarray:
     """
     Projects data into principle component space
@@ -23,7 +22,7 @@ def project(
     adata:
         adata to project into principle component space
     principle_comps: 
-        principle component matrix (n_comps x n_genes)
+        principle component Dataframe (principle component loadings indexed by genes)
     mean:
         mean used for zero centering (pca output)
 
@@ -32,14 +31,12 @@ def project(
     Adata object in principle component space
     """
 
-    if (gene_mask is not None) and use_highly_variable:
-            raise ValueError('Cannot use gene_mask and use_highly_variable together')
-    elif use_highly_variable:
-        gene_mask = adata.var['highly_variable']
-    elif gene_mask is None:
-        gene_mask = slice(None)
-    _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
-    
+    if not mean.index.equals(principle_comps.index):
+        raise ValueError('mean and principle comps have different genes')
+    _, vidx = adata._normalize_indices((slice(None), principle_comps.index)) # handle gene mask like anndata would
+    principle_comps = principle_comps.to_numpy()
+    mean = mean.to_numpy().T
+
     n_obs = adata.n_obs
     n_comps = principle_comps.shape[0]
     n_genes = principle_comps.shape[1]
