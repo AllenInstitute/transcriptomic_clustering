@@ -28,7 +28,7 @@ def filter_known_modes(principal_components: pd.DataFrame,
     kns_index_sorted = known_modes.sort_index()
 
     if not pcs_index_sorted.index.equals(kns_index_sorted.index):
-        raise ValueError("indices of principal components and known modes do not match")
+        raise ValueError("The indices (genes) of the principal components and the known modes do not match")
 
     mat_pcs = pcs_index_sorted.to_numpy()
     mat_kns = kns_index_sorted.to_numpy()
