@@ -1,10 +1,10 @@
-from typing import Dict
+from typing import Any, Dict
 
 import numpy as np
 from scipy.cluster.hierarchy import linkage
 
 
-def hclust(cluster_means: Dict[str, np.ndarray]):
+def hclust(cluster_means: Dict[Any, np.ndarray]):
     """
     Performs UPGMA hierarchical clustering
 
