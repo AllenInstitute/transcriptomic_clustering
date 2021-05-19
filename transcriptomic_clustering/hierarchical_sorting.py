@@ -1,12 +1,10 @@
 from typing import Dict
 
 import numpy as np
-import pandas as pd
-import transcriptomic_clustering as tc
 from scipy.cluster.hierarchy import linkage
 
 
-def hclust(cluster_means: Dict[str, float]):
+def hclust(cluster_means: Dict[str, np.ndarray]):
     """
     Performs UPGMA hierarchical clustering
 
@@ -23,14 +21,14 @@ def hclust(cluster_means: Dict[str, float]):
         list of cluster names that can be used as labels in dendrogram
     """
 
-    # Convert dictionary of cluster means to a dataframe of means
-    cluster_mean_obs = pd.DataFrame.from_dict(cluster_means, orient='index')
+    # Parse cluster names
+    cluster_names = np.array(list(cluster_means.keys()))
+
+    # Convert dictionary of cluster means to a np.ndarray
+    cluster_mean_obs = np.array(list(cluster_means.values()))
 
     # Run UPGMA hierarchical clustering
     linkage_matrix = linkage(cluster_mean_obs, method = 'average', metric = 'euclidean')
-
-    # Parse cluster names
-    cluster_names = np.array([k for k in cluster_means.keys()])
 
     return (
         linkage_matrix,
