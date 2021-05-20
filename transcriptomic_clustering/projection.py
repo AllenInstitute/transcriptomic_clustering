@@ -38,8 +38,8 @@ def project(
     mean = mean.to_numpy().T
 
     n_obs = adata.n_obs
-    n_comps = principal_comps.shape[0]
-    n_genes = principal_comps.shape[1]
+    n_comps = principal_comps.shape[1]
+    n_genes = principal_comps.shape[0]
 
     issparse = False
     if adata.isbacked and hasattr(adata.X, "format_str") and adata.X.format_str == "csr":
@@ -62,7 +62,6 @@ def project(
         )
 
     # Transform
-    pcs_T = principal_comps.T
     if not adata.isbacked and chunk_size >= n_obs:
         X = adata.X
         if issparse:
@@ -70,7 +69,7 @@ def project(
         X = X[:, vidx]
         if mean is not None:
             X -= mean
-        X_proj = X @ pcs_T
+        X_proj = X @ principal_comps
 
     else:
         X_proj = np.zeros((adata.n_obs, n_comps))
@@ -80,6 +79,6 @@ def project(
             chunk = chunk[:, vidx]
             if mean is not None:
                 chunk -= mean
-            X_proj[start:end,:] = chunk @ pcs_T
+            X_proj[start:end,:] = chunk @ principal_comps
 
     return X_proj
