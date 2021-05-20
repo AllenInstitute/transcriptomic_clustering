@@ -34,6 +34,7 @@ def project(
     if not mean.index.equals(principal_comps.index):
         raise ValueError('mean and principal comps have different genes')
     _, vidx = adata._normalize_indices((slice(None), principal_comps.index)) # handle gene mask like anndata would
+    pc_names = principal_comps.columns
     principal_comps = principal_comps.to_numpy()
     mean = mean.to_numpy().T
 
@@ -81,4 +82,4 @@ def project(
                 chunk -= mean
             X_proj[start:end,:] = chunk @ principal_comps
 
-    return X_proj
+    return ad.AnnData(X_proj, obs=adata.obs, var=pd.DataFrame(index=pc_names))
