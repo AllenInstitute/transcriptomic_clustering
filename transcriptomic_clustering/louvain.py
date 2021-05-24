@@ -44,6 +44,13 @@ def cluster_louvain(
             obs_by_cluster[cluster] = []
         obs_by_cluster[cluster].append(i)
 
+    if -1 in obs_by_cluster:
+        max_cluster = max(list(obs_by_cluster.keys()))
+        for obs in obs_by_cluster[-1]:
+            obs_by_cluster[max_cluster + 1] = [obs]
+            cluster_by_obs[obs] = max_cluster + 1
+            max_cluster += 1
+
     if annotate:
         adata.obs['pheno_louvain'] = cluster_by_obs
 
