@@ -26,3 +26,4 @@ from .projection import project
 from .louvain import cluster_louvain
 from .filter_known_modes import filter_known_modes
 from .hierarchical_sorting import hclust
+from .cluster_means import get_cluster_means
