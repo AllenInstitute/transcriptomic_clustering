@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 import scanpy as sc
 
-def filter_known_modes(principal_components: pd.DataFrame,
-                    known_modes: pd.DataFrame,
+def filter_known_modes(principal_components: Union[pd.DataFrame, pd.Series],
+                    known_modes: Union[pd.DataFrame, pd.Series],
                     similarity_threshold: Optional[float] = 0.7):
     """
         Filters out principal components which correlate strongly with the known modes
@@ -23,7 +23,11 @@ def filter_known_modes(principal_components: pd.DataFrame,
         principal_components: after filtering out correlated principal components
 
     """
-    
+    if isinstance(principal_components, pd.Series):
+        principal_components = principal_components.to_frame()
+    if isinstance(known_modes, pd.Series):
+        known_modes = known_modes.to_frame()
+
     pcs_index_sorted = principal_components.sort_index()
     kns_index_sorted = known_modes.sort_index()
 
