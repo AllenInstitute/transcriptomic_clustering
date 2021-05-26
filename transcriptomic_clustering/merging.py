@@ -186,13 +186,11 @@ def merge_small_clusters(
         min_size: int,
 ):
     """
-    Identify clusters having less than min-size cells and
-    compute similarity between each small cluster and every other cluster.
     Then merge small clusters (with size < min_size) iteratively as:
 
-    1. merge most-highly similar small cluster
-    2. update list of small clusters
-    3. update similarity measure between remaining small cluster and new cluster
+    1. calculate similarity between small and all clusters
+    2. merge most-highly similar small cluster
+    3. update list of small/all clusters
     4. go to 1 until all small clusters are merged
 
     Parameters
@@ -210,12 +208,12 @@ def merge_small_clusters(
     all_cluster_labels = list(cluster_assignments.keys())
     small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
 
-    similarity_small_to_all_df = calculate_similarity(
-        cluster_means,
-        group_rows=small_cluster_labels,
-        group_cols=all_cluster_labels)
-
     while small_cluster_labels:
+        similarity_small_to_all_df = calculate_similarity(
+            cluster_means,
+            group_rows=small_cluster_labels,
+            group_cols=all_cluster_labels)
+
         source_label, dest_label, max_similarity = find_most_similar(
             similarity_small_to_all_df,
         )
@@ -224,15 +222,7 @@ def merge_small_clusters(
 
         # update labels:
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
-
-        # update similarity:
-        similarity_small_to_all_df.drop([source_label], inplace=True)
-        similarity_small_to_dest_df = calculate_similarity(
-            cluster_means,
-            group_rows=small_cluster_labels,
-            group_cols=[dest_label])
-
-        similarity_small_to_all_df[dest_label] = similarity_small_to_dest_df[dest_label]
+        all_cluster_labels = list(cluster_assignments.keys())
 
 
 def get_cluster_assignments(
