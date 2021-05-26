@@ -48,10 +48,8 @@ Example: I have validated my PR by doing the following, <description of how
 and what data was used to validate>
 
 ### Screenshots: <Screenshots showing validation>
-### Unit Tests: <Showing Unit tests passing> (if CI is not setup)
 ### Script: <script to reproduce the validation (can be used on any branch to validate it fixes the problem and the problem exists)>-->
 ### Screenshots:
-### Unit Tests (Measure through coverage changes in the future, codecov etc...):
 ### Script to reproduce error and fix:
 
 ## Checklist
@@ -64,7 +62,7 @@ If the answer is not yes to any item, please explain why you still want to have 
 - [ ] I have run PyLint on my code (if CI is not set up to run this)
 - [ ] I have updated the documentation of the repository where
       appropriate
-- [ ] My code passes all repo specific tests (if CI is not set up to run this)
+- [ ] I have added unittests as necessary
 - [ ] I have updated the CHANGELOG.md to include the new features/bug fixes/changes included in the new release.
 
 ## Potential Impact:
