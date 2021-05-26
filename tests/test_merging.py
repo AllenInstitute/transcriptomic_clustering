@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import anndata as ad
-from transcriptomic_clustering import merging
+from transcriptomic_clustering import merging, cluster_means as cm
 from scipy.sparse import random, csr_matrix
 import scanpy as sc
 
@@ -61,26 +61,22 @@ def clusters():
         4: np.array([0., 0., 7.]),
     }
 
-    return cluster_means, cluster_assignments
+    present_cluster_means = {
+        '11': np.array([0.5, 0.25, 0.75]),
+        2: np.array([(1/3), (2/3), (1/3)]),
+        '32': np.array([0.5, 0., .5]),
+        4: np.array([0., 0., 1.]),
+    }
 
-
-def test_get_cluster_means(adata, clusters):
-
-    cluster_means, cluster_assignments = clusters
-
-    expected_cluster_means = cluster_means
-    obtained_cluster_means = merging.get_cluster_means(adata, cluster_assignments)
-
-    assert set(obtained_cluster_means.keys()) == set(cluster_means.keys())
-    for k, v in expected_cluster_means.items():
-        assert np.array_equal(obtained_cluster_means[k], expected_cluster_means[k])
+    return cluster_means, present_cluster_means, cluster_assignments
 
 
 def test_merge_two_clusters(clusters):
 
-    cluster_means, cluster_assignments = clusters
+    cluster_means, present_cluster_means, cluster_assignments = clusters
 
     merging.merge_two_clusters(cluster_means,
+                               present_cluster_means,
                                cluster_assignments,
                                label_source=4,
                                label_dest=2)
@@ -97,13 +93,21 @@ def test_merge_two_clusters(clusters):
         '32': np.array([3., 0.5, 3.]),
     }
 
+    expected_present_cluster_means = {
+        '11': np.array([0.5, 0.25, 0.75]),
+        2: (np.array([(1/3), (2/3), (1/3)])*3 + np.array([0., 0., 1.])*1)/(3+1),
+        '32': np.array([0.5, 0., .5]),
+    }
+
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments.keys())
     for k, v in expected_cluster_assignments.items():
         assert np.array_equal(cluster_assignments[k], expected_cluster_assignments[k])
 
     assert set(cluster_means.keys()) == set(expected_cluster_means.keys())
+    assert set(present_cluster_means.keys()) == set(expected_present_cluster_means.keys())
     for k, v in expected_cluster_means.items():
         assert np.array_equal(cluster_means[k], expected_cluster_means[k])
+        assert np.array_equal(present_cluster_means[k], expected_present_cluster_means[k])
 
 
 def test_pdist_normalized():
@@ -127,7 +131,7 @@ def test_pdist_normalized():
 
 def test_find_most_similar(clusters):
 
-    cluster_means, cluster_assignments = clusters
+    cluster_means, _, _ = clusters
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
 
@@ -143,14 +147,14 @@ def test_find_most_similar(clusters):
 
 def test_merge_small_clusters(clusters):
 
-    cluster_means, cluster_assignments = clusters
+    cluster_means, present_cluster_means, cluster_assignments = clusters
 
     expected_cluster_assignments = {
         '11': [0, 3, 5, 9, 4, 7, 8],
         2: [1, 2, 6]
     }
 
-    merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=3)
+    merging.merge_small_clusters(cluster_means, present_cluster_means, cluster_assignments, min_size=3)
 
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments.keys())
     for k, v in cluster_assignments.items():
@@ -164,28 +168,30 @@ def test_on_tasic_clusters(tasic_reduced_dim_adata):
     cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label_init")
-    cluster_means = merging.get_cluster_means(adata, cluster_assignments)
+    cluster_means, present_cluster_means = cm.get_cluster_means_inmemory(adata, cluster_assignments)
 
     expected_cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label_after_merging_small")
 
-    expected_cluster_means = merging.get_cluster_means(adata, expected_cluster_assignments)
+    expected_cluster_means, expected_present_cluster_means = cm.get_cluster_means_inmemory(adata, expected_cluster_assignments)
 
-    merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=6)
+    merging.merge_small_clusters(cluster_means, present_cluster_means, cluster_assignments, min_size=6)
 
     for k, v in cluster_assignments.items():
         assert set(cluster_assignments[k]) == set(expected_cluster_assignments[k])
 
     assert set(cluster_means.keys()) == set(expected_cluster_means.keys())
+    assert set(present_cluster_means.keys()) == set(expected_present_cluster_means.keys())
 
     for k, v in expected_cluster_means.items():
         np.allclose(cluster_means[k], expected_cluster_means[k], rtol=1e-6)
+        np.allclose(present_cluster_means[k], expected_present_cluster_means[k], rtol=1e-6)
 
 
 def test_calculate_similarity(clusters):
 
-    cluster_means, cluster_assignments = clusters
+    cluster_means, _, _ = clusters
 
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
@@ -203,7 +209,7 @@ def test_calculate_similarity(clusters):
 
 def test_get_cluster_assignments(adata, clusters):
 
-    cluster_means, cluster_assignments = clusters
+    _, _, cluster_assignments = clusters
     obtained_cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label")

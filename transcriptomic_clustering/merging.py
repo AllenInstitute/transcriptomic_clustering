@@ -7,37 +7,9 @@ import logging
 from collections import defaultdict
 
 
-def get_cluster_means(
-        adata: ad.AnnData,
-        cluster_assignments: Dict[Any, np.array]
-) -> Dict[Any, np.array]:
-    """
-    Compute mean gene expression over cells belonging to each cluster
-
-    Parameters
-    ----------
-    adata:
-        AnnData with X matrix and annotations
-    cluster_assignments:
-        map of cluster label to cell idx
-
-    Returns
-    -------
-    cluster_means:
-        map of cluster label to mean expressions (array of size n_genes)
-    """
-    cluster_means = {}
-
-    for label, idx in cluster_assignments.items():
-        adata_view = adata[idx, :]
-        X = adata_view.X
-        cluster_means[label] = np.asarray(np.mean(X, axis=0)).ravel()
-
-    return cluster_means
-
-
 def merge_two_clusters(
         cluster_means: Dict[Any, np.ndarray],
+        present_cluster_means: Dict[Any, np.ndarray],
         cluster_assignments: Dict[Any, np.ndarray],
         label_source: Any,
         label_dest: Any
@@ -53,6 +25,8 @@ def merge_two_clusters(
     ----------
     cluster_means:
         map of cluster label to mean cluster expressions
+    present_cluster_means:
+        map of cluster label to mean of expressions present filtered by low_th
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     label_source:
@@ -73,11 +47,16 @@ def merge_two_clusters(
                                  cluster_means[label_dest] * n_dest
                                  ) / (n_source + n_dest)
 
+    present_cluster_means[label_dest] = (present_cluster_means[label_source] * n_source +
+                                        present_cluster_means[label_dest] * n_dest
+                                        ) / (n_source + n_dest)
+
     # update cluster assignments:
     cluster_assignments[label_dest] += cluster_assignments[label_source]
 
     # remove merged cluster
     cluster_means.pop(label_source)
+    present_cluster_means.pop(label_source)
     cluster_assignments.pop(label_source)
 
 
@@ -182,6 +161,7 @@ def find_small_clusters(
 
 def merge_small_clusters(
         cluster_means: Dict[Any, np.ndarray],
+        present_cluster_means: Dict[Any, np.ndarray],
         cluster_assignments: Dict[Any, np.ndarray],
         min_size: int,
 ):
@@ -197,6 +177,8 @@ def merge_small_clusters(
     ----------
     cluster_means:
         map of cluster label to mean cluster expressions
+    present_cluster_means:
+        map of cluster label to mean of expressions present filtered by low_th
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     min_size:
@@ -218,7 +200,7 @@ def merge_small_clusters(
             similarity_small_to_all_df,
         )
         logging.info(f"Merging small cluster {source_label} into {dest_label} -- similarity: {max_similarity}")
-        merge_two_clusters(cluster_means, cluster_assignments, source_label, dest_label)
+        merge_two_clusters(cluster_means, present_cluster_means, cluster_assignments, source_label, dest_label)
 
         # update labels:
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)

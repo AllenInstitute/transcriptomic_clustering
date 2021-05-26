@@ -38,26 +38,26 @@ def adata():
 @pytest.fixture
 def clusters():
     cluster_assignments = {
-        11: [0, 3, 5, 9],
-        2: [1, 2, 6],
-        32: [4, 7],
-        4: [8]
+        '11': [0, 3, 5, 9],
+        '2': [1, 2, 6],
+        '32': [4, 7],
+        '4': [8]
     }
 
-    cluster_by_obs = np.array([11, 2, 2, 11, 32, 11, 2, 32, 4, 11])
+    cluster_by_obs = np.array(['11', '2', '2', '11', '32', '11', '2', '32', '4', '11'])
 
     cluster_means = {
-        11: np.array([3., 1.5, 4.]),
-        2: np.array([3., 4., 2.]),
-        32: np.array([3., 0.5, 3.]),
-        4: np.array([0., 0., 7.]),
+        '11': np.array([3., 1.5, 4.]),
+        '2': np.array([3., 4., 2.]),
+        '32': np.array([3., 0.5, 3.]),
+        '4': np.array([0., 0., 7.]),
     }
 
     present_cluster_means = {
-        11: np.array([0.5, 0.25, 0.75]),
-        2: np.array([(1/3), (2/3), (1/3)]),
-        32: np.array([0.5, 0., .5]),
-        4: np.array([0., 0., 1.]),
+        '11': np.array([0.5, 0.25, 0.75]),
+        '2': np.array([(1/3), (2/3), (1/3)]),
+        '32': np.array([0.5, 0., .5]),
+        '4': np.array([0., 0., 1.]),
     }
 
     return cluster_means, present_cluster_means, cluster_assignments, cluster_by_obs
