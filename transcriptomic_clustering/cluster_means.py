@@ -103,7 +103,7 @@ def get_cluster_means_chunked(
     n_genes = adata.shape[1]
 
     # Get cluster X cell to calculate cluster sums. This allows us to do a chunked calculation of cluster X cell @ cell X gene
-    one_hot_cl = get_one_hot_cluster_array(cluster_by_obs, sorted_cluster_labels, n_clusters)
+    one_hot_cl = get_one_hot_cluster_array(cluster_by_obs, sorted_cluster_labels)
 
     # Get array of cluster sizes for calculating cluster means
     cluster_sizes = np.array([len(cluster_assignments[k]) for k in sorted_cluster_labels]).reshape(-1, 1)
@@ -134,8 +134,7 @@ def get_cluster_means_chunked(
 
 def get_one_hot_cluster_array(
         cluster_by_obs: np.ndarray,
-        sorted_cluster_labels: np.ndarray,
-        n_clusters: int
+        sorted_cluster_labels: np.ndarray
 ) -> np.ndarray:
     """
     Compute a one-hot sparse array of clusters by cells
@@ -146,8 +145,6 @@ def get_one_hot_cluster_array(
         array of cells with cluster value
     sorted_cluster_labels:
         sorted list of cluster labels
-    n_clusters:
-        number of clusters
 
     Returns
     -------
@@ -155,7 +152,9 @@ def get_one_hot_cluster_array(
         one-hot array of cells in a cluster (rows=clusters, columns=cells)
     """
 
+    n_clusters = len(sorted_cluster_labels)
     cluster_idx = np.array([sorted_cluster_labels.index(cl) for cl in cluster_by_obs])
+
     b = np.zeros((cluster_by_obs.size, n_clusters))
     b[np.arange(cluster_by_obs.size), cluster_idx] = 1
     return csr_matrix(b).toarray().T
