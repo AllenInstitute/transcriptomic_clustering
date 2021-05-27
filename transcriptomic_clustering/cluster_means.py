@@ -152,7 +152,7 @@ def get_one_hot_cluster_array(
     Returns
     -------
     one_hot_cl:
-        one-hot sparse array of cells in a cluster (rows=clusters, columns=cells)
+        one-hot array of cells in a cluster (rows=clusters, columns=cells)
     """
 
     cluster_idx = np.array([sorted_cluster_labels.index(cl) for cl in cluster_by_obs])
