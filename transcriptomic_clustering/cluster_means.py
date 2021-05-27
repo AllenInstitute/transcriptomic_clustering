@@ -148,7 +148,7 @@ def get_one_hot_cluster_array(
         sorted_cluster_labels: np.ndarray
 ) -> np.ndarray:
     """
-    Compute a one-hot sparse array of clusters by cells
+    Compute a one-hot array of clusters by cells
 
     Parameters
     ----------
