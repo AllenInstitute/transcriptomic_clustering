@@ -11,7 +11,7 @@ def pair():
     """
         pair of clusters to be compared
     """
-    pair = {"cluster_1": "1", "cluster_2": "2"}
+    pair = ("1", "2")
 
     return pair
 
