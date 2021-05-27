@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import anndata as ad
 import scanpy as sc
-import transcriptomic_clustering as tc
+from transcriptomic_clustering import cluster_means as cm
 from scipy.sparse import csr_matrix
 
 
@@ -70,7 +70,7 @@ def test_get_cluster_means_inmemory(adata, clusters):
 
     expected_cluster_means = cluster_means
     expected_present_cluster_means = present_cluster_means
-    obtained_cluster_means, obtained_present_cluster_means = tc.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
+    obtained_cluster_means, obtained_present_cluster_means = cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert set(obtained_cluster_means.keys()) == set(cluster_means.keys())
     assert set(expected_present_cluster_means.keys()) == set(present_cluster_means.keys())
@@ -91,7 +91,7 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     ad.AnnData(csr_matrix(adata.X)).write(input_file_name) # make tmp input file
 
     adata = sc.read_h5ad(input_file_name, backed='r')
-    obtained_cluster_means, obtained_present_cluster_means = tc.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
+    obtained_cluster_means, obtained_present_cluster_means = cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert set(obtained_cluster_means.keys()) == set(cluster_means.keys())
     assert set(expected_present_cluster_means.keys()) == set(present_cluster_means.keys())
