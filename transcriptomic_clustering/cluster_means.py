@@ -5,6 +5,7 @@ import numpy as np
 import scanpy as sc
 from scipy.sparse import csr_matrix
 import transcriptomic_clustering as tc
+import warnings
 
 
 def get_cluster_means(
@@ -38,27 +39,14 @@ def get_cluster_means(
         map of cluster label to mean of expressions present filtered by low_th (array of size n_genes)
     """
 
-    # Estimate memory
-    if not chunk_size:
-        n_obs = adata.n_obs
-        n_vars = adata.n_vars
-        n_clusters = len(cluster_assignments.keys())
-        itemsize = adata.X.dtype.itemsize
-        process_memory_estimate = (n_obs * n_vars) * itemsize / (1024 ** 3)
-        output_memory_estimate = 2 * (n_clusters * n_vars) * itemsize / (1024 ** 3)
-        
-        chunk_size = tc.memory.estimate_chunk_size(
-            adata,
-            process_memory=process_memory_estimate,
-            output_memory=output_memory_estimate,
-            percent_allowed=25,
-            process_name='get_cluster_means'
-        )
-
-    if chunk_size >= adata.n_obs:
-        cluster_means, present_cluster_means = get_cluster_means_inmemory(adata, cluster_assignments, low_th)
+    if adata.isbacked:
+        cluster_means, present_cluster_means = get_cluster_means_backed(adata, cluster_assignments, cluster_by_obs, chunk_size, low_th)
     else:
-        cluster_means, present_cluster_means = get_cluster_means_chunked(adata, cluster_assignments, cluster_by_obs, chunk_size, low_th)
+        if chunk_size:
+            warnings.warn("In memory processing does not support chunking. "
+                          "Ignoring `chunk_size` argument.")
+    
+        cluster_means, present_cluster_means = get_cluster_means_inmemory(adata, cluster_assignments, low_th)
 
     return (cluster_means, present_cluster_means)
 
@@ -85,8 +73,7 @@ def get_cluster_means_inmemory(
     return (cluster_means, present_cluster_means)
 
 
-
-def get_cluster_means_chunked(
+def get_cluster_means_backed(
         adata: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
         cluster_by_obs: np.ndarray,
@@ -94,13 +81,38 @@ def get_cluster_means_chunked(
         low_th: Optional[int]=1
 ) -> Tuple[Dict[Any, np.ndarray], Dict[Any, np.ndarray]]:
     """
-    Compute mean gene expression over cells belonging to each cluster in chunks
+    Compute mean gene expression over cells belonging to each cluster of file-backed data in chunks
     See description of get_cluster_means() for details
     """
 
-    sorted_cluster_labels = sorted(cluster_assignments.keys())
+    n_cells = adata.n_obs
+    n_genes = adata.n_vars
     n_clusters = len(cluster_assignments.keys())
-    n_genes = adata.shape[1]
+
+    itemsize = adata.X.dtype.itemsize
+    process_memory_estimate = (n_cells * n_genes) * itemsize / (1024 ** 3)
+    output_memory_estimate = 2 * (n_clusters * n_genes) * itemsize / (1024 ** 3)
+    
+    estimated_chunk_size = tc.memory.estimate_chunk_size(
+        adata,
+        process_memory=process_memory_estimate,
+        output_memory=output_memory_estimate,
+        percent_allowed=25,
+        process_name='get_cluster_means'
+    )
+
+    if chunk_size:
+        if not(chunk_size >= 1 and isinstance(chunk_size, int)):
+            raise ValueError("chunk_size argument must be a positive integer")
+
+        if estimated_chunk_size < chunk_size:
+           warnings.warn(f"Selected chunk_size: {chunk_size} is larger than "
+                         f"the estimated chunk_size {estimated_chunk_size}. "
+                         f"Using chunk_size larger than recommended may result in MemoryError")
+    else:
+        chunk_size = estimated_chunk_size
+
+    sorted_cluster_labels = sorted(cluster_assignments.keys())
 
     # Get cluster X cell to calculate cluster sums. This allows us to do a chunked calculation of cluster X cell @ cell X gene
     one_hot_cl = get_one_hot_cluster_array(cluster_by_obs, sorted_cluster_labels)
@@ -129,7 +141,6 @@ def get_cluster_means_chunked(
         present_cluster_means[k] = present_cl_means[i]
 
     return (cluster_means, present_cluster_means)
-
 
 
 def get_one_hot_cluster_array(

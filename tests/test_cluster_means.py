@@ -4,7 +4,8 @@ import pytest
 import numpy as np
 import pandas as pd
 import anndata as ad
-from transcriptomic_clustering import cluster_means as cm
+import scanpy as sc
+import transcriptomic_clustering as tc
 from scipy.sparse import csr_matrix
 
 
@@ -65,11 +66,11 @@ def clusters():
 
 def test_get_cluster_means_inmemory(adata, clusters):
 
-    cluster_means, present_cluster_means, cluster_assignments, _ = clusters
+    cluster_means, present_cluster_means, cluster_assignments, cluster_by_obs = clusters
 
     expected_cluster_means = cluster_means
     expected_present_cluster_means = present_cluster_means
-    obtained_cluster_means, obtained_present_cluster_means = cm.get_cluster_means_inmemory(adata, cluster_assignments, low_th=2)
+    obtained_cluster_means, obtained_present_cluster_means = tc.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert set(obtained_cluster_means.keys()) == set(cluster_means.keys())
     assert set(expected_present_cluster_means.keys()) == set(present_cluster_means.keys())
@@ -77,13 +78,20 @@ def test_get_cluster_means_inmemory(adata, clusters):
         assert np.array_equal(obtained_cluster_means[k], expected_cluster_means[k])
         assert np.array_equal(obtained_present_cluster_means[k], expected_present_cluster_means[k])
 
-def test_get_cluster_means_chunked(adata, clusters):
+
+def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
 
     cluster_means, present_cluster_means, cluster_assignments, cluster_by_obs = clusters
-
     expected_cluster_means = cluster_means
     expected_present_cluster_means = present_cluster_means
-    obtained_cluster_means, obtained_present_cluster_means = cm.get_cluster_means_chunked(adata, cluster_assignments, cluster_by_obs, low_th=2, chunk_size=2)
+
+    tmpdir = str(tmpdir_factory.mktemp("test_cluster_means"))
+    input_file_name = os.path.join(tmpdir, "input.h5ad")
+
+    ad.AnnData(csr_matrix(adata.X)).write(input_file_name) # make tmp input file
+
+    adata = sc.read_h5ad(input_file_name, backed='r')
+    obtained_cluster_means, obtained_present_cluster_means = tc.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert set(obtained_cluster_means.keys()) == set(cluster_means.keys())
     assert set(expected_present_cluster_means.keys()) == set(present_cluster_means.keys())
