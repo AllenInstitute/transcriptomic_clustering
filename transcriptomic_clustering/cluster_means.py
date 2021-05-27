@@ -76,8 +76,8 @@ def get_cluster_means_inmemory(
     cluster_means = {}
     present_cluster_means = {}
 
-    for label, idx in cluster_assignments.items():
-        adata_view = adata[idx, :]
+    for label, idxs in cluster_assignments.items():
+        adata_view = adata[idxs, :]
         X = adata_view.X
         cluster_means[label] = np.asarray(np.mean(X, axis=0)).ravel()
         present_cluster_means[label] = np.asarray(np.mean((X > low_th), axis=0)).ravel()
@@ -153,8 +153,8 @@ def get_one_hot_cluster_array(
     """
 
     n_clusters = len(sorted_cluster_labels)
-    cluster_idx = np.array([sorted_cluster_labels.index(cl) for cl in cluster_by_obs])
+    cluster_idxs = np.array([sorted_cluster_labels.index(cl) for cl in cluster_by_obs])
 
     b = np.zeros((cluster_by_obs.size, n_clusters))
-    b[np.arange(cluster_by_obs.size), cluster_idx] = 1
+    b[np.arange(cluster_by_obs.size), cluster_idxs] = 1
     return csr_matrix(b).toarray().T
