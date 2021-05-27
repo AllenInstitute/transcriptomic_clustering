@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Dict, List
+from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
 import numpy as np
@@ -8,8 +8,47 @@ from collections import defaultdict
 
 
 def merge_two_clusters(
+        cluster_assignments: Dict[Any, np.ndarray],
+        label_source: Any,
+        label_dest: Any,
         cluster_means: Dict[Any, np.ndarray],
-        present_cluster_means: Dict[Any, np.ndarray],
+        present_cluster_means: Optional[Dict[Any, np.ndarray]]=None
+):
+    """
+    Merge source cluster into a destination cluster by:
+    1. updating cluster means
+    2. updating mean of expressions present if not None
+    3. updating cluster assignments
+
+    Parameters
+    ----------
+    cluster_assignments:
+        map of cluster label to cell idx belonging to cluster
+    label_source:
+        label of cluster being merged
+    label_dest:
+        label of cluster merged into
+    cluster_means:
+        map of cluster label to mean cluster expressions
+    present_cluster_means:
+        map of cluster label to mean of expressions present filtered by low_th
+
+    Returns
+    -------
+    """
+
+    merge_cluster_means(cluster_means, cluster_assignments, label_source, label_dest)
+
+    if present_cluster_means != None:
+        merge_cluster_means(present_cluster_means, cluster_assignments, label_source, label_dest)
+
+    # merge cluster assignments
+    cluster_assignments[label_dest] += cluster_assignments[label_source]
+    cluster_assignments.pop(label_source)
+
+
+def merge_cluster_means(
+        cluster_means: Dict[Any, np.ndarray],
         cluster_assignments: Dict[Any, np.ndarray],
         label_source: Any,
         label_dest: Any
@@ -18,15 +57,12 @@ def merge_two_clusters(
     Merge source cluster into a destination cluster by:
     1. computing the updated cluster centroid (mean gene expression)
         of the destination cluster
-    2. update cluster assignments
-    3. deleting small merged cluster
+    2. deleting small merged cluster
 
     Parameters
     ----------
     cluster_means:
         map of cluster label to mean cluster expressions
-    present_cluster_means:
-        map of cluster label to mean of expressions present filtered by low_th
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     label_source:
@@ -36,7 +72,6 @@ def merge_two_clusters(
 
     Returns
     -------
-
     """
 
     # update cluster means:
@@ -47,17 +82,8 @@ def merge_two_clusters(
                                  cluster_means[label_dest] * n_dest
                                  ) / (n_source + n_dest)
 
-    present_cluster_means[label_dest] = (present_cluster_means[label_source] * n_source +
-                                        present_cluster_means[label_dest] * n_dest
-                                        ) / (n_source + n_dest)
-
-    # update cluster assignments:
-    cluster_assignments[label_dest] += cluster_assignments[label_source]
-
     # remove merged cluster
     cluster_means.pop(label_source)
-    present_cluster_means.pop(label_source)
-    cluster_assignments.pop(label_source)
 
 
 def pdist_normalized(
@@ -161,7 +187,6 @@ def find_small_clusters(
 
 def merge_small_clusters(
         cluster_means: Dict[Any, np.ndarray],
-        present_cluster_means: Dict[Any, np.ndarray],
         cluster_assignments: Dict[Any, np.ndarray],
         min_size: int,
 ):
@@ -177,8 +202,6 @@ def merge_small_clusters(
     ----------
     cluster_means:
         map of cluster label to mean cluster expressions
-    present_cluster_means:
-        map of cluster label to mean of expressions present filtered by low_th
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     min_size:
@@ -200,7 +223,7 @@ def merge_small_clusters(
             similarity_small_to_all_df,
         )
         logging.info(f"Merging small cluster {source_label} into {dest_label} -- similarity: {max_similarity}")
-        merge_two_clusters(cluster_means, present_cluster_means, cluster_assignments, source_label, dest_label)
+        merge_two_clusters(cluster_assignments, source_label, dest_label, cluster_means)
 
         # update labels:
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
