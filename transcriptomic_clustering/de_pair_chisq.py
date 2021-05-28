@@ -6,6 +6,9 @@ import scanpy as sc
 from scipy import stats
 from statsmodels.stats.multitest import fdrcorrection
 
+EPS = 1e-9
+CHISQ_THRESHOLD = 15
+
 def de_pair_chisq(pair: tuple, 
                   cl_present: Union[pd.DataFrame, pd.Series],
                   cl_means: Union[pd.DataFrame, pd.Series],
@@ -32,9 +35,8 @@ def de_pair_chisq(pair: tuple,
             q2: proportion of cells expressing each gene for the second cluster
 
     """
-    eps = 1e-9
 
-    if len(pair) < 2:
+    if len(pair) != 2:
         raise ValueError("The pair must be a dict of length 2 specifying which clusters to compare")
 
     first_cluster = pair[0]
@@ -53,26 +55,25 @@ def de_pair_chisq(pair: tuple,
 
     n_genes,_ = cl_present.shape
 
-    cl1 = cl_present[first_cluster].to_numpy()*cl_size[first_cluster] + eps
+    cl1 = cl_present[first_cluster].to_numpy()*cl_size[first_cluster] + EPS
     cl1_total = cl_size[first_cluster]
-    cl1_v1 = cl1_total - cl1 + 2*eps
+    cl1_v1 = cl1_total - cl1 + 2*EPS
         
-    cl2 = cl_present[second_cluster].to_numpy()*cl_size[second_cluster] + eps
+    cl2 = cl_present[second_cluster].to_numpy()*cl_size[second_cluster] + EPS
     cl2_total = cl_size[second_cluster]
-    cl2_v2 = cl2_total - cl2 + 2*eps
+    cl2_v2 = cl2_total - cl2 + 2*EPS
 
     observed = np.array([cl1, cl1_v1, cl2, cl2_v2])
     total = cl1_total + cl2_total
 
     present = cl1 + cl2
     absent = total - present
-    expected = np.array([present*cl1_total, absent*cl1_total, present*cl2_total, absent*cl2_total])/total + eps
+    expected = np.array([present*cl1_total, absent*cl1_total, present*cl2_total, absent*cl2_total])/total + EPS
     
     p_vals = np.ones(n_genes)
-    chisq_threshold = 15
     for i in range(n_genes):
         chi_squared_stat = max(0,(((abs(observed[:,i]-expected[:,i])-0.5)**2)/expected[:,i]).sum())
-        if chi_squared_stat < chisq_threshold:
+        if chi_squared_stat < CHISQ_THRESHOLD:
             p_vals[i] = 1 - stats.chi2.cdf(x=chi_squared_stat, df=1)
     
     rejected,p_adj = fdrcorrection(p_vals)
