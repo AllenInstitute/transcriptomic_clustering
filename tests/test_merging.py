@@ -63,6 +63,25 @@ def clusters():
 
     return cluster_means, cluster_assignments
 
+@pytest.fixture
+def df_clusters():
+    cluster_assignments = {
+        '11': [0, 3, 5, 9],
+        2: [1, 2, 6],
+        '32': [4, 7],
+        4: [8]
+    }
+
+    cluster_means = pd.DataFrame(
+        np.array([[3., 1.5, 4.],
+                  [3., 4., 2.],
+                  [3., 0.5, 3.],
+                  [0., 0., 7.]]),
+        index = ['11', 2, '32', 4]
+    )
+
+    return cluster_means, cluster_assignments
+
 
 def test_get_cluster_means(adata, clusters):
 
@@ -125,9 +144,9 @@ def test_pdist_normalized():
     assert np.array_equal(expected_similarity, obtained_similarity)
 
 
-def test_find_most_similar(clusters):
+def test_find_most_similar(df_clusters):
 
-    cluster_means, cluster_assignments = clusters
+    cluster_means, cluster_assignments = df_clusters
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
 
@@ -183,9 +202,9 @@ def test_on_tasic_clusters(tasic_reduced_dim_adata):
         np.allclose(cluster_means[k], expected_cluster_means[k], rtol=1e-6)
 
 
-def test_calculate_similarity(clusters):
+def test_calculate_similarity(df_clusters):
 
-    cluster_means, cluster_assignments = clusters
+    cluster_means, cluster_assignments = df_clusters
 
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
