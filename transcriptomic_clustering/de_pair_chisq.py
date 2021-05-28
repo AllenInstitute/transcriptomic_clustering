@@ -36,7 +36,7 @@ def de_pair_chisq(pair: tuple,
     """
 
     if len(pair) != 2:
-        raise ValueError("The pair must be a dict of length 2 specifying which clusters to compare")
+        raise ValueError("The pair must contain two cluster labels")
 
     first_cluster = pair[0]
     second_cluster = pair[1]
