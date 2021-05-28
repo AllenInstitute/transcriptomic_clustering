@@ -27,4 +27,4 @@ from .louvain import cluster_louvain
 from .filter_known_modes import filter_known_modes
 from .hierarchical_sorting import hclust
 from .diff_expression import de_pair_chisq, vec_chisq_test
-
+from .cluster_means import get_cluster_means

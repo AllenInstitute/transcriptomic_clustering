@@ -6,6 +6,62 @@ from scipy.spatial.distance import pdist, squareform
 import logging
 from collections import defaultdict
 import warnings
+import transcriptomic_clustering as tc
+
+def merge_clusters(
+        adata_norm,
+        adata_reduced,
+        cluster_assignments: Dict[Any, np.ndarray],
+        cluster_by_obs: np.ndarray,
+        min_cluster_size,
+        k,
+        low_th,
+        de_method,
+        chunk_size):
+
+    # TODO: Add all the thresholds
+
+    # Calculate cluster means on reduced space
+    cl_means_reduced, _ = tc.get_cluster_means(adata_reduced, cluster_assignments, cluster_by_obs, chunk_size, low_th)
+
+    # Merge small clusters
+    merge_small_clusters(cl_means_reduced, cluster_assignments, min_cluster_size)
+
+    # TODO: Create new cluster_by_obs based on updated cluster assignments
+
+    # Calculate cluster means on normalized data
+    cl_means, present_cl_means = tc.get_cluster_means(adata_norm, cluster_assignments, cluster_by_obs, chunk_size, low_th)
+
+    # Merge remaining clusters by differential expression
+    while len(cluster_assignments.keys()) > 1:
+        # If only two clusters left, merge them
+        if len(cluster_assignments.keys()) is 2:
+            cl_labels = cluster_assignments.keys()
+            merge_two_clusters(cluster_assignments, cl_labels[1], cl_labels[0], cl_means_reduced)
+            break
+
+        # Use updated cluster means in reduced space to get nearest neighbors for each cluster
+        # Steps 1-3
+        neighbor_pairs = get_k_nearest_clusters(cl_means_reduced, k)
+
+        if len(neighbor_pairs) is 0:
+            break
+
+        # TODO: Step 4: Get DE for pairs based on de_method
+
+        # TODO: Step 5: If not de score > threshold for all comparisons, merge clusters with lowest de scores. One all greater than threshold, this is done
+        # From R code: The first pair in to.merge always merge. For the remaining pairs, if both clusters have already enough cells,
+        # or independent of previus merging, then they can be directly merged as well, without re-assessing DE genes
+        # This does not quite make sense to me.
+
+        # TODO: Compute marker differential expressed genes based on function param
+
+        # Returns
+        # - updated cluster assignments
+        # - differentially expressed genes
+        # - final cluster pairwise de.score
+        # - top cluster pairwise markers
+
 
 
 def merge_two_clusters(
