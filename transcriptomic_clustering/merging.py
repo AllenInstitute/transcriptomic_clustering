@@ -1,10 +1,11 @@
-from typing import Any, Tuple, Dict, List
+from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 import logging
 from collections import defaultdict
+import warnings
 
 
 def get_cluster_means(
@@ -222,6 +223,56 @@ def merge_small_clusters(
         # update labels:
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
         all_cluster_labels = list(cluster_assignments.keys())
+
+
+def get_k_nearest_neighbors(
+        cluster_means: pd.DataFrame,
+        k: Optional[int] = 2
+) -> List[Tuple[int, int]]:
+    """
+    Get k nearest neighbors of clusters
+
+    Parameters
+    ----------
+    cluster_means:
+        dataframe of cluster means with cluster labels as index
+    k:
+        number of nearest neighbors
+
+    Returns
+    -------
+    nearest_neighbors:
+        list of similarity measure
+    """
+
+    cluster_labels = list(cluster_means.index)
+
+    if k >= len(cluster_labels):
+        warnings.warn("k cannot be greater than or the same as the number of clusters. "
+                          "Defaulting to 2.")
+        k = 2
+
+    similarity = calculate_similarity(
+            cluster_means,
+            group_rows=cluster_labels,
+            group_cols=cluster_labels)
+
+    similarity = similarity.unstack().dropna()
+
+    # Get k nearest neighbors
+    nearest_neighbors = set()
+    for c in cluster_labels:
+        # Sort similarities for a cluster
+        sorted_similarities = similarity.loc[(c, )].sort_values(ascending=False)
+
+        for i in range(k):
+            neighbor_cl = sorted_similarities.index[i]
+
+            # Make sure neighbor doesn't already exist
+            if not (neighbor_cl, c) in nearest_neighbors:
+                nearest_neighbors.add((c, neighbor_cl))
+
+    return list(nearest_neighbors)
 
 
 def get_cluster_assignments(
