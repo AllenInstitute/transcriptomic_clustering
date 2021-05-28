@@ -77,8 +77,7 @@ def de_pair_chisq(pair: tuple,
     
     rejected,p_adj = fdrcorrection(p_vals)
 
-    lfc = np.log2(cl_means[first_cluster].to_numpy()/(cl_means[second_cluster].to_numpy()+eps)+eps)
-    lfc[abs(lfc)>np.floor(np.log2(1/eps))] = 0
+    lfc = cl_means[first_cluster].to_numpy() - cl_means[second_cluster].to_numpy()
 
     de_statistics_chisq = pd.DataFrame(
         {
