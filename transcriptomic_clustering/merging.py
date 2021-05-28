@@ -319,8 +319,6 @@ def merge_clusters_by_de(
         for score_pair in scores:
             pair, score = score_pair
 
-            # Determine if we need to have different merging types
-            # https://github.com/AllenInstitute/scrattch.hicat/blob/dev_zy/R/merge_cl.R#L18
             if score > score_th:
                 break
 
