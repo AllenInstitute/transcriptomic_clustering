@@ -1,4 +1,3 @@
-from transcriptomic_clustering.tests.test_merging import adata
 from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
