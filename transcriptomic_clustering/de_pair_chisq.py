@@ -6,13 +6,12 @@ import scanpy as sc
 from scipy import stats
 from statsmodels.stats.multitest import fdrcorrection
 
-EPS = 1e-9
-CHISQ_THRESHOLD = 15
-
 def de_pair_chisq(pair: tuple, 
                   cl_present: Union[pd.DataFrame, pd.Series],
                   cl_means: Union[pd.DataFrame, pd.Series],
-                  cl_size: Dict[Any, int]) -> pd.DataFrame:
+                  cl_size: Dict[Any, int],
+                  eps: Optional[float] = 1e-9,
+                  chisq_threshold: Optional[float] = 15) -> pd.DataFrame:
     """
         Perform pairwise differential detection tests using Chi-Squared test for a single pair of clusters.
 
@@ -55,25 +54,25 @@ def de_pair_chisq(pair: tuple,
 
     n_genes,_ = cl_present.shape
 
-    cl1 = cl_present[first_cluster].to_numpy()*cl_size[first_cluster] + EPS
+    cl1 = cl_present[first_cluster].to_numpy()*cl_size[first_cluster] + eps
     cl1_total = cl_size[first_cluster]
-    cl1_v1 = cl1_total - cl1 + 2*EPS
+    cl1_v1 = cl1_total - cl1 + 2*eps
         
-    cl2 = cl_present[second_cluster].to_numpy()*cl_size[second_cluster] + EPS
+    cl2 = cl_present[second_cluster].to_numpy()*cl_size[second_cluster] + eps
     cl2_total = cl_size[second_cluster]
-    cl2_v2 = cl2_total - cl2 + 2*EPS
+    cl2_v2 = cl2_total - cl2 + 2*eps
 
     observed = np.array([cl1, cl1_v1, cl2, cl2_v2])
     total = cl1_total + cl2_total
 
     present = cl1 + cl2
     absent = total - present
-    expected = np.array([present*cl1_total, absent*cl1_total, present*cl2_total, absent*cl2_total])/total + EPS
+    expected = np.array([present*cl1_total, absent*cl1_total, present*cl2_total, absent*cl2_total])/total + eps
     
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
         chi_squared_stat = max(0,(((abs(observed[:,i]-expected[:,i])-0.5)**2)/expected[:,i]).sum())
-        if chi_squared_stat < CHISQ_THRESHOLD:
+        if chi_squared_stat < chisq_threshold:
             p_vals[i] = 1 - stats.chi2.cdf(x=chi_squared_stat, df=1)
     
     rejected,p_adj = fdrcorrection(p_vals)
