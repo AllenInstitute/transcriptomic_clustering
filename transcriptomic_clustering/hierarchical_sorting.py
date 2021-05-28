@@ -12,7 +12,7 @@ def hclust(cluster_means: pd.DataFrame):
     Parameters
     ----------
     cluster_means:
-        mapping of cluster ids to cluster means
+        DataFrame of cluster means indexed by cluster label
 
     Returns
     -------

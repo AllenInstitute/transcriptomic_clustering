@@ -205,8 +205,6 @@ def test_calculate_similarity(clusters):
          [0.802955, -0.866025, 0.5, np.nan]],
         index=group_rows,columns=group_cols)
 
-    print(obtained_similarity)
-    print(expected_similarity)
     assert obtained_similarity.index.equals(obtained_similarity.index)
     assert obtained_similarity.columns.equals(obtained_similarity.columns)
     assert np.allclose(obtained_similarity.to_numpy(), expected_similarity.to_numpy(), equal_nan=True)
