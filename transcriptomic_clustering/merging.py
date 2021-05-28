@@ -1,3 +1,4 @@
+from transcriptomic_clustering.tests.test_merging import adata
 from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
@@ -17,7 +18,10 @@ def merge_clusters(
         k,
         low_th,
         de_method,
-        chunk_size):
+        score_th,
+        markers, # Should return markers or not
+        chunk_size
+):
 
     # TODO: Add all the thresholds
 
@@ -27,40 +31,24 @@ def merge_clusters(
     # Merge small clusters
     merge_small_clusters(cl_means_reduced, cluster_assignments, min_cluster_size)
 
-    # TODO: Create new cluster_by_obs based on updated cluster assignments
+    # Create new cluster_by_obs based on updated cluster assignments
+    cluster_by_obs = np.zeros((adata_norm.shape[0],))
+    for cl_id, idxs in cluster_assignments.items():
+        cluster_by_obs[idxs] = cl_id
 
     # Calculate cluster means on normalized data
     cl_means, present_cl_means = tc.get_cluster_means(adata_norm, cluster_assignments, cluster_by_obs, chunk_size, low_th)
 
     # Merge remaining clusters by differential expression
-    while len(cluster_assignments.keys()) > 1:
-        # If only two clusters left, merge them
-        if len(cluster_assignments.keys()) is 2:
-            cl_labels = cluster_assignments.keys()
-            merge_two_clusters(cluster_assignments, cl_labels[1], cl_labels[0], cl_means_reduced)
-            break
+    merge_clusters_by_de(cluster_assignments, cl_means, present_cl_means, cl_means_reduced, k, de_method, score_th)
 
-        # Use updated cluster means in reduced space to get nearest neighbors for each cluster
-        # Steps 1-3
-        neighbor_pairs = get_k_nearest_clusters(cl_means_reduced, k)
+    # TODO: Compute marker differential expressed genes based on function param, top cluster markers, etc.
 
-        if len(neighbor_pairs) is 0:
-            break
-
-        # TODO: Step 4: Get DE for pairs based on de_method
-
-        # TODO: Step 5: If not de score > threshold for all comparisons, merge clusters with lowest de scores. One all greater than threshold, this is done
-        # From R code: The first pair in to.merge always merge. For the remaining pairs, if both clusters have already enough cells,
-        # or independent of previus merging, then they can be directly merged as well, without re-assessing DE genes
-        # This does not quite make sense to me.
-
-        # TODO: Compute marker differential expressed genes based on function param
-
-        # Returns
-        # - updated cluster assignments
-        # - differentially expressed genes
-        # - final cluster pairwise de.score
-        # - top cluster pairwise markers
+    # Returns
+    # - updated cluster assignments
+    # - differentially expressed genes
+    # - final cluster pairwise de.score
+    # - top cluster pairwise markers
 
 
 
@@ -283,6 +271,75 @@ def merge_small_clusters(
         # update labels:
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
         all_cluster_labels = list(cluster_assignments.keys())
+
+
+def merge_clusters_by_de(
+    cluster_assignments,
+    cluster_means,
+    present_cluster_means,
+    cluster_means_rd, # reduced space
+    k,
+    de_method,
+    score_th
+):
+
+    while len(cluster_assignments.keys()) > 1:
+        # If only two clusters left, merge them.
+        # TODO: Figure out why this is done.
+        if len(cluster_assignments.keys()) is 2:
+            cl_labels = cluster_assignments.keys()
+            merge_two_clusters(cluster_assignments, cl_labels[1], cl_labels[0], cluster_means_rd)
+            break
+
+        # Use updated cluster means in reduced space to get nearest neighbors for each cluster
+        # Steps 1-3
+        neighbor_pairs = get_k_nearest_clusters(cluster_means_rd, k)
+
+        if len(neighbor_pairs) is 0:
+            break
+
+        # TODO: Step 4: Get DE for pairs based on de_method
+        cl_size = [{k: len(v)} for k,v in cluster_assignments.items()]
+        scores = []
+        for pair in neighbor_pairs:
+            if de_method is 'chi-sqr':
+                # TODO: This function is still in PR
+                de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
+            elif de_method is 'limma':
+                raise NotImplementedError('limma is not implemented')
+
+            # Calculate de score
+            # TODO: This function is not implemented yet
+            score = tc.get_de_score(de_stats)
+            scores.append((pair, score))
+
+        # Sort scores
+        scores = sorted(scores, key=(lambda x: x[1]))
+
+        # Peek at first score and if > threshold, they are all greater than threshold
+        pair, score = scores[0]
+        if score > score_th:
+            break
+
+        # Merge pairs below threshold, skipping already merged clusters
+        merged_clusters = set()
+        for score_pair in scores:
+            pair, score = score_pair
+
+            # Determine if we need to have different merging types
+            # https://github.com/AllenInstitute/scrattch.hicat/blob/dev_zy/R/merge_cl.R#L18
+            if score > score_th:
+                break
+
+            dst_label, src_label = pair
+
+            if dst_label in merged_clusters or src_label in merged_clusters:
+                continue
+
+            merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, present_cluster_means)
+            merged_clusters.append(src_label)
+            merged_clusters.append(dst_label)
+
 
 
 def get_k_nearest_clusters(
