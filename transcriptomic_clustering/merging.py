@@ -284,13 +284,6 @@ def merge_clusters_by_de(
 ):
 
     while len(cluster_assignments.keys()) > 1:
-        # If only two clusters left, merge them.
-        # TODO: Figure out why this is done.
-        if len(cluster_assignments.keys()) is 2:
-            cl_labels = cluster_assignments.keys()
-            merge_two_clusters(cluster_assignments, cl_labels[1], cl_labels[0], cluster_means_rd)
-            break
-
         # Use updated cluster means in reduced space to get nearest neighbors for each cluster
         # Steps 1-3
         neighbor_pairs = get_k_nearest_clusters(cluster_means_rd, k)
@@ -339,7 +332,6 @@ def merge_clusters_by_de(
             merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, present_cluster_means)
             merged_clusters.append(src_label)
             merged_clusters.append(dst_label)
-
 
 
 def get_k_nearest_clusters(
