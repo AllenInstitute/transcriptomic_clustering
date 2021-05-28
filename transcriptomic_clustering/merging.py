@@ -11,8 +11,8 @@ def merge_two_clusters(
         cluster_assignments: Dict[Any, np.ndarray],
         label_source: Any,
         label_dest: Any,
-        cluster_means: Dict[Any, np.ndarray],
-        present_cluster_means: Optional[Dict[Any, np.ndarray]]=None
+        cluster_means: pd.DataFrame,
+        present_cluster_means: pd.DataFrame=None
 ):
     """
     Merge source cluster into a destination cluster by:
@@ -29,9 +29,9 @@ def merge_two_clusters(
     label_dest:
         label of cluster merged into
     cluster_means:
-        map of cluster label to mean cluster expressions
+        dataframe of cluster means indexed by cluster label
     present_cluster_means:
-        map of cluster label to mean of expressions present filtered by low_th
+        dataframe of cluster means indexed by cluster label filtered by low_th
 
     Returns
     -------
@@ -39,7 +39,7 @@ def merge_two_clusters(
 
     merge_cluster_means(cluster_means, cluster_assignments, label_source, label_dest)
 
-    if present_cluster_means != None:
+    if present_cluster_means is not None:
         merge_cluster_means(present_cluster_means, cluster_assignments, label_source, label_dest)
 
     # merge cluster assignments
@@ -48,7 +48,7 @@ def merge_two_clusters(
 
 
 def merge_cluster_means(
-        cluster_means: Dict[Any, np.ndarray],
+        cluster_means: pd.DataFrame,
         cluster_assignments: Dict[Any, np.ndarray],
         label_source: Any,
         label_dest: Any
@@ -62,7 +62,7 @@ def merge_cluster_means(
     Parameters
     ----------
     cluster_means:
-        map of cluster label to mean cluster expressions
+        dataframe of cluster means indexed by cluster label
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     label_source:
@@ -78,12 +78,12 @@ def merge_cluster_means(
     n_source = len(cluster_assignments[label_source])
     n_dest = len(cluster_assignments[label_dest])
 
-    cluster_means[label_dest] = (cluster_means[label_source] * n_source +
-                                 cluster_means[label_dest] * n_dest
-                                 ) / (n_source + n_dest)
+    cluster_means.loc[label_dest] = (cluster_means.loc[label_source] * n_source +
+                                     cluster_means.loc[label_dest] * n_dest
+                                    ) / (n_source + n_dest)
 
     # remove merged cluster
-    cluster_means.pop(label_source)
+    cluster_means.drop(label_source, inplace=True)
 
 
 def pdist_normalized(
@@ -184,7 +184,7 @@ def find_small_clusters(
 
 
 def merge_small_clusters(
-        cluster_means: Dict[Any, np.ndarray],
+        cluster_means: pd.DataFrame,
         cluster_assignments: Dict[Any, np.ndarray],
         min_size: int,
 ):
@@ -199,7 +199,7 @@ def merge_small_clusters(
     Parameters
     ----------
     cluster_means:
-        map of cluster label to mean cluster expressions
+        dataframe of cluster means indexed by cluster label
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     min_size:
@@ -212,9 +212,8 @@ def merge_small_clusters(
     small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
 
     while small_cluster_labels:
-        cluster_means_df = pd.DataFrame(np.vstack(list(cluster_means.values())), index=cluster_means.keys())
         similarity_small_to_all_df = calculate_similarity(
-            cluster_means_df,
+            cluster_means,
             group_rows=small_cluster_labels,
             group_cols=all_cluster_labels)
 

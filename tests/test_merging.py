@@ -54,31 +54,6 @@ def clusters():
         4: [8]
     }
 
-    cluster_means = {
-        '11': np.array([3., 1.5, 4.]),
-        2: np.array([3., 4., 2.]),
-        '32': np.array([3., 0.5, 3.]),
-        4: np.array([0., 0., 7.]),
-    }
-
-    present_cluster_means = {
-        '11': np.array([0.5, 0.25, 0.75]),
-        2: np.array([(1/3), (2/3), (1/3)]),
-        '32': np.array([0.5, 0., .5]),
-        4: np.array([0., 0., 1.]),
-    }
-
-    return cluster_means, present_cluster_means, cluster_assignments
-
-@pytest.fixture
-def df_clusters():
-    cluster_assignments = {
-        '11': [0, 3, 5, 9],
-        2: [1, 2, 6],
-        '32': [4, 7],
-        4: [8]
-    }
-
     cluster_means = pd.DataFrame(
         np.array([[3., 1.5, 4.],
                   [3., 4., 2.],
@@ -87,7 +62,15 @@ def df_clusters():
         index = ['11', 2, '32', 4]
     )
 
-    return cluster_means, cluster_assignments
+    present_cluster_means = pd.DataFrame(
+        np.array([[0.5, 0.25, 0.75],
+                  [(1/3), (2/3), (1/3)],
+                  [0.5, 0., .5],
+                  [0., 0., 1.]]),
+        index = ['11', 2, '32', 4]
+    )
+
+    return cluster_means, present_cluster_means, cluster_assignments
 
 
 def test_merge_two_clusters(clusters):
@@ -107,51 +90,48 @@ def test_merge_two_clusters(clusters):
         '32': [4, 7],
     }
 
-    expected_cluster_means = {
-        '11': np.array([3., 1.5, 4.]),
-        2: (np.array([3., 4., 2.])*3 + np.array([0., 0., 7.])*1)/(3+1),
-        '32': np.array([3., 0.5, 3.]),
-    }
+    expected_cluster_means = pd.DataFrame(
+        np.vstack([
+            np.array([3., 1.5, 4.]),
+            (np.array([3., 4., 2.])*3 + np.array([0., 0., 7.])*1)/(3+1),
+            np.array([3., 0.5, 3.])
+        ]),
+        index = ['11', 2, '32']
+    )
 
-    expected_present_cluster_means = {
-        '11': np.array([0.5, 0.25, 0.75]),
-        2: (np.array([(1/3), (2/3), (1/3)])*3 + np.array([0., 0., 1.])*1)/(3+1),
-        '32': np.array([0.5, 0., .5]),
-    }
+    expected_present_cluster_means = pd.DataFrame(
+        np.vstack([
+            np.array([0.5, 0.25, 0.75]),
+            (np.array([(1/3), (2/3), (1/3)])*3 + np.array([0., 0., 1.])*1)/(3+1),
+            np.array([0.5, 0., .5])
+        ]),
+        index = ['11', 2, '32']
+    )
 
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments.keys())
     for k, v in expected_cluster_assignments.items():
         assert np.array_equal(cluster_assignments[k], expected_cluster_assignments[k])
 
-    assert set(cluster_means.keys()) == set(expected_cluster_means.keys())
-    assert set(present_cluster_means.keys()) == set(expected_present_cluster_means.keys())
-    for k, v in expected_cluster_means.items():
-        assert np.array_equal(cluster_means[k], expected_cluster_means[k])
-        assert np.array_equal(present_cluster_means[k], expected_present_cluster_means[k])
+    assert cluster_means.equals(expected_cluster_means)
+    assert present_cluster_means.equals(expected_present_cluster_means)
 
 
 def test_pdist_normalized():
-
-    cluster_means = {
-        '11': [1],
-        2: [3],
-        '32': [5],
-    }
     expected_similarity = np.array(
         [[1, 0.5, 0 ],
          [0.5, 1, 0.5],
          [0,  0.5, 1 ]]
     )
 
-    cluster_means_arr = np.array(list(cluster_means.values()))
+    cluster_means_arr = np.array([[1], [3], [5]])
     obtained_similarity = merging.pdist_normalized(cluster_means_arr)
 
     assert np.array_equal(expected_similarity, obtained_similarity)
 
 
-def test_find_most_similar(df_clusters):
+def test_find_most_similar(clusters):
 
-    cluster_means, cluster_assignments = df_clusters
+    cluster_means, _, _ = clusters
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
 
@@ -190,26 +170,29 @@ def test_on_tasic_clusters(tasic_reduced_dim_adata):
         cluster_label_obs="cluster_label_init")
     cluster_means, _ = cm.get_cluster_means_inmemory(adata, cluster_assignments)
 
+    cluster_means = pd.DataFrame(np.vstack(list(cluster_means.values())), index = cluster_means.keys())
+
     expected_cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label_after_merging_small")
 
     expected_cluster_means, _ = cm.get_cluster_means_inmemory(adata, expected_cluster_assignments)
 
+    expected_cluster_means = pd.DataFrame(np.vstack(list(expected_cluster_means.values())), index = expected_cluster_means.keys())
+
     merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=6)
 
     for k, v in cluster_assignments.items():
         assert set(cluster_assignments[k]) == set(expected_cluster_assignments[k])
 
-    assert set(cluster_means.keys()) == set(expected_cluster_means.keys())
+    assert cluster_means.index.equals(expected_cluster_means.index)
+    assert cluster_means.columns.equals(expected_cluster_means.columns)
+    assert np.allclose(cluster_means.to_numpy(), expected_cluster_means.to_numpy(), equal_nan=True)
 
-    for k, v in expected_cluster_means.items():
-        np.allclose(cluster_means[k], expected_cluster_means[k], rtol=1e-6)
 
+def test_calculate_similarity(clusters):
 
-def test_calculate_similarity(df_clusters):
-
-    cluster_means, cluster_assignments = df_clusters
+    cluster_means, _, _ = clusters
 
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
@@ -218,11 +201,15 @@ def test_calculate_similarity(df_clusters):
                                        group_cols=group_cols)
 
     expected_similarity = pd.DataFrame(
-        [[0.917663, -0.866025, 1.0, 0.5],
-         [0.802955, -0.866025, 0.5, 1.0]],
+        [[0.917663, -0.866025, np.nan, 0.5],
+         [0.802955, -0.866025, 0.5, np.nan]],
         index=group_rows,columns=group_cols)
 
-    obtained_similarity.equals(expected_similarity)
+    print(obtained_similarity)
+    print(expected_similarity)
+    assert obtained_similarity.index.equals(obtained_similarity.index)
+    assert obtained_similarity.columns.equals(obtained_similarity.columns)
+    assert np.allclose(obtained_similarity.to_numpy(), expected_similarity.to_numpy(), equal_nan=True)
 
 
 def test_get_cluster_assignments(adata, clusters):
