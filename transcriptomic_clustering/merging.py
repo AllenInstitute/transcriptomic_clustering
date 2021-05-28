@@ -57,7 +57,7 @@ def merge_cluster_means(
     Merge source cluster into a destination cluster by:
     1. computing the updated cluster centroid (mean gene expression)
         of the destination cluster
-    2. deleting small merged cluster
+    2. deleting source cluster after merged
 
     Parameters
     ----------
