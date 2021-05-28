@@ -109,7 +109,7 @@ def pdist_normalized(
 
 
 def calculate_similarity(
-        cluster_means: Dict[Any, np.ndarray],
+        cluster_means: pd.DataFrame,
         group_rows: List[Any],
         group_cols: List[Any]
 ) -> pd.DataFrame:
@@ -122,7 +122,7 @@ def calculate_similarity(
     Parameters
     ----------
     cluster_means:
-        map of cluster label to cluster means
+        Dataframe of cluster means with cluster labels as index
     group_rows:
         cluster group with clusters being merged
     group_cols:
@@ -134,13 +134,11 @@ def calculate_similarity(
     """
 
     cluster_labels_subset = set(group_rows + group_cols)
-    cluster_means_subset = {k: cluster_means[k] for k in cluster_labels_subset}
-    means = np.array(list(cluster_means_subset.values()))
+    means = cluster_means.loc[cluster_labels_subset]
     n_clusters, n_vars = means.shape
 
     if n_vars > 2:
-        similarity_df = pd.DataFrame(cluster_means,
-                                     columns=cluster_labels_subset).corr()
+        similarity_df = means.T.corr()
     else:
         similarity = pdist_normalized(means)
         similarity_df = pd.DataFrame(similarity,
@@ -214,8 +212,9 @@ def merge_small_clusters(
     small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
 
     while small_cluster_labels:
+        cluster_means_df = pd.DataFrame(np.vstack(list(cluster_means.values())), index=cluster_means.keys())
         similarity_small_to_all_df = calculate_similarity(
-            cluster_means,
+            cluster_means_df,
             group_rows=small_cluster_labels,
             group_cols=all_cluster_labels)
 
