@@ -1,10 +1,11 @@
 from typing import Any, Dict
 
 import numpy as np
+import pandas as pd
 from scipy.cluster.hierarchy import linkage
 
 
-def hclust(cluster_means: Dict[Any, np.ndarray]):
+def hclust(cluster_means: pd.DataFrame):
     """
     Performs UPGMA hierarchical clustering
 
@@ -21,16 +22,10 @@ def hclust(cluster_means: Dict[Any, np.ndarray]):
         list of cluster names that can be used as labels in dendrogram
     """
 
-    # Parse cluster names
-    cluster_names = np.array(list(cluster_means.keys()))
-
-    # Convert dictionary of cluster means to a np.ndarray
-    cluster_mean_obs = np.array(list(cluster_means.values()))
-
     # Run UPGMA hierarchical clustering
-    linkage_matrix = linkage(cluster_mean_obs, method = 'average', metric = 'euclidean')
+    linkage_matrix = linkage(cluster_means, method = 'average', metric = 'euclidean')
 
     return (
         linkage_matrix,
-        cluster_names
+        cluster_means.index.to_numpy()
     )
