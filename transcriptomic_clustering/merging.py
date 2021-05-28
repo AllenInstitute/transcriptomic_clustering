@@ -225,12 +225,12 @@ def merge_small_clusters(
         all_cluster_labels = list(cluster_assignments.keys())
 
 
-def get_k_nearest_neighbors(
+def get_k_nearest_clusters(
         cluster_means: pd.DataFrame,
         k: Optional[int] = 2
 ) -> List[Tuple[int, int]]:
     """
-    Get k nearest neighbors of clusters
+    Get k nearest neighbors for each cluster
 
     Parameters
     ----------

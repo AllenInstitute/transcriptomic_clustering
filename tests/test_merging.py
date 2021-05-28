@@ -220,13 +220,13 @@ def test_calculate_similarity(df_clusters):
     obtained_similarity.equals(expected_similarity)
 
 
-def test_get_k_nearest_neighbors(df_clusters):
+def test_get_k_nearest_clusters(df_clusters):
 
     cluster_means, _ = df_clusters
 
     expected_nns = [('11', 4), ('11', '32'), (2, '32'), (2, 4), ('32', 4)]
 
-    knns = merging.get_k_nearest_neighbors(cluster_means, k=2)
+    knns = merging.get_k_nearest_clusters(cluster_means, k=2)
 
     assert len(expected_nns) == len(knns)
     for n in expected_nns:
