@@ -36,7 +36,7 @@ def vec_chisq_test(cl1_ncells_per_gene: np.array(float),
     cl1_present = cl1_ncells_per_gene*cl1_ncells + eps
     cl1_v1 = cl1_ncells - cl1_present + 2*eps
         
-    cl2_present = cl1_ncells_per_gene*cl2_ncells + eps
+    cl2_present = cl2_ncells_per_gene*cl2_ncells + eps
     cl2_v2 = cl2_ncells - cl2_present + 2*eps
 
     observed = np.array([cl1_present, cl1_v1, cl2_present, cl2_v2])
@@ -100,15 +100,15 @@ def de_pair_chisq(pair: tuple,
     if not cl_present_sorted.index.equals(cl_means_sorted.index):
         raise ValueError("The indices (genes) of the cl_means and the cl_present do not match")
 
-    p_vals = vec_chisq_test(cl_present[first_cluster].to_numpy(), 
+    p_vals = vec_chisq_test(cl_present_sorted[first_cluster].to_numpy(), 
                             cl_size[first_cluster],
-                            cl_present[second_cluster].to_numpy(),
+                            cl_present_sorted[second_cluster].to_numpy(),
                             cl_size[second_cluster],
                             chisq_threshold=chisq_threshold)
     
     rejected,p_adj = fdrcorrection(p_vals)
 
-    lfc = cl_means[first_cluster].to_numpy() - cl_means[second_cluster].to_numpy()
+    lfc = cl_means_sorted[first_cluster].to_numpy() - cl_means_sorted[second_cluster].to_numpy()
 
     de_statistics_chisq = pd.DataFrame(
         {
@@ -116,10 +116,10 @@ def de_pair_chisq(pair: tuple,
             "p_adj": p_adj,
             "p_value": p_vals,
             "lfc": lfc,
-            "meanA": cl_means[first_cluster].to_numpy(),
-            "meanB": cl_means[second_cluster].to_numpy(),
-            "q1": cl_present[first_cluster].to_numpy(),
-            "q2": cl_present[second_cluster].to_numpy()
+            "meanA": cl_means_sorted[first_cluster].to_numpy(),
+            "meanB": cl_means_sorted[second_cluster].to_numpy(),
+            "q1": cl_present_sorted[first_cluster].to_numpy(),
+            "q2": cl_present_sorted[second_cluster].to_numpy()
         }
     )
     
