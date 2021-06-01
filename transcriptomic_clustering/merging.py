@@ -1,4 +1,3 @@
-from anndata.anndata._core.anndata import AnnData
 from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
@@ -308,10 +307,10 @@ def get_de_scores_for_pairs(
 
     scores = []
     for pair in pairs:
-        if de_method is 'chi-sqr':
+        if de_method == 'chi-sqr':
             # TODO: This function is still in PR
             de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
-        elif de_method is 'limma':
+        elif de_method == 'limma':
             raise NotImplementedError('limma is not implemented')
         else:
             raise NotImplementedError(f'{de_method} is not implemented')
@@ -366,7 +365,7 @@ def merge_clusters_by_de(
         # Steps 1-3
         neighbor_pairs = get_k_nearest_clusters(cluster_means_rd, k)
 
-        if len(neighbor_pairs) is 0:
+        if len(neighbor_pairs) == 0:
             break
 
         # TODO: Step 4: Get DE for pairs based on de_method
