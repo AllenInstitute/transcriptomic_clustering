@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import anndata as ad
 import numpy as np
-import scanpy as sc
+import pandas as pd
 from scipy.sparse import csr_matrix
 import transcriptomic_clustering as tc
 import warnings
@@ -14,7 +14,7 @@ def get_cluster_means(
         cluster_by_obs: np.ndarray,
         chunk_size: Optional[int]=None,
         low_th: Optional[int]=1
-) -> Tuple[Dict[Any, np.ndarray], Dict[Any, np.ndarray]]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Compute mean gene expression over cells belonging to each cluster
 
@@ -55,20 +55,17 @@ def get_cluster_means_inmemory(
         adata: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
         low_th: Optional[int]=1
-) -> Tuple[Dict[Any, np.ndarray], Dict[Any, np.ndarray]]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Compute mean gene expression over cells belonging to each cluster in memory
     See description of get_cluster_means() for details
     """
 
-    cluster_means = {}
-    present_cluster_means = {}
-
-    for label, idxs in cluster_assignments.items():
-        adata_view = adata[idxs, :]
-        X = adata_view.X
-        cluster_means[label] = np.asarray(np.mean(X, axis=0)).ravel()
-        present_cluster_means[label] = np.asarray(np.mean((X > low_th), axis=0)).ravel()
+    labels, cluster_indices = zip(*cluster_assignments.items())
+    cluster_means_arr = np.vstack([np.asarray(np.mean(adata.X[clust, :], axis=0)).ravel() for clust in cluster_indices])
+    present_cluster_means_arr = np.vstack([np.asarray(np.mean((adata.X[clust, :] > low_th), axis=0)).ravel() for clust in cluster_indices])
+    cluster_means = pd.DataFrame(cluster_means_arr, index=labels)
+    present_cluster_means = pd.DataFrame(present_cluster_means_arr, index=labels)
 
     return (cluster_means, present_cluster_means)
 
@@ -79,7 +76,7 @@ def get_cluster_means_backed(
         cluster_by_obs: np.ndarray,
         chunk_size: int,
         low_th: Optional[int]=1
-) -> Tuple[Dict[Any, np.ndarray], Dict[Any, np.ndarray]]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Compute mean gene expression over cells belonging to each cluster of file-backed data in chunks
     See description of get_cluster_means() for details
@@ -132,13 +129,8 @@ def get_cluster_means_backed(
     present_cl_means = present_cluster_sums / cluster_sizes
 
     # Convert to desired output
-    cluster_means = {}
-    present_cluster_means = {}
-
-    for i in range(n_clusters):
-        k = cluster_labels[i]
-        cluster_means[k] = cl_means[i]
-        present_cluster_means[k] = present_cl_means[i]
+    cluster_means = pd.DataFrame(cl_means, index=cluster_labels)
+    present_cluster_means = pd.DataFrame(present_cl_means, index=cluster_labels)
 
     return (cluster_means, present_cluster_means)
 
