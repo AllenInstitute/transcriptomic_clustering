@@ -388,6 +388,8 @@ def merge_clusters_by_de(
             if dst_label in merged_clusters or src_label in merged_clusters:
                 continue
 
+            logging.info(f"Merging cluster {src_label} into {dst_label} -- de score: {score}")
+
             # Update cluster means on reduced space
             merge_cluster_means(cluster_means_rd, cluster_assignments, src_label, dst_label)
 
