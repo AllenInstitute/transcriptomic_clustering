@@ -154,7 +154,7 @@ def test_merge_small_clusters(clusters):
         2: [1, 2, 6]
     }
 
-    merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=3)
+    cluster_assignments = merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=3)
 
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments.keys())
     for k, v in cluster_assignments.items():

@@ -275,6 +275,8 @@ def merge_small_clusters(
 
     Returns
     -------
+    cluster_assignments:
+        updated mapping of cluster assignments
     """
     all_cluster_labels = list(cluster_assignments.keys())
     small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
@@ -294,6 +296,8 @@ def merge_small_clusters(
         # update labels:
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
         all_cluster_labels = list(cluster_assignments.keys())
+
+    return cluster_assignments
 
 
 def get_de_scores_for_pairs(
@@ -341,8 +345,6 @@ def get_de_scores_for_pairs(
         # Calculate de score
         # TODO: This function is not implemented yet
         score = tc.get_de_score(de_stats)
-
-        # Create ((dst, src), score) tuples
         scores.append(score)
 
     scores_df = pd.DataFrame(scores, columns=['score'], index=pairs)
@@ -364,7 +366,7 @@ def merge_clusters_by_de(
 
     1. get k nearest clusters for each cluster in a reduced space
     2. calculate differential expression scores for all pairs
-    3. sort scores by lowest and loop through them, merging pairs with scores lower than thresold
+    3. sort scores by lowest and loop through them, merging pairs with scores lower than threshold
 
     Parameters
     ----------
@@ -385,9 +387,11 @@ def merge_clusters_by_de(
 
     Returns
     -------
+    cluster_assignments:
+        updated mapping of cluster assignments
     """
 
-    cl_size = [{k: len(v)} for k, v in cluster_assignments.items()]
+    cl_size = {k: len(v) for k, v in cluster_assignments.items()}
 
     while len(cluster_assignments.keys()) > 1:
         # Use updated cluster means in reduced space to get nearest neighbors for each cluster
@@ -434,6 +438,8 @@ def merge_clusters_by_de(
             # Merge cluster sizes
             cl_size[dst_label] += cl_size[src_label]
             cl_size.pop(src_label)
+
+    return cluster_assignments
 
 
 def get_k_nearest_clusters(
