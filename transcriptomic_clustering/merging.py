@@ -18,12 +18,11 @@ def merge_clusters(
         low_th: Optional[int] = 1,
         de_method: Optional[str] = 'chisq',
         score_th: Optional[int] = 150,
-        max_sampled_cells: Optional[int] = 300,
-        markers: Optional[int] = 50, # If none, don't return makers. Otherwise, number of markers
         chunk_size: Optional[int] = None
-):
+) -> Dict[Any, np.ndarray]:
     # TODO: Add doc str
     # TODO: Add all the thresholds
+    # TODO: Add cached differentially expressed genes and figure out how to use them
 
     # Calculate cluster means on reduced space
     cl_means_reduced, _ = tc.get_cluster_means(adata_reduced, cluster_assignments, cluster_by_obs, chunk_size, low_th)
@@ -42,17 +41,7 @@ def merge_clusters(
     # Merge remaining clusters by differential expression
     merge_clusters_by_de(cluster_assignments, cl_means, present_cl_means, cl_means_reduced, k, de_method, score_th)
 
-    # TODO: Compute marker differential expressed genes based on function param, top cluster markers, etc.
-    # Calculate de for all pairs of clusters
-    # Cells should be sampled based on `max_sampled_cells`- equivalent to max.cl.size in R
-
-
-    # Returns
-    # - updated cluster assignments
-    # - differentially expressed genes
-    # - final cluster pairwise de.score
-    # - top cluster pairwise markers
-
+    return cluster_assignments
 
 
 def merge_two_clusters(
@@ -282,7 +271,7 @@ def get_de_scores_for_pairs(
     present_cluster_means: pd.DataFrame,
     cl_size: Dict[Any, int],
     de_method: Optional[str] = 'chisq'
-) -> Tuple[Tuple[int, int], float]:
+) -> pd.DataFrame:
     """
     Calculate the de score for pairs of clusters
 
@@ -301,8 +290,8 @@ def get_de_scores_for_pairs(
 
     Returns
     -------
-    scores:
-        calculated de score for each pair of clusters
+    scores_df:
+        dataframe of calculated de score for pairs of clusters
     """
 
     scores = []
@@ -320,9 +309,11 @@ def get_de_scores_for_pairs(
         score = tc.get_de_score(de_stats)
 
         # Create ((dst, src), score) tuples
-        scores.append((pair, score))
+        scores.append(score)
 
-    return scores
+    scores_df = pd.DataFrame(scores, columns=['score'], index=pairs)
+
+    return scores_df
 
 
 def merge_clusters_by_de(
@@ -368,21 +359,21 @@ def merge_clusters_by_de(
         if len(neighbor_pairs) == 0:
             break
 
-        # TODO: Step 4: Get DE for pairs based on de_method
+        # Step 4: Get DE for pairs based on de_method
         scores = get_de_scores_for_pairs(neighbor_pairs, cluster_means, present_cluster_means, cl_size, de_method)
 
         # Sort scores
-        scores = sorted(scores, key=(lambda x: x[1]))
+        scores = scores.sort_values(by='score')
 
         # Peek at first score and if > threshold, they are all greater than threshold
-        pair, score = scores[0]
+        score = scores.iloc[0].score
         if score >= score_th:
             break
 
         # Merge pairs below threshold, skipping already merged clusters
         merged_clusters = set()
-        for score_pair in scores:
-            pair, score = score_pair
+        for pair, row in scores.iterrows():
+            score = row.score
 
             if score >= score_th:
                 break
