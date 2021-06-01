@@ -40,17 +40,12 @@ def vec_chisq_test(cl1_ncells_per_gene: np.array(float),
     cl2_v2 = cl2_ncells - cl2_present + 2*eps
 
     observed = np.array([cl1_present, cl1_v1, cl2_present, cl2_v2])
-    ncells = cl1_ncells + cl2_ncells
 
-    present = cl1_present + cl2_present
-    absent = ncells - present
-    expected = np.array([present*cl1_ncells, absent*cl1_ncells, present*cl2_ncells, absent*cl2_ncells])/ncells + eps
-    
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
-        chi_squared_stat = max(0,(((abs(observed[:,i]-expected[:,i])-0.5)**2)/expected[:,i]).sum())
+        chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
         if chi_squared_stat < chisq_threshold:
-            p_vals[i] = 1 - stats.chi2.cdf(x=chi_squared_stat, df=1)
+            p_vals[i] = p_value
     
     return p_vals
 
