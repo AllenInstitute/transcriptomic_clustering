@@ -18,7 +18,7 @@ def vec_chisq_test(pair: tuple,
         ----------
         pair: a tuple of length 2 specifying which clusters to compare
         cl_present: a data frame of gene detection proportions (genes x clusters)
-        cl.size: a dict of cluster sizes
+        cl_size: a dict of cluster sizes
 
         Returns
         -------
@@ -36,12 +36,12 @@ def vec_chisq_test(pair: tuple,
     n_genes = cl1_ncells_per_gene.shape[0]
 
     cl1_present = cl1_ncells_per_gene
-    cl1_v1 = cl1_ncells - cl1_present
+    cl1_absent = cl1_ncells - cl1_present
         
     cl2_present = cl2_ncells_per_gene
-    cl2_v2 = cl2_ncells - cl2_present
+    cl2_absent = cl2_ncells - cl2_present
 
-    observed = np.array([cl1_present, cl1_v1, cl2_present, cl2_v2])
+    observed = np.array([cl1_present, cl1_absent, cl2_present, cl2_absent])
 
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
