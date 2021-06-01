@@ -1,3 +1,4 @@
+from anndata.anndata._core.anndata import AnnData
 from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
@@ -9,19 +10,20 @@ import warnings
 import transcriptomic_clustering as tc
 
 def merge_clusters(
-        adata_norm,
-        adata_reduced,
+        adata_norm: ad.AnnData,
+        adata_reduced: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
         cluster_by_obs: np.ndarray,
-        min_cluster_size,
-        k,
-        low_th,
-        de_method,
-        score_th,
-        markers, # Should return markers or not
-        chunk_size
+        min_cluster_size: Optional[int] = 4,
+        k: Optional[int] = 2,
+        low_th: Optional[int] = 1,
+        de_method: Optional[str] = 'chi-sqr',
+        score_th: Optional[int] = 150,
+        max_sampled_cells: Optional[int] = 300,
+        markers: Optional[int] = 50, # If none, don't return makers. Otherwise, number of markers
+        chunk_size: Optional[int] = None
 ):
-
+    # TODO: Add doc str
     # TODO: Add all the thresholds
 
     # Calculate cluster means on reduced space
@@ -42,6 +44,9 @@ def merge_clusters(
     merge_clusters_by_de(cluster_assignments, cl_means, present_cl_means, cl_means_reduced, k, de_method, score_th)
 
     # TODO: Compute marker differential expressed genes based on function param, top cluster markers, etc.
+    # Calculate de for all pairs of clusters
+    # Cells should be sampled based on `max_sampled_cells`- equivalent to max.cl.size in R
+
 
     # Returns
     # - updated cluster assignments
@@ -308,6 +313,8 @@ def get_de_scores_for_pairs(
             de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
         elif de_method is 'limma':
             raise NotImplementedError('limma is not implemented')
+        else:
+            raise NotImplementedError(f'{de_method} is not implemented')
 
         # Calculate de score
         # TODO: This function is not implemented yet
