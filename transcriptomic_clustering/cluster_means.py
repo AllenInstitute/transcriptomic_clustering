@@ -61,11 +61,16 @@ def get_cluster_means_inmemory(
     See description of get_cluster_means() for details
     """
 
-    labels, cluster_indices = zip(*cluster_assignments.items())
-    cluster_means_arr = np.vstack([np.asarray(np.mean(adata.X[clust, :], axis=0)).ravel() for clust in cluster_indices])
-    present_cluster_means_arr = np.vstack([np.asarray(np.mean((adata.X[clust, :] > low_th), axis=0)).ravel() for clust in cluster_indices])
-    cluster_means = pd.DataFrame(cluster_means_arr, index=labels)
-    present_cluster_means = pd.DataFrame(present_cluster_means_arr, index=labels)
+    cluster_means_lst = []
+    present_cluster_means_lst = []
+
+    for clust in cluster_assignments.values():
+        slice = adata.X[clust, :]
+        cluster_means_lst.append(np.asarray(np.mean(slice, axis=0)).ravel())
+        present_cluster_means_lst.append(np.asarray(np.mean((slice > low_th), axis=0)).ravel())
+
+    cluster_means = pd.DataFrame(np.vstack(cluster_means_lst), index=list(cluster_assignments.keys()))
+    present_cluster_means = pd.DataFrame(np.vstack(present_cluster_means_lst), index=list(cluster_assignments.keys()))
 
     return (cluster_means, present_cluster_means)
 
