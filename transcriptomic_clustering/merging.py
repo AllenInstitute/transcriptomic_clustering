@@ -20,9 +20,40 @@ def merge_clusters(
         score_th: Optional[int] = 150,
         chunk_size: Optional[int] = None
 ) -> Dict[Any, np.ndarray]:
-    # TODO: Add doc str
-    # TODO: Add all the thresholds
-    # TODO: Add cached differentially expressed genes and figure out how to use them
+    """
+    Merge clusters based on size and differential gene expression score
+
+    1. merge small clusters
+    2. merge clusters based by differential gene expression score
+
+    Parameters
+    ----------
+    adata_norm:
+        AnnData object of normalized data
+    adata_reduced:
+        AnnData object in reduced space
+    cluster_assignments:
+        map of cluster label to cell idx belonging to cluster
+    cluster_by_obs:
+        array of cells with cluster value
+    min_cluster_size:
+        minimum number of cells a cluster must contain
+    k:
+        number of cluster neighbors
+    low_th:
+        minimum expression value used to filter for expressed genes
+    de_method:
+        method used for de calculation
+    score_th:
+        threshold of de score for merging
+    chunk_size:
+        number of observations to process in a single chunk
+
+    Returns
+    -------
+    cluster_assignments:
+        updated mapping of cluster assignments
+    """
 
     # Calculate cluster means on reduced space
     cl_means_reduced, _ = tc.get_cluster_means(adata_reduced, cluster_assignments, cluster_by_obs, chunk_size, low_th)
@@ -275,6 +306,9 @@ def get_de_scores_for_pairs(
     """
     Calculate the de score for pairs of clusters
 
+    1. calculate de stats for each pair
+    2. use stats to calculate score
+
     Parameters
     ----------
     pairs:
@@ -327,6 +361,10 @@ def merge_clusters_by_de(
 ):
     """
     Merge clusters by the calculated gene differential expression score
+
+    1. get k nearest clusters for each cluster in a reduced space
+    2. calculate differential expression scores for all pairs
+    3. sort scores by lowest and loop through them, merging pairs with scores lower than thresold
 
     Parameters
     ----------
