@@ -3,6 +3,10 @@ import pytest
 import csv
 import os
 
+from mock import patch
+from unittest.mock import MagicMock
+
+import transcriptomic_clustering as tc
 from transcriptomic_clustering.louvain import cluster_louvain
 
 DIR_NAME = os.path.dirname(__file__)
@@ -46,4 +50,14 @@ def test_adata_inplace(pca_data, r_data):
         if naive_label_map[r_val] != o_val:
             error_count += 1
     error = error_count / float(len(r_data))
-    assert error < .25
+
+    assert error < .02
+
+def test_outlier_label_handling():
+    test_adata = MagicMock()
+    test_adata.X = None
+    with patch.object(tc.louvain, 'phenograph', return_value=([-1, 1, -1, 2, -1, 3], None, None)):
+        cluster_by_obs, obs_by_cluster, _, _ = cluster_louvain(test_adata, 4, False)
+    assert cluster_by_obs == [4, 1, 5, 2, 6, 3]
+    assert obs_by_cluster == {1: [1], 4: [0], 5: [2], 2: [3], 6: [4], 3: [5]}
+
