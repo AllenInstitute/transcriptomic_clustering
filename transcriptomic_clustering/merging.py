@@ -418,7 +418,7 @@ def get_k_nearest_clusters(
     Returns
     -------
     nearest_neighbors:
-        list of similarity measure
+        list of cluster pairs
     """
 
     cluster_labels = list(cluster_means.index)
