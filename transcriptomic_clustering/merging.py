@@ -282,6 +282,8 @@ def merge_clusters_by_de(
     score_th
 ):
 
+    cl_size = [{k: len(v)} for k,v in cluster_assignments.items()]
+
     while len(cluster_assignments.keys()) > 1:
         # Use updated cluster means in reduced space to get nearest neighbors for each cluster
         # Steps 1-3
@@ -291,7 +293,6 @@ def merge_clusters_by_de(
             break
 
         # TODO: Step 4: Get DE for pairs based on de_method
-        cl_size = [{k: len(v)} for k,v in cluster_assignments.items()]
         scores = []
         for pair in neighbor_pairs:
             if de_method is 'chi-sqr':
@@ -335,6 +336,10 @@ def merge_clusters_by_de(
             merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, present_cluster_means)
             merged_clusters.append(src_label)
             merged_clusters.append(dst_label)
+
+            # Merge cluster sizes
+            cl_size[dst_label] += cl_size[src_label]
+            cl_size.pop(src_label)
 
 
 def get_k_nearest_clusters(
