@@ -370,7 +370,7 @@ def merge_clusters_by_de(
 
         # Peek at first score and if > threshold, they are all greater than threshold
         pair, score = scores[0]
-        if score > score_th:
+        if score >= score_th:
             break
 
         # Merge pairs below threshold, skipping already merged clusters
@@ -378,7 +378,7 @@ def merge_clusters_by_de(
         for score_pair in scores:
             pair, score = score_pair
 
-            if score > score_th:
+            if score >= score_th:
                 break
 
             dst_label, src_label = pair
