@@ -10,8 +10,7 @@ import sys
 
 def vec_chisq_test(pair: tuple,
                   cl_present: pd.DataFrame,
-                  cl_size: Dict[Any, int],
-                  chisq_threshold: Optional[float] = 15):
+                  cl_size: Dict[Any, int]):
     """
         Vectorized Chi-squared tests for differential gene detection.
 
@@ -20,7 +19,6 @@ def vec_chisq_test(pair: tuple,
         pair: a tuple of length 2 specifying which clusters to compare
         cl_present: a data frame of gene detection proportions (genes x clusters)
         cl.size: a dict of cluster sizes
-        chisq_threshold: a threshold for keeping meaningful chi squared statistics
 
         Returns
         -------
@@ -37,29 +35,28 @@ def vec_chisq_test(pair: tuple,
 
     n_genes = cl1_ncells_per_gene.shape[0]
 
-    eps = sys.float_info.epsilon
-
-    cl1_present = cl1_ncells_per_gene + eps
-    cl1_v1 = cl1_ncells - cl1_present + 2*eps
+    cl1_present = cl1_ncells_per_gene
+    cl1_v1 = cl1_ncells - cl1_present
         
-    cl2_present = cl2_ncells_per_gene + eps
-    cl2_v2 = cl2_ncells - cl2_present + 2*eps
+    cl2_present = cl2_ncells_per_gene
+    cl2_v2 = cl2_ncells - cl2_present
 
     observed = np.array([cl1_present, cl1_v1, cl2_present, cl2_v2])
 
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
-        chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
-        if chi_squared_stat < chisq_threshold:
+        try:
+            chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
+        except:
+            print("chi2 exception catched, p value will be assigned to 1")
     
     return p_vals
 
 def de_pair_chisq(pair: tuple, 
                   cl_present: Union[pd.DataFrame, pd.Series],
                   cl_means: Union[pd.DataFrame, pd.Series],
-                  cl_size: Dict[Any, int],
-                  chisq_threshold: Optional[float] = 15) -> pd.DataFrame:
+                  cl_size: Dict[Any, int]) -> pd.DataFrame:
     """
         Perform pairwise differential detection tests using Chi-Squared test for a single pair of clusters.
 
@@ -69,7 +66,6 @@ def de_pair_chisq(pair: tuple,
         cl_present: a data frame of gene detection proportions (genes x clusters) 
         cl_means: a data frame of normalized mean gene expression values (genes x clusters)
         cl.size: a dict of cluster sizes
-        chisq_threshold: a threshold for keeping meaningful chi squared statistics
 
         Returns
         -------
@@ -103,8 +99,7 @@ def de_pair_chisq(pair: tuple,
 
     p_vals = vec_chisq_test(pair, 
                             cl_present_sorted,
-                            cl_size,
-                            chisq_threshold=chisq_threshold)
+                            cl_size)
     
     rejected,p_adj = fdrcorrection(p_vals)
 
