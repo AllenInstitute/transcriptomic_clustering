@@ -115,27 +115,23 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     """
         test vec_chisq_test func
     """
-    pair = pair
-    cl_present = cl_present
-    cl_present_sorted = cl_present.sort_index()
-    cl_size = cl_size
+    n_x = 17
+    n_y = 14
+    n_x_success = 5
+    n_x_fail = n_x - n_x_success
+    n_y_success = 7
+    n_y_fail = n_y - n_y_success
 
-    expected_chisq_result = expected_chisq_pair_statistics
-    expected_p_vals = expected_chisq_result['p_value'].to_numpy()
+    expected_p_value = 0.42330542
 
-    first_cluster = pair[0]
-    second_cluster = pair[1]
+    p_value = vec_chisq_test(np.array([n_x_success]),
+                            np.array([n_x]),
+                            np.array([n_y_success]),
+                            np.array([n_y]))
 
-    p_vals = vec_chisq_test(cl_present_sorted[first_cluster].to_numpy(),
-                            cl_size[first_cluster],
-                            cl_present_sorted[second_cluster].to_numpy(),
-                            cl_size[second_cluster])
+    
 
-    np.testing.assert_allclose(p_vals,
-                            expected_p_vals,
-                            rtol=1e-06,
-                            atol=1e-06,
-                            )
+    np.testing.assert_almost_equal(p_value, expected_p_value, decimal=7)
 
 def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_statistics):
     """
