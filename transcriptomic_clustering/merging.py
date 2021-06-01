@@ -320,14 +320,39 @@ def get_de_scores_for_pairs(
 
 
 def merge_clusters_by_de(
-    cluster_assignments,
-    cluster_means,
-    present_cluster_means,
-    cluster_means_rd, # reduced space
-    k,
-    de_method,
-    score_th
+    cluster_assignments: Dict[Any, np.ndarray],
+    cluster_means: pd.DataFrame,
+    present_cluster_means: pd.DataFrame,
+    cluster_means_rd: pd.DataFrame,
+    k: Optional[int] = 2,
+    de_method: Optional[str] = 'chi-sqr',
+    score_th: Optional[int] = 150
 ):
+    """
+    Merge clusters by the calculated gene differential expression score
+
+    Parameters
+    ----------
+    cluster_assignments:
+        map of cluster label to cell idx belonging to cluster
+    cluster_means:
+        dataframe of cluster means indexed by cluster label in a normalized space
+    present_cluster_means:
+        dataframe of cluster means indexed by cluster label filtered by low_th in a normalized space
+    cluster_means_rd:
+        dataframe of cluster means indexed by cluster label in a reduced space
+    k:
+        number of cluster neighbors
+    de_method:
+        method used for de calculation
+    score_th:
+        threshold of de score for merging
+
+    Returns
+    -------
+    scores:
+        calculated de score for each pair of clusters
+    """
 
     cl_size = [{k: len(v)} for k, v in cluster_assignments.items()]
 
