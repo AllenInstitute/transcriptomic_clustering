@@ -303,6 +303,8 @@ def merge_clusters_by_de(
             # Calculate de score
             # TODO: This function is not implemented yet
             score = tc.get_de_score(de_stats)
+
+            # Create ((dst, src), score) tuples
             scores.append((pair, score))
 
         # Sort scores
@@ -326,6 +328,10 @@ def merge_clusters_by_de(
             if dst_label in merged_clusters or src_label in merged_clusters:
                 continue
 
+            # Update cluster means on reduced space
+            merge_cluster_means(cluster_means_rd, cluster_assignments, src_label, dst_label)
+
+            # Update cluster means and cluster assignments
             merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, present_cluster_means)
             merged_clusters.append(src_label)
             merged_clusters.append(dst_label)
