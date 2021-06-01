@@ -282,7 +282,7 @@ def merge_clusters_by_de(
     score_th
 ):
 
-    cl_size = [{k: len(v)} for k,v in cluster_assignments.items()]
+    cl_size = [{k: len(v)} for k, v in cluster_assignments.items()]
 
     while len(cluster_assignments.keys()) > 1:
         # Use updated cluster means in reduced space to get nearest neighbors for each cluster
