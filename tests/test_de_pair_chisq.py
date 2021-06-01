@@ -6,7 +6,6 @@ import scanpy as sc
 from pandas.util.testing import assert_frame_equal
 
 import transcriptomic_clustering as tc
-from transcriptomic_clustering.de_pair_chisq import vec_chisq_test
 
 @pytest.fixture
 def pair():
@@ -115,23 +114,26 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     """
         test vec_chisq_test func
     """
-    n_x = 17
-    n_y = 14
-    n_x_success = 5
-    n_x_fail = n_x - n_x_success
-    n_y_success = 7
-    n_y_fail = n_y - n_y_success
+    pair = pair
+    cl_present = cl_present
+    cl_present_sorted = cl_present.sort_index()
+    cl_size = cl_size
 
-    expected_p_value = 0.42330542
+    expected_chisq_result = expected_chisq_pair_statistics
+    expected_p_vals = expected_chisq_result['p_value'].to_numpy()
 
-    p_value = vec_chisq_test(np.array([n_x_success]),
-                            np.array([n_x]),
-                            np.array([n_y_success]),
-                            np.array([n_y]))
+    first_cluster = pair[0]
+    second_cluster = pair[1]
 
-    
+    p_vals = tc.vec_chisq_test(pair,
+                            cl_present_sorted,
+                            cl_size)
 
-    np.testing.assert_almost_equal(p_value, expected_p_value, decimal=7)
+    np.testing.assert_allclose(p_vals,
+                            expected_p_vals,
+                            rtol=1e-06,
+                            atol=1e-06,
+                            )
 
 def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_statistics):
     """

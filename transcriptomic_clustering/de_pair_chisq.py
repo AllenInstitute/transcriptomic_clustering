@@ -8,20 +8,18 @@ from statsmodels.stats.multitest import fdrcorrection
 import sys
 
 
-def vec_chisq_test(cl1_ncells_per_gene: np.array(float),
-                   cl1_ncells: int,
-                   cl2_ncells_per_gene: np.array(float),
-                   cl2_ncells: int,
-                   chisq_threshold: Optional[float] = 15):
+def vec_chisq_test(pair: tuple,
+                  cl_present: pd.DataFrame,
+                  cl_size: Dict[Any, int],
+                  chisq_threshold: Optional[float] = 15):
     """
         Vectorized Chi-squared tests for differential gene detection.
 
         Parameters
         ----------
-        cl1_ncells_per_gene: a vector with the number of cells in the 1st cluster with detection of each gene
-        cl1_ncells: an integer value with the total number of cells in the 1st cluster
-        cl2_ncells_per_gene: a vector with the number of cells in the 2nd cluster with detection of each gene
-        cl2_ncells: an integer value with the total number of cells in the 2nd cluster
+        pair: a tuple of length 2 specifying which clusters to compare
+        cl_present: a data frame of gene detection proportions (genes x clusters)
+        cl.size: a dict of cluster sizes
         chisq_threshold: a threshold for keeping meaningful chi squared statistics
 
         Returns
@@ -29,6 +27,14 @@ def vec_chisq_test(cl1_ncells_per_gene: np.array(float),
         p_vals: a numpy array of p-values with detection of each gene
 
     """
+    first_cluster = pair[0]
+    second_cluster = pair[1]
+
+    cl1_ncells_per_gene = cl_present[first_cluster].to_numpy()*cl_size[first_cluster]
+    cl1_ncells = cl_size[first_cluster]
+    cl2_ncells_per_gene = cl_present[second_cluster].to_numpy()*cl_size[second_cluster]
+    cl2_ncells = cl_size[second_cluster]
+
     n_genes = cl1_ncells_per_gene.shape[0]
 
     eps = sys.float_info.epsilon
@@ -95,10 +101,9 @@ def de_pair_chisq(pair: tuple,
     if not cl_present_sorted.index.equals(cl_means_sorted.index):
         raise ValueError("The indices (genes) of the cl_means and the cl_present do not match")
 
-    p_vals = vec_chisq_test(cl_present_sorted[first_cluster].to_numpy()*cl_size[first_cluster], 
-                            cl_size[first_cluster],
-                            cl_present_sorted[second_cluster].to_numpy()*cl_size[second_cluster],
-                            cl_size[second_cluster],
+    p_vals = vec_chisq_test(pair, 
+                            cl_present_sorted,
+                            cl_size,
                             chisq_threshold=chisq_threshold)
     
     rejected,p_adj = fdrcorrection(p_vals)
