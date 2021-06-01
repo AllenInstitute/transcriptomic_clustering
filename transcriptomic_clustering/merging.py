@@ -16,7 +16,7 @@ def merge_clusters(
         min_cluster_size: Optional[int] = 4,
         k: Optional[int] = 2,
         low_th: Optional[int] = 1,
-        de_method: Optional[str] = 'chi-sqr',
+        de_method: Optional[str] = 'chisq',
         score_th: Optional[int] = 150,
         max_sampled_cells: Optional[int] = 300,
         markers: Optional[int] = 50, # If none, don't return makers. Otherwise, number of markers
@@ -281,7 +281,7 @@ def get_de_scores_for_pairs(
     cluster_means: pd.DataFrame,
     present_cluster_means: pd.DataFrame,
     cl_size: Dict[Any, int],
-    de_method: str
+    de_method: Optional[str] = 'chisq'
 ) -> Tuple[Tuple[int, int], float]:
     """
     Calculate the de score for pairs of clusters
@@ -307,7 +307,7 @@ def get_de_scores_for_pairs(
 
     scores = []
     for pair in pairs:
-        if de_method == 'chi-sqr':
+        if de_method == 'chisq':
             # TODO: This function is still in PR
             de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
         elif de_method == 'limma':
