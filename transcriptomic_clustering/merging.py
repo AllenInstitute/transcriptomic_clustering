@@ -272,6 +272,53 @@ def merge_small_clusters(
         all_cluster_labels = list(cluster_assignments.keys())
 
 
+def get_de_scores_for_pairs(
+    pairs: Tuple[int, int],
+    cluster_means: pd.DataFrame,
+    present_cluster_means: pd.DataFrame,
+    cl_size: Dict[Any, int],
+    de_method: str
+) -> Tuple[Tuple[int, int], float]:
+    """
+    Calculate the de score for pairs of clusters
+
+    Parameters
+    ----------
+    pairs:
+        pairs of clusters to get score for
+    cluster_means:
+        dataframe of cluster means indexed by cluster label
+    present_cluster_means:
+        dataframe of cluster means indexed by cluster label filtered by low_th
+    cl_size:
+        mapping of cluster label to cluster size
+    de_method:
+        method used for de calculation
+
+    Returns
+    -------
+    scores:
+        calculated de score for each pair of clusters
+    """
+
+    scores = []
+    for pair in pairs:
+        if de_method is 'chi-sqr':
+            # TODO: This function is still in PR
+            de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
+        elif de_method is 'limma':
+            raise NotImplementedError('limma is not implemented')
+
+        # Calculate de score
+        # TODO: This function is not implemented yet
+        score = tc.get_de_score(de_stats)
+
+        # Create ((dst, src), score) tuples
+        scores.append((pair, score))
+
+    return scores
+
+
 def merge_clusters_by_de(
     cluster_assignments,
     cluster_means,
@@ -293,20 +340,7 @@ def merge_clusters_by_de(
             break
 
         # TODO: Step 4: Get DE for pairs based on de_method
-        scores = []
-        for pair in neighbor_pairs:
-            if de_method is 'chi-sqr':
-                # TODO: This function is still in PR
-                de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
-            elif de_method is 'limma':
-                raise NotImplementedError('limma is not implemented')
-
-            # Calculate de score
-            # TODO: This function is not implemented yet
-            score = tc.get_de_score(de_stats)
-
-            # Create ((dst, src), score) tuples
-            scores.append((pair, score))
+        scores = get_de_scores_for_pairs(neighbor_pairs, cluster_means, present_cluster_means, cl_size, de_method)
 
         # Sort scores
         scores = sorted(scores, key=(lambda x: x[1]))
