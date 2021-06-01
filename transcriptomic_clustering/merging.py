@@ -350,8 +350,6 @@ def merge_clusters_by_de(
 
     Returns
     -------
-    scores:
-        calculated de score for each pair of clusters
     """
 
     cl_size = [{k: len(v)} for k, v in cluster_assignments.items()]
