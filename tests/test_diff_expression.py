@@ -4,10 +4,11 @@ import numpy as np
 import pandas as pd
 
 import transcriptomic_clustering as tc
-from transcriptomic_clustering.de_pair_chisq import (
+from transcriptomic_clustering.diff_expression import (
     filter_gene_stats,
     calc_de_score,
-    get_qdiff
+    get_qdiff,
+    vec_chisq_test
 )
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -154,7 +155,7 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     first_cluster = pair[0]
     second_cluster = pair[1]
 
-    p_vals = tc.vec_chisq_test(pair,
+    p_vals = vec_chisq_test(pair,
                             cl_present_sorted,
                             cl_size)
 
