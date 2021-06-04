@@ -214,8 +214,8 @@ def test_filter_down_regulated_gene_stats(de_stats,thresholds):
 
 def test_get_qdiff():
 
-    expected = (0.6 - 0.4)/0.6
-    obtained = get_qdiff(0.4, 0.6)
+    expected = np.array([(0.6 - 0.4)/0.6])
+    obtained = get_qdiff(np.array([0.4]), np.array([0.6]))
     assert np.isclose(expected, obtained)
 
 
