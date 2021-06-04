@@ -210,9 +210,9 @@ def test_calculate_similarity(clusters):
     assert np.allclose(obtained_similarity.to_numpy(), expected_similarity.to_numpy(), equal_nan=True)
 
 
-def test_get_k_nearest_clusters(df_clusters):
+def test_get_k_nearest_clusters(clusters):
 
-    cluster_means, _ = df_clusters
+    cluster_means, _, _ = clusters
 
     expected_nns = [('11', 4), ('11', '32'), (2, '32'), (2, 4), ('32', 4)]
 
