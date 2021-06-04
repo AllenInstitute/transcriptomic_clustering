@@ -207,7 +207,7 @@ def filter_gene_stats(
 def get_qdiff(q1, q2) -> np.array:
     """
     Calculate normalized difference between q1 and q2 proportions
-
+    when q1=0 and q2=0, return qdiff=0
     Parameters
     ----------
     q1:
@@ -219,7 +219,9 @@ def get_qdiff(q1, q2) -> np.array:
     -------
     qdiff statistic
     """
-    q_diff = abs(q1 - q2) / np.maximum(q1, q2)
+    qmax = np.maximum(q1, q2)
+    qmax[qmax == 0] = np.nan
+    q_diff = abs(q1 - q2) / qmax
     np.nan_to_num(q_diff, nan=0.0, copy=False)
 
     return q_diff
