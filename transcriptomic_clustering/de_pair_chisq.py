@@ -63,8 +63,8 @@ def de_pair_chisq(pair: tuple,
         Parameters
         ----------
         pair: a tuple of length 2 specifying which clusters to compare
-        cl_present: a data frame of gene detection proportions (genes x clusters) 
-        cl_means: a data frame of normalized mean gene expression values (genes x clusters)
+        cl_present: a data frame of gene detection proportions ( clusters x genes) 
+        cl_means: a data frame of normalized mean gene expression values ( clusters x genes)
         cl.size: a dict of cluster sizes
 
         Returns
@@ -91,8 +91,12 @@ def de_pair_chisq(pair: tuple,
     if isinstance(cl_means, pd.Series):
         cl_means = cl_means.to_frame()
 
-    cl_present_sorted = cl_present.sort_index()
-    cl_means_sorted = cl_means.sort_index()
+    # transpose cl_present and cl_means to genes x clusters
+    cl_present_transposed = cl_present.T
+    cl_means_transposed = cl_means.T
+
+    cl_present_sorted = cl_present_transposed.sort_index()
+    cl_means_sorted = cl_means_transposed.sort_index()
 
     if not cl_present_sorted.index.equals(cl_means_sorted.index):
         raise ValueError("The indices (genes) of the cl_means and the cl_present do not match")
@@ -107,7 +111,7 @@ def de_pair_chisq(pair: tuple,
 
     de_statistics_chisq = pd.DataFrame(
         {
-            "gene": cl_present.index.to_list(),
+            "gene": cl_present_sorted.index.to_list(),
             "p_adj": p_adj,
             "p_value": p_vals,
             "lfc": lfc,

@@ -30,7 +30,7 @@ def genes():
 @pytest.fixture
 def cl_present(genes):
     """
-        cluster present
+        cluster present (clusters x genes)
     """
     cl_present_1 = np.array([0.05882353,1.00000000,0.76470588,0.17647059,0.17647059,0.94117647,0.35294118,0.00000000,
                         0.00000000,0.88235294,1.00000000,0.00000000,0.64705882,0.94117647,0.70588235,0.58823529])
@@ -41,12 +41,12 @@ def cl_present(genes):
 
     cl_present = pd.DataFrame(np.array([cl_present_1, cl_present_2]).T, columns=["1","2"], index = genes)
     
-    return cl_present
+    return cl_present.T
 
 @pytest.fixture
 def cl_means(genes):
     """
-        cluster means
+        cluster means (clusters x genes)
     """
     cl_means_1 = np.array([0.10808219,6.14949347,3.66000008,0.71396599,1.15847955,6.07548490,1.64339128,0.00000000,
                      0.00000000,5.31713514,6.71461990,0.00000000,2.47119911,4.47269010,3.49215706,2.66427980])
@@ -57,7 +57,7 @@ def cl_means(genes):
 
     cl_means = pd.DataFrame(np.array([cl_means_1, cl_means_2]).T, columns=["1","2"], index = genes)
     
-    return cl_means
+    return cl_means.T
 
 @pytest.fixture
 def cl_size():
@@ -115,7 +115,7 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
         test vec_chisq_test func
     """
     pair = pair
-    cl_present = cl_present
+    cl_present = cl_present.T
     cl_present_sorted = cl_present.sort_index()
     cl_size = cl_size
 
