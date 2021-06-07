@@ -145,8 +145,7 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
         test vec_chisq_test func
     """
     pair = pair
-    cl_present = cl_present.T
-    cl_present_sorted = cl_present.sort_index()
+    cl_present = cl_present
     cl_size = cl_size
 
     expected_chisq_result = expected_chisq_pair_statistics
@@ -156,7 +155,7 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     second_cluster = pair[1]
 
     p_vals = vec_chisq_test(pair,
-                            cl_present_sorted,
+                            cl_present,
                             cl_size)
 
     np.testing.assert_allclose(p_vals,

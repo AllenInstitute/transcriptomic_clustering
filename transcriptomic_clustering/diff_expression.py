@@ -18,7 +18,7 @@ def vec_chisq_test(pair: tuple,
         Parameters
         ----------
         pair: a tuple of length 2 specifying which clusters to compare
-        cl_present: a data frame of gene detection proportions (genes x clusters)
+        cl_present: a data frame of gene detection proportions (clusters x genes)
         cl_size: a dict of cluster sizes
 
         Returns
@@ -28,6 +28,8 @@ def vec_chisq_test(pair: tuple,
     """
     first_cluster = pair[0]
     second_cluster = pair[1]
+
+    cl_present = cl_present.T
 
     cl1_ncells_per_gene = cl_present[first_cluster].to_numpy()*cl_size[first_cluster]
     cl1_ncells = cl_size[first_cluster]
@@ -103,7 +105,7 @@ def de_pair_chisq(pair: tuple,
         raise ValueError("The indices (genes) of the cl_means and the cl_present do not match")
 
     p_vals = vec_chisq_test(pair, 
-                            cl_present_sorted,
+                            cl_present_sorted.T,
                             cl_size)
     
     rejected,p_adj = fdrcorrection(p_vals)
