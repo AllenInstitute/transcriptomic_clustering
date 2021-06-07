@@ -2,11 +2,15 @@ from typing import Optional, Tuple, List, Dict, Union, Any
 from numpy.core.fromnumeric import var
 from numpy.typing import ArrayLike
 
+import warnings
+
 import numpy as np
 import pandas as pd
+from pandas.core.algorithms import isin
 import scanpy as sc
 from scipy import stats
 from scipy.stats.mstats import winsorize
+from scipy.special import digamma, polygamma
 from statsmodels.stats.multitest import fdrcorrection
 
 
@@ -28,13 +32,58 @@ by recognizing
 
 """
 
+def trigamma_inverse(x, tol=1e-08, iter_limit=50):
+    """Newton's method to solve trigamma inverse"""
+    y = 0.5 + 1 / x
+    for i in range(iter_limit):
+        tri = polygamma(1, y)
+        diff = tri * (1 - tri / x) / polygamma(2, y)
+        y += diff
+        print(f'y{i}: {y}, diff: {diff}')
+        if np.max(-diff / y) < tol:
+            break
+    else:
+        warnings.warn(
+            "trigamma_inverse iteration limit ({iter_limit}) exceeded"
+        )
+    return y
 
+
+def fit_f_dist(x: ArrayLike, df1: ArrayLike):
+    """
+    Method of moments to fit f-distribution
+    
+    Parameters
+    ----------
+    x: samples
+    df1: degrees of freedom
+    
+    Returns
+    -------
+    df2, scale parameters for f-distribution
+    """
+    z = np.log(x)
+    e = z - digamma(df1 / 2) + np.log(df1 / 2)
+
+    e_mean = np.mean(e)
+    e_var = np.var(e, ddof=1)
+
+    e_var -= np.mean(polygamma(1, df1 / 2))
+
+    if e_var > 0:
+        df2 = 2 * trigamma_inverse(e_var)
+        scale = np.exp(e_mean + digamma(df2 / 2) - np.log(df2 / 2))
+    else:
+        df2 = np.inf
+        scale = np.exp(e_mean)
+
+    return df2, scale
 
 
 def moderate_variance(
         variance: pd.DataFrame,
         df: int,
-        winsor_limits: Optional[Tuple(float,float)]=(0.05,0.1),
+        winsor_limits: Optional[Tuple[float,float]]=(0.05,0.1),
     ):
     """
     Moderated variances 
@@ -55,17 +104,20 @@ def moderate_variance(
     
     Returns
     -------
-    moderated (posterior) variances, prior variance, prior degrees of freedom
+    pd.DataFrame moderated (posterior) variances
+    float prior variance
+    float prior degree of freedom
     """
 
+    var = np.squeeze(variance.to_numpy())
     if winsor_limits is not None:
-        var_winz = winsorize(variance, limits=winsor_limits)
-        var_winz = pd.DataFrame(var_winz, index=variance.index, columns=variance.columns)
-    else:
-        var_winz = variance
-    
-    df, df_prior, var_prior, _ = stats.f.fit(var_winz, fdfn=df, floc=np.zeros(var_winz.shape))
-    var_post = (df_prior * var_prior + df * var_winz) / (df + df_prior)
+        var = winsorize(var, limits=winsor_limits)
+
+    df_prior, var_prior = fit_f_dist(var, df)
+    # _, df_prior, _, var_prior = stats.f.fit(var, fdfn=df, floc=np.zeros(var.shape))
+    var_post = (df_prior * var_prior + df * var) / (df + df_prior)
+
+    var_post = pd.DataFrame(var_post, index=variance.index)
 
     return var_post, var_prior, df_prior
 
@@ -92,12 +144,12 @@ def get_linear_fit_vals(cl_var: pd.DataFrame, cl_size: Dict[Any, int]):
     return sigma_sq, df, stdev_unscaled
 
 
-def de_pairs_ebayes_statistic(
+def de_pairs_ebayes(
         pairs: List[Tuple[Any, Any]],
         cl_means: pd.DataFrame,
         cl_means_sq: pd.DataFrame,
         cl_size: Dict[Any, int],
-        winsor_limits: Optional[Tuple(float,float)]=(0.05,0.1),
+        winsor_limits: Optional[Tuple[float,float]]=(0.05,0.1),
     ):
     """
     Computes moderated t-statistics for pairs of cluster
