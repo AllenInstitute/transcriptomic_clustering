@@ -29,11 +29,9 @@ def vec_chisq_test(pair: tuple,
     first_cluster = pair[0]
     second_cluster = pair[1]
 
-    cl_present = cl_present.T
-
-    cl1_ncells_per_gene = cl_present[first_cluster].to_numpy()*cl_size[first_cluster]
+    cl1_ncells_per_gene = cl_present.loc[first_cluster]*cl_size[first_cluster]
     cl1_ncells = cl_size[first_cluster]
-    cl2_ncells_per_gene = cl_present[second_cluster].to_numpy()*cl_size[second_cluster]
+    cl2_ncells_per_gene = cl_present.loc[second_cluster]*cl_size[second_cluster]
     cl2_ncells = cl_size[second_cluster]
 
     n_genes = cl1_ncells_per_gene.shape[0]
@@ -86,44 +84,39 @@ def de_pair_chisq(pair: tuple,
     if len(pair) != 2:
         raise ValueError("The pair must contain two cluster labels")
 
-    first_cluster = pair[0]
-    second_cluster = pair[1]
+    first_cluster, second_cluster = pair
 
     if isinstance(cl_present, pd.Series):
         cl_present = cl_present.to_frame()
     if isinstance(cl_means, pd.Series):
         cl_means = cl_means.to_frame()
 
-    # transpose cl_present and cl_means to genes x clusters
-    cl_present_transposed = cl_present.T
-    cl_means_transposed = cl_means.T
+    cl_present_sorted = cl_present[sorted(cl_present.columns)]
+    cl_means_sorted = cl_means[sorted(cl_means.columns)]
 
-    cl_present_sorted = cl_present_transposed.sort_index()
-    cl_means_sorted = cl_means_transposed.sort_index()
-
-    if not cl_present_sorted.index.equals(cl_means_sorted.index):
-        raise ValueError("The indices (genes) of the cl_means and the cl_present do not match")
+    if not len(cl_present.columns.difference(cl_means.columns)) == 0:
+        raise ValueError("genes names of the cl_means and the cl_present do not match")
 
     p_vals = vec_chisq_test(pair, 
-                            cl_present_sorted.T,
+                            cl_present_sorted,
                             cl_size)
     
     rejected,p_adj = fdrcorrection(p_vals)
 
-    lfc = cl_means_sorted[first_cluster].to_numpy() - cl_means_sorted[second_cluster].to_numpy()
+    lfc = cl_means_sorted.loc[first_cluster].to_numpy() - cl_means_sorted.loc[second_cluster].to_numpy()
 
-    q1 = cl_present_sorted[first_cluster].to_numpy()
-    q2 = cl_present_sorted[second_cluster].to_numpy()
+    q1 = cl_present_sorted.loc[first_cluster].to_numpy()
+    q2 = cl_present_sorted.loc[second_cluster].to_numpy()
     qdiff = get_qdiff(q1, q2)
 
     de_statistics_chisq = pd.DataFrame(
         {
-            "gene": cl_present_sorted.index.to_list(),
+            "gene": cl_present_sorted.columns.to_list(),
             "p_adj": p_adj,
             "p_value": p_vals,
             "lfc": lfc,
-            "meanA": cl_means_sorted[first_cluster].to_numpy(),
-            "meanB": cl_means_sorted[second_cluster].to_numpy(),
+            "meanA": cl_means_sorted.loc[first_cluster].to_numpy(),
+            "meanB": cl_means_sorted.loc[second_cluster].to_numpy(),
             "q1": q1,
             "q2": q2,
             "qdiff": qdiff,

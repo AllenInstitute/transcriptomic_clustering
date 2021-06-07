@@ -151,8 +151,6 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     expected_chisq_result = expected_chisq_pair_statistics
     expected_p_vals = expected_chisq_result['p_value'].to_numpy()
 
-    first_cluster = pair[0]
-    second_cluster = pair[1]
 
     p_vals = vec_chisq_test(pair,
                             cl_present,
@@ -163,7 +161,6 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
                             rtol=1e-06,
                             atol=1e-06,
                             )
-
 
 def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_statistics):
     """
