@@ -1,11 +1,16 @@
 import pytest
-
+import os
 import numpy as np
 import pandas as pd
-import scanpy as sc
-from pandas.util.testing import assert_frame_equal
 
 import transcriptomic_clustering as tc
+from transcriptomic_clustering.diff_expression import (
+    filter_gene_stats,
+    calc_de_score,
+    get_qdiff,
+    vec_chisq_test
+)
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 @pytest.fixture
 def pair():
@@ -95,6 +100,10 @@ def expected_chisq_pair_statistics(genes):
                 0.85714286, 0.47619048, 0., 0., 0.76190476, 0.9047619 , 0., 0.47619048, 
                 0.66666667, 0.57142857, 0.66666667])
 
+    qdiff = np.array([0.19047616, 0.04761905, 0.62637362, 0.0735294,  0.19047621, 0.08928571,
+                0.25882353, 0., 0., 0.13650794, 0.0952381, 0.,  0.26406925, 0.29166666,
+                0.19047619, 0.11764707])
+
     expected_chisq_result = pd.DataFrame(
         {
             "gene": genes,
@@ -104,11 +113,32 @@ def expected_chisq_pair_statistics(genes):
             "meanA": meanA,
             "meanB": meanB,
             "q1": q1,
-            "q2": q2
+            "q2": q2,
+            "qdiff": qdiff
         })
     expected_chisq_result.set_index("gene")
 
     return expected_chisq_result
+
+
+@pytest.fixture
+def de_stats():
+    de_stats_csv = os.path.join(DATA_DIR, "de_stats.csv")
+
+    return pd.read_csv(de_stats_csv, index_col='gene')
+
+
+@pytest.fixture
+def thresholds():
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': 0.7,
+        'min_cell_thresh': 4,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.01,
+        'lfc_thresh': 1.0
+    }
+    return thresholds
 
 def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics):
     """
@@ -125,7 +155,7 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     first_cluster = pair[0]
     second_cluster = pair[1]
 
-    p_vals = tc.vec_chisq_test(pair,
+    p_vals = vec_chisq_test(pair,
                             cl_present_sorted,
                             cl_size)
 
@@ -134,6 +164,7 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
                             rtol=1e-06,
                             atol=1e-06,
                             )
+
 
 def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_statistics):
     """
@@ -145,13 +176,78 @@ def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_
     cl_means = cl_means
     cl_size = cl_size
 
-    expected_chisq_result = expected_chisq_pair_statistics
+    expected_de_stats = expected_chisq_pair_statistics
+    obtained_de_stats = tc.de_pair_chisq(pair, cl_present, cl_means, cl_size)
 
-    de_statistics_chisq = tc.de_pair_chisq(pair, cl_present, cl_means, cl_size)
+    pd.testing.assert_frame_equal(expected_de_stats, obtained_de_stats)
 
-    try:
-        assert_frame_equal(de_statistics_chisq, expected_chisq_result)
-        return True
-    except:
-        return False
 
+def test_filter_up_regulated_gene_stats(de_stats,thresholds):
+
+    expected_genes = ['Elovl2', 'Iqsec1', 'Prdm16']
+
+    obtained_genes = filter_gene_stats(
+        de_stats=de_stats,
+        gene_type='up-regulated',
+        cl1_size=10,
+        cl2_size=5,
+        **thresholds
+    ).index.values
+
+    assert set(expected_genes) == set(obtained_genes)
+
+
+def test_filter_down_regulated_gene_stats(de_stats,thresholds):
+
+    expected_genes = ['Fam5c', '3632451O06Rik', 'Tspan2', 'Bcas1', 'Qpct']
+
+    obtained_genes = filter_gene_stats(
+        de_stats=de_stats,
+        gene_type='down-regulated',
+        cl1_size=10,
+        cl2_size=5,
+        **thresholds
+    ).index.values
+
+    assert set(expected_genes) == set(obtained_genes)
+
+
+def test_get_qdiff():
+
+    expected = np.array([(0.6 - 0.4)/0.6])
+    obtained = get_qdiff(np.array([0.4]), np.array([0.6]))
+    assert np.isclose(expected, obtained)
+
+
+def test_calc_de_score():
+
+    padj = np.array([0.5, 0.5])
+    expected_score = -2*np.log10(0.5)
+    obtained_score = calc_de_score(padj)
+    assert np.isclose(expected_score,obtained_score)
+
+
+def test_calc_de_score_for_pair(de_stats,thresholds):
+
+    de_stats_up_genes = filter_gene_stats(
+        de_stats=de_stats,
+        gene_type='up-regulated',
+        cl1_size=10,
+        cl2_size=5,
+        **thresholds
+    )
+    up_score = calc_de_score(de_stats_up_genes['p_adj'])
+
+    de_stats_down_genes = filter_gene_stats(
+        de_stats=de_stats,
+        gene_type='down-regulated',
+        cl1_size=10,
+        cl2_size=5,
+        **thresholds
+    )
+    down_score = calc_de_score(de_stats_down_genes['p_adj'])
+
+    expected_score = 16.936848586
+    obtained_score = up_score + down_score
+
+    assert np.isclose(expected_score, obtained_score)

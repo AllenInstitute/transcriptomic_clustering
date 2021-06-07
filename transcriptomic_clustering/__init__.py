@@ -26,4 +26,5 @@ from .projection import project
 from .louvain import cluster_louvain
 from .filter_known_modes import filter_known_modes
 from .hierarchical_sorting import hclust
-from .de_pair_chisq import de_pair_chisq, vec_chisq_test
+from .diff_expression import de_pair_chisq, vec_chisq_test
+
