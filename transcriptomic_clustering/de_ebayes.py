@@ -13,6 +13,8 @@ from scipy.stats.mstats import winsorize
 from scipy.special import digamma, polygamma
 from statsmodels.stats.multitest import fdrcorrection
 
+from .diff_expression import get_qdiff, filter_gene_stats, calc_de_score
+
 
 
 """
@@ -83,7 +85,6 @@ def fit_f_dist(x: ArrayLike, df1: ArrayLike):
 def moderate_variance(
         variance: pd.DataFrame,
         df: int,
-        winsor_limits: Optional[Tuple[float,float]]=(0.05,0.1),
     ):
     """
     Moderated variances 
@@ -91,7 +92,6 @@ def moderate_variance(
     - Assume each gene's variance is sampled from a 
       scaled inverse chi-square prior distribution
       with degrees of freedom d0 and location s_0^2 (sigma_0 squared)
-    - Winsorize variances if desired
     - Fit fDist to get prior variance
     - Get posterior variance from sample variance and prior variance 
     
@@ -100,7 +100,6 @@ def moderate_variance(
     ----------
     variances: sample variances (index = gene)
     df: degrees of freedom
-    winsor_limits: upper and lower decimal percentile limits for winsorize, or None to skip winsorizing
     
     Returns
     -------
@@ -110,8 +109,6 @@ def moderate_variance(
     """
 
     var = np.squeeze(variance.to_numpy())
-    if winsor_limits is not None:
-        var = winsorize(var, limits=winsor_limits)
 
     df_prior, var_prior = fit_f_dist(var, df)
     # _, df_prior, _, var_prior = stats.f.fit(var, fdfn=df, floc=np.zeros(var.shape))
@@ -148,8 +145,9 @@ def de_pairs_ebayes(
         pairs: List[Tuple[Any, Any]],
         cl_means: pd.DataFrame,
         cl_means_sq: pd.DataFrame,
+        cl_present: pd.DataFrame,
         cl_size: Dict[Any, int],
-        winsor_limits: Optional[Tuple[float,float]]=(0.05,0.1),
+        de_thresholds: Dict[str, Any],
     ):
     """
     Computes moderated t-statistics for pairs of cluster
@@ -169,18 +167,19 @@ def de_pairs_ebayes(
     cl_means: dataframe with index = cluster name, columns = genes,
               values = cluster mean gene expression square (E[X^2])
     cl_size: dict of cluster name: number of observations in cluster
-    winsor_limits: upper and lower decimal percentile limits
-                   for winsorize gene variances, or None to skip winsorizing
+    de_thresholds: thresholds for filter de
 
     Returns
     -------
-    Dataframe with index = cluster_pair and columns = de score
+    Dict with key: cluster_pair, value: dict of de values
     """
     cl_vars = get_cl_var(cl_means, cl_means_sq)
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
-    sigma_sq_post, var_prior, df_prior = moderate_variance(sigma_sq, df, winsor_limits=winsor_limits)
+    sigma_sq_post, var_prior, df_prior = moderate_variance(sigma_sq, df)
 
+    de_pairs = {}
     for (cluster_a, cluster_b) in pairs:
+        # t-test with ebayes adjusted variances
         means_diff = cl_means.loc[cluster_a] - cl_means.loc[cluster_b]
         stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))
         
@@ -196,9 +195,43 @@ def de_pairs_ebayes(
         _, p_adj = fdrcorrection(p_vals)
         lfc = means_diff
 
+        # Get DE score
         de_pair_stats = pd.DataFrame(index=cl_means.columns)
         de_pair_stats['p_value'] = p_vals
         de_pair_stats['p_adj'] = p_adj
         de_pair_stats['lfc'] = lfc
-        
-        # TODO: filter and compute de score, append to a pair list
+        de_pair_stats["meanA"] = cl_means.loc[cluster_a]
+        de_pair_stats["meanB"] = cl_means.loc[cluster_b]
+        de_pair_stats["q1"] = cl_present.loc[cluster_a]
+        de_pair_stats["q2"] = cl_present.loc[cluster_b]
+        de_pair_stats["qdiff"] = get_qdiff(cl_present.loc[cluster_a], cl_present.loc[cluster_b])
+
+        de_pair_up = filter_gene_stats(
+            de_stats=de_pair_stats,
+            gene_type='up-regulated', 
+            cl1_size=cl_size[cluster_a],
+            cl2_size=cl_size[cluster_b]
+            **de_thresholds
+        )
+        up_score = calc_de_score(de_pair_up['p_adj'])
+
+        de_pair_down = filter_gene_stats(
+            de_stats=de_pair_stats,
+            gene_type='down-regulated',
+            cl1_size=cl_size[cluster_a],
+            cl2_size=cl_size[cluster_b],
+            **de_thresholds
+        )
+        down_score = calc_de_score(de_pair_down['p_adj'])
+
+        de_pairs[(cluster_a, cluster_b)] = {
+            'score': up_score + down_score,
+            'up_score': up_score,
+            'down_score': down_score,
+            'up_genes': de_pair_up.index,
+            'down_genes': de_pair_down.index,
+            'up_num': len(de_pair_up.index),
+            'down_num': len(de_pair_down.index),
+            'num': len(de_pair_up.index) + len(de_pair_down.index)
+        }
+    return de_pairs
