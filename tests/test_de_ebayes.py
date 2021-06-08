@@ -9,24 +9,22 @@ from numpy.testing import assert_allclose
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.de_ebayes import moderate_variances, get_linear_fit_vals, de_pairs_ebayes
 
-@pytest.fixture
-def one_cluster_stats():
-    index = [f'gene{i}' for i in range(20)]
-    
-    vars = np.asarray([20,25,10,15,25,30,110,30,15,20,20,25,30,15,25,20,20,25,15,10])
-    means = np.asarray([100, 150, 100, 90, 110, 50, 75, 125, 130, 140, 70, 150, 60, 50, 110, 100, 90, 120, 80, 100])
-    means_sq = vars + np.square(means)
-    present = np.asarray([0.25, 0.1, 0.5, 0.8, 0.8, 0.9, 0.75, 0.5, 0.25, 0.1, 0.05, 0.001, 0.4, 0.4, 0.3, 0.7, 0.8, 0.9, 0.99, 0.95])
 
-    return {
-        'means': pd.DataFrame(means, index=index),
-        'means_sq': pd.DataFrame(means_sq, index=index),
-        'vars': pd.DataFrame(vars, index=index),
-        'present': pd.DataFrame(present, index=index)
+@pytest.fixture
+def thresholds():
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': 0.7,
+        'min_cell_thresh': 4,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.01,
+        'lfc_thresh': 1.0
     }
+    return thresholds
+
 
 @pytest.fixture
-def cl_vars_size_df():
+def cl_stats():
     index = ['a','b','c']
     columns = [f'gene{i}' for i in range(20)]
     tmp_var = np.asarray([20,25,10,15,25,30,110,30,15,20,20,25,30,15,25,20,20,25,15,10])
@@ -34,13 +32,40 @@ def cl_vars_size_df():
         tmp_var,
         tmp_var + 5,
         tmp_var - 5,
-        ])
+    ])
     vars = pd.DataFrame(vars, index=index, columns=columns)
+    
+    tmp_mean = np.asarray([100, 150, 100, 90, 110, 50, 75, 125, 130, 140, 70, 150, 60, 50, 110, 100, 90, 120, 80, 100])
+    means = np.asarray([
+        tmp_mean,
+        tmp_mean - 20,
+        tmp_mean - 100
+    ])
+    means = pd.DataFrame(means, index=index, columns=columns)
+
+    means_sq = vars + np.square(means)
+    means_sq = pd.DataFrame(means_sq, index=index, columns=columns)
+
+    tmp_present = np.asarray([0.25, 0.1, 0.5, 0.8, 0.8, 0.9, 0.75, 0.5, 0.25, 0.1, 0.05, 0.001, 0.4, 0.4, 0.3, 0.7, 0.8, 0.9, 0.99, 0.95])
+    present = np.asarray([
+        tmp_present,
+        tmp_present + tmp_present * 0.1,
+        1 - tmp_present,
+    ])
+    present = pd.DataFrame(present, index=index, columns=columns)
+
     df = 15
     cl_size = {'a': 5,
                'b': 10,
                'c': 3}
-    return (vars, cl_size, df)
+    return {
+        'cl_means': means,
+        'cl_means_sq': means_sq,
+        'cl_present': present,
+        'cl_vars': vars,
+        'cl_size': cl_size,
+        'df': df
+    }
 
 
 # def test_moderate_variance_robust():
@@ -92,10 +117,12 @@ def test_moderate_variances_not_robust():
     assert_frame_equal(var_post, var_post_expected)
 
 
-def test_get_linear_fit_vals(cl_vars_size_df):
+def test_get_linear_fit_vals(cl_stats):
     """Verify calculated sigma's and degrees of freedom match
     scrattch.hicat/dev_zy's simple lmFit()"""
-    vars, cl_size, df_expected = cl_vars_size_df
+    vars = cl_stats['cl_vars']
+    cl_size = cl_stats['cl_size']
+    df_expected = cl_stats['df']
     
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(vars, cl_size)
 
@@ -113,3 +140,18 @@ def test_get_linear_fit_vals(cl_vars_size_df):
     assert_frame_equal(sigma_sq, sigma_sq_expected)
 
 
+def test_de_pairs_ebayes(cl_stats, thresholds):
+    cl_means = cl_stats['cl_means']
+    cl_means_sq = cl_stats['cl_means_sq']
+    cl_present = cl_stats['cl_present']
+    cl_size = cl_stats['cl_size']
+
+    de_pairs = de_pairs_ebayes(
+        [('a','b'),('a','c'),('b','c')],
+        cl_means, cl_means_sq, cl_present, cl_size, thresholds
+    )
+
+    up_genes_expected = ['gene3', 'gene4', 'gene5', 'gene16', 'gene17', 'gene18', 'gene19']
+
+    assert de_pairs[('a','c')]['score'] == 75.67076561558603
+    assert set(de_pairs[('a','c')]['up_genes']) == set(up_genes_expected)
