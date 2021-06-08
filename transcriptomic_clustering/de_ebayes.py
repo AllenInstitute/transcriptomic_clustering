@@ -39,7 +39,6 @@ def trigamma_inverse(x, tol=1e-08, iter_limit=50):
         tri = polygamma(1, y)
         diff = tri * (1 - tri / x) / polygamma(2, y)
         y += diff
-        print(f'y{i}: {y}, diff: {diff}')
         if np.max(-diff / y) < tol:
             break
     else:

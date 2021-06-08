@@ -53,10 +53,6 @@ def test_moderate_variances_not_robust():
     )
 
     var_post, var_prior, df_prior = moderate_variance(var, df, winsor_limits=None)
-    
-    print(f'df_prior: {df_prior}, expected: {df_prior_expected}')
-    print(f'var_prior: {var_prior}, expected: {var_prior_expected}')
-    print(f'var_post: {var_post}, expected: {var_post_expected}')
 
     assert_allclose(df_prior, df_prior_expected)
     assert_allclose(var_prior, var_prior_expected)
