@@ -179,17 +179,18 @@ def de_pairs_ebayes(
     for (cluster_a, cluster_b) in pairs:
         # t-test with ebayes adjusted variances
         means_diff = cl_means.loc[cluster_a] - cl_means.loc[cluster_b]
-        stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))
+        means_diff = means_diff.to_frame()
+        stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))[0]
         
         df_total = df + df_prior
         df_pooled = np.sum(df)
-        df_total = np.min(df_total, df_pooled)
+        df_total = min(df_total, df_pooled)
         
-        t_vals = -np.abs(means_diff / stdev_unscaled_comb / np.sqrt(sigma_sq_post))
+        t_vals = -np.abs(means_diff / np.sqrt(sigma_sq_post) )
         
-        p_vals = np.ones(t_vals.shape)
-        for i, t in enumerate(t_vals):
-            p_vals[i] = 1 - stats.t.cdf(t, df_total)
+        p_vals = np.ones((len(t_vals),))
+        for i, t in enumerate(t_vals[0]):
+            p_vals[i] = 2 * stats.t.cdf(t, df_total)
         _, p_adj = fdrcorrection(p_vals)
         lfc = means_diff
 
@@ -208,7 +209,7 @@ def de_pairs_ebayes(
             de_stats=de_pair_stats,
             gene_type='up-regulated', 
             cl1_size=cl_size[cluster_a],
-            cl2_size=cl_size[cluster_b]
+            cl2_size=cl_size[cluster_b],
             **de_thresholds
         )
         up_score = calc_de_score(de_pair_up['p_adj'])
