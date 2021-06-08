@@ -6,10 +6,8 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from pandas.core.algorithms import isin
 import scanpy as sc
 from scipy import stats
-from scipy.stats.mstats import winsorize
 from scipy.special import digamma, polygamma
 from statsmodels.stats.multitest import fdrcorrection
 
