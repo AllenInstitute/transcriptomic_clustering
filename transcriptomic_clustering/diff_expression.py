@@ -5,6 +5,7 @@ import pandas as pd
 import scanpy as sc
 from scipy import stats
 from statsmodels.stats.multitest import fdrcorrection
+import warnings
 
 import sys
 
@@ -50,7 +51,7 @@ def vec_chisq_test(pair: tuple,
             chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
         except:
-            print("chi2 exception catched, p value will be assigned to 1")
+            warnings.warn("chi2 exception caught, p value will be assigned to 1")
     
     return p_vals
 
