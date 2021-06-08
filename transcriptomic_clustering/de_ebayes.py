@@ -79,8 +79,8 @@ def fit_f_dist(x: ArrayLike, df1: ArrayLike):
     return df2, scale
 
 
-def moderate_variance(
-        variance: pd.DataFrame,
+def moderate_variances(
+        variances: pd.DataFrame,
         df: int,
     ):
     """
@@ -105,37 +105,38 @@ def moderate_variance(
     float prior degree of freedom
     """
 
-    var = np.squeeze(variance.to_numpy())
+    var = np.squeeze(variances.to_numpy())
 
     df_prior, var_prior = fit_f_dist(var, df)
     # _, df_prior, _, var_prior = stats.f.fit(var, fdfn=df, floc=np.zeros(var.shape))
     var_post = (df_prior * var_prior + df * var) / (df + df_prior)
 
-    var_post = pd.DataFrame(var_post, index=variance.index)
+    var_post = pd.DataFrame(var_post, index=variances.index)
 
     return var_post, var_prior, df_prior
 
 
-def get_cl_var(cl_mean: pd.DataFrame, cl_mean_sq: pd.DataFrame):
+def get_cl_vars(cl_mean: pd.DataFrame, cl_mean_sq: pd.DataFrame):
     """
     Computes variances as E[x^2] - E[x]^2
     """
     if not(cl_mean.index.equals(cl_mean_sq.index)):
         raise ValueError(f'cl_mean and cl_mean_sq must have same index')
     # TODO: may suffer from precision issues, may need different method
-    return cl_mean_sq - cl_mean ** 2 
+    return cl_mean_sq - np.square(cl_mean)
 
 
-def get_linear_fit_vals(cl_var: pd.DataFrame, cl_size: Dict[Any, int]):
+def get_linear_fit_vals(cl_vars: pd.DataFrame, cl_size: Dict[Any, int]):
     """
     Directly computes sigma squared, degrees of freedom, and stdev_unscaled
     for a linear fit of clusters from cluster variances and cluster size
     """
-    cl_size_v = np.asarray([cl_size[clust] for clust in cl_var.index])
+    cl_size_v = np.asarray([cl_size[clust] for clust in cl_vars.index])
     df = cl_size_v.sum() - len(cl_size_v)
-    sigma_sq = cl_size_v @ cl_var / df
-    stdev_unscaled = pd.DataFrame(1 / np.sqrt(cl_size_v), index=cl_var.index)
-    return sigma_sq, df, stdev_unscaled
+    sigma_sq = cl_vars.T @ cl_size_v / df
+
+    stdev_unscaled = pd.DataFrame(1 / np.sqrt(cl_size_v), index=cl_vars.index)
+    return sigma_sq.to_frame(), df, stdev_unscaled
 
 
 def de_pairs_ebayes(
@@ -170,9 +171,9 @@ def de_pairs_ebayes(
     -------
     Dict with key: cluster_pair, value: dict of de values
     """
-    cl_vars = get_cl_var(cl_means, cl_means_sq)
+    cl_vars = get_cl_vars(cl_means, cl_means_sq)
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
-    sigma_sq_post, var_prior, df_prior = moderate_variance(sigma_sq, df)
+    sigma_sq_post, var_prior, df_prior = moderate_variances(sigma_sq, df)
 
     de_pairs = {}
     for (cluster_a, cluster_b) in pairs:
