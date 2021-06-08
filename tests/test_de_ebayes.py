@@ -52,12 +52,11 @@ def test_moderate_variances_not_robust():
         index=var.index
     )
 
-    var_post, var_prior, df_prior = moderate_variance(var, df, winsor_limits=None)
+    var_post, var_prior, df_prior = moderate_variance(var, df)
 
     assert_allclose(df_prior, df_prior_expected)
     assert_allclose(var_prior, var_prior_expected)
     assert_frame_equal(var_post, var_post_expected)
-    assert False
 
 # def test_get_linear_fit_vals():
 #     """Verify calculated sigma's and degrees of freedom match
