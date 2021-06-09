@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy import stats
-from statsmodels.stats.multitest import fdrcorrection
+import statsmodels.stats.multitest as multi
 
 import sys
 
@@ -43,15 +43,16 @@ def vec_chisq_test(pair: tuple,
     cl2_absent = cl2_ncells - cl2_present
 
     observed = np.array([cl1_present, cl1_absent, cl2_present, cl2_absent])
-
+    print(observed)
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
         try:
+            print(observed[:,i].reshape(2,2))
             chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
+            print(p_value)
         except:
-            print("chi2 exception catched, p value will be assigned to 1")
-    
+            print(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
     return p_vals
 
 def de_pair_chisq(pair: tuple, 
@@ -80,7 +81,6 @@ def de_pair_chisq(pair: tuple,
             q2: proportion of cells expressing each gene for the second cluster
 
     """
-
     if len(pair) != 2:
         raise ValueError("The pair must contain two cluster labels")
 
@@ -101,8 +101,7 @@ def de_pair_chisq(pair: tuple,
                             cl_present_sorted,
                             cl_size)
     
-    rejected,p_adj = fdrcorrection(p_vals)
-
+    reject, p_adj, _, _ = multi.multipletests(p_vals, method="holm", is_sorted=False)
     lfc = cl_means_sorted.loc[first_cluster].to_numpy() - cl_means_sorted.loc[second_cluster].to_numpy()
 
     q1 = cl_present_sorted.loc[first_cluster].to_numpy()
@@ -195,6 +194,8 @@ def filter_gene_stats(
         mask &= de_stats[qa] > q1_thresh
     if cl_size:
         mask &= de_stats[qa] * cl_size >= min_cell_thresh
+    print("mask")
+    print(mask)
     if q2_thresh:
         mask &= de_stats[qb] < q2_thresh
     if qdiff_thresh:
