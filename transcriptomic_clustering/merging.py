@@ -7,6 +7,10 @@ import logging
 from collections import defaultdict
 import warnings
 import transcriptomic_clustering as tc
+from transcriptomic_clustering.diff_expression import (\
+    filter_gene_stats,
+    calc_de_score
+)
 
 def merge_clusters(
         adata_norm: ad.AnnData,
@@ -333,6 +337,15 @@ def get_de_scores_for_pairs(
     """
 
     scores = []
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': None,
+        'min_cell_thresh': 6,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.05,
+        'lfc_thresh': 1.0
+    }
+
     for pair in pairs:
         if de_method == 'chisq':
             # TODO: This function is still in PR
@@ -344,7 +357,25 @@ def get_de_scores_for_pairs(
 
         # Calculate de score
         # TODO: This function is not implemented yet
-        score = tc.get_de_score(de_stats)
+        first_cluster, second_cluster = pair
+        de_stats_up_genes = filter_gene_stats(
+            de_stats=de_stats,
+            gene_type='up-regulated',
+            cl1_size=cl_size[first_cluster],
+            cl2_size=cl_size[second_cluster],
+            **thresholds
+        )
+        up_score = calc_de_score(de_stats_up_genes['p_adj'])
+        de_stats_down_genes = filter_gene_stats(
+            de_stats=de_stats,
+            gene_type='down-regulated',
+            cl1_size=cl_size[first_cluster],
+            cl2_size=cl_size[second_cluster],
+            **thresholds
+        )
+        down_score = calc_de_score(de_stats_down_genes['p_adj'])
+        score = up_score + down_score
+
         scores.append(score)
 
     scores_df = pd.DataFrame(scores, columns=['score'], index=pairs)
@@ -397,7 +428,7 @@ def merge_clusters_by_de(
         # Use updated cluster means in reduced space to get nearest neighbors for each cluster
         # Steps 1-3
         neighbor_pairs = get_k_nearest_clusters(cluster_means_rd, k)
-
+        neighbor_pairs = order_neighbors(neighbor_pairs)
         if len(neighbor_pairs) == 0:
             break
 
@@ -432,8 +463,8 @@ def merge_clusters_by_de(
 
             # Update cluster means and cluster assignments
             merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, present_cluster_means)
-            merged_clusters.append(src_label)
-            merged_clusters.append(dst_label)
+            merged_clusters.add(src_label)
+            merged_clusters.add(dst_label)
 
             # Merge cluster sizes
             cl_size[dst_label] += cl_size[src_label]
@@ -490,6 +521,20 @@ def get_k_nearest_clusters(
                 nearest_neighbors.add((c, neighbor_cl))
 
     return list(nearest_neighbors)
+
+
+def order_neighbors(neighbor_pairs):
+
+    ordered_pairs = []
+
+    for p in neighbor_pairs:
+        a, b = p
+        if b > a:
+            ordered_pairs.append((a, b))
+        else:
+            ordered_pairs.append((b, a))
+
+    return ordered_pairs
 
 
 def get_cluster_assignments(

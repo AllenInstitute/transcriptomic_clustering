@@ -4,7 +4,9 @@ import pytest
 import numpy as np
 import pandas as pd
 import anndata as ad
-from transcriptomic_clustering import merging, cluster_means as cm
+from transcriptomic_clustering import merging
+from transcriptomic_clustering import cluster_means as cm
+import transcriptomic_clustering as tc
 from scipy.sparse import random, csr_matrix
 import scanpy as sc
 
@@ -229,3 +231,42 @@ def test_get_cluster_assignments(adata, clusters):
     assert set(cluster_assignments.keys()) == set(obtained_cluster_assignments.keys())
     for k, v in cluster_assignments.items():
         assert set(cluster_assignments[k]) == set(obtained_cluster_assignments[k])
+
+
+def test_merge_clusters(tasic_reduced_dim_adata):
+
+    tasic_norm_path = os.path.join(DATA_DIR, "tasic_normed_select.h5ad")
+    tasic_norm_adata = sc.read_h5ad(tasic_norm_path)
+    tasic_reduced_dim_path = os.path.join(DATA_DIR, "tasic_reduced2.h5ad")
+    tasic_reduced_dim_adata = sc.read_h5ad(tasic_reduced_dim_path)
+
+    print(tasic_norm_adata)
+    print(tasic_reduced_dim_adata)
+
+    cluster_assignments_before_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_before_merging")
+
+    expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_after_merging")
+
+
+    cluster_by_obs = tasic_norm_adata.obs['cluster_label_before_merging'].values
+
+    cluster_assignments_after_merging = merging.merge_clusters(
+        adata_norm=tasic_norm_adata,
+        adata_reduced=tasic_reduced_dim_adata,
+        cluster_assignments=cluster_assignments_before_merging,
+        cluster_by_obs=cluster_by_obs,
+        min_cluster_size=6,
+        score_th=40,
+    )
+    print("obtained cluster assignments:")
+    print(cluster_assignments_after_merging)
+    print("expected  cluster assignments:")
+    print(expected_cluster_assignments_after_merging)
+
+    assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
+    for k, v in cluster_assignments_after_merging.items():
+        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
