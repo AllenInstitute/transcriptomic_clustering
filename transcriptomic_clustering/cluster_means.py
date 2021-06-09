@@ -69,10 +69,18 @@ def get_cluster_means_inmemory(
         cluster_means_lst.append(np.asarray(np.mean(slice, axis=0)).ravel())
         present_cluster_means_lst.append(np.asarray(np.mean((slice > low_th), axis=0)).ravel())
 
-    cluster_means = pd.DataFrame(np.vstack(cluster_means_lst), index=list(cluster_assignments.keys()))
-    present_cluster_means = pd.DataFrame(np.vstack(present_cluster_means_lst), index=list(cluster_assignments.keys()))
+    cluster_means = pd.DataFrame(
+        np.vstack(cluster_means_lst),
+        index=list(cluster_assignments.keys()),
+        columns=adata.var.index
+    )
+    present_cluster_means = pd.DataFrame(
+        np.vstack(present_cluster_means_lst),
+        index=list(cluster_assignments.keys()),
+        columns=adata.var.index
+    )
 
-    return (cluster_means, present_cluster_means)
+    return cluster_means, present_cluster_means
 
 
 def get_cluster_means_backed(
@@ -134,8 +142,14 @@ def get_cluster_means_backed(
     present_cl_means = present_cluster_sums / cluster_sizes
 
     # Convert to desired output
-    cluster_means = pd.DataFrame(cl_means, index=cluster_labels)
-    present_cluster_means = pd.DataFrame(present_cl_means, index=cluster_labels)
+    cluster_means = pd.DataFrame(cl_means,
+                                 index=cluster_labels,
+                                 columns=adata.var.index
+                                 )
+    present_cluster_means = pd.DataFrame(present_cl_means,
+                                         index=cluster_labels,
+                                         columns=adata.var.index
+                                         )
 
     return (cluster_means, present_cluster_means)
 

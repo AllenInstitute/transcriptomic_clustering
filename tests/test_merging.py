@@ -4,7 +4,9 @@ import pytest
 import numpy as np
 import pandas as pd
 import anndata as ad
-from transcriptomic_clustering import merging, cluster_means as cm
+from transcriptomic_clustering import merging
+from transcriptomic_clustering import cluster_means as cm
+import transcriptomic_clustering as tc
 from scipy.sparse import random, csr_matrix
 import scanpy as sc
 
@@ -229,3 +231,136 @@ def test_get_cluster_assignments(adata, clusters):
     assert set(cluster_assignments.keys()) == set(obtained_cluster_assignments.keys())
     for k, v in cluster_assignments.items():
         assert set(cluster_assignments[k]) == set(obtained_cluster_assignments[k])
+
+
+def test_merge_clusters():
+
+    tasic_norm_path = os.path.join(DATA_DIR, "tasic_normed_select.h5ad")
+    tasic_norm_adata = sc.read_h5ad(tasic_norm_path)
+    tasic_reduced_dim_path = os.path.join(DATA_DIR, "tasic_projected.h5ad")
+    tasic_reduced_dim_adata = sc.read_h5ad(tasic_reduced_dim_path)
+
+    cluster_assignments_before_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_before_merging")
+
+    expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_after_merging")
+
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': None,
+        'min_cell_thresh': 6,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.05,
+        'lfc_thresh': 1.0,
+        'score_thresh': 40,
+        'low_thresh': 1
+    }
+
+    cluster_by_obs = tasic_norm_adata.obs['cluster_label_before_merging'].values
+
+    cluster_assignments_after_merging = merging.merge_clusters(
+        adata_norm=tasic_norm_adata,
+        adata_reduced=tasic_reduced_dim_adata,
+        cluster_assignments=cluster_assignments_before_merging,
+        cluster_by_obs=cluster_by_obs,
+        thresholds=thresholds,
+        min_cluster_size=6,
+    )
+
+    assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
+    for k, v in cluster_assignments_after_merging.items():
+        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+
+
+def test_order_pairs():
+
+    expected = [(2, 3), (4, 5)]
+    obtained = merging.order_pairs([(2, 3), (5, 4)])
+    assert obtained == expected
+
+
+def test_get_de_scores_for_pairs():
+
+    pairs = [(11, 4)]
+    thresholds = {
+        'q1_thresh': 0.3,
+        'q2_thresh': None,
+        'min_cell_thresh': 1,
+        'qdiff_thresh': 0.1,
+        'padj_thresh': 0.5,
+        'lfc_thresh': .4,
+    }
+    cl_size = {4: 100, 11: 200}
+
+    cluster_means = pd.DataFrame(
+        np.array([[3.8, 1.5, 4.],
+                  [3., 2., 3.]]),
+        index=[11, 4],
+        columns=['gene_a', 'gene_b', 'gene_c'])
+
+    present_cluster_means = pd.DataFrame(
+        np.array([[.85, .67, .51],
+                  [.1, .6, .4]]),
+        index=[11, 4],
+        columns=['gene_a', 'gene_b', 'gene_c'])
+
+    scores = merging.get_de_scores_for_pairs(pairs,
+                                     cluster_means,
+                                     present_cluster_means,
+                                     cl_size,
+                                     thresholds)
+
+    expected_score = 35.24165
+    obtained_score = scores.iloc[0].score
+
+    assert np.isclose(expected_score, obtained_score)
+
+
+def test_merge_clusters_by_de():
+
+    cluster_assignments = {
+        11: [0, 3, 5, 9, 4],
+        4: [1, 2, 8]
+    }
+    expected_cluster_assignments_after_merging = {4: [1, 2, 8, 0, 3, 5, 9, 4]}
+
+    thresholds = {
+        'q1_thresh': 0.3,
+        'q2_thresh': None,
+        'min_cell_thresh': 1,
+        'qdiff_thresh': 0.1,
+        'padj_thresh': 0.5,
+        'lfc_thresh': .4,
+        'score_thresh': 40,
+        'low_thresh': 1
+
+    }
+
+    cluster_means = pd.DataFrame(
+        np.array([[3.8, 1.5, 4.],
+                  [3., 2., 3.]]),
+        index=[11, 4],
+        columns=['gene_a', 'gene_b', 'gene_c'])
+
+    present_cluster_means = pd.DataFrame(
+        np.array([[.1, .67, .51],
+                  [.0, .6, .4]]),
+        index=[11, 4],
+        columns=['gene_a', 'gene_b', 'gene_c'])
+
+    cluster_means_reduced = cluster_means.copy()
+
+    merging.merge_clusters_by_de(cluster_assignments,
+                                 cluster_means,
+                                 present_cluster_means,
+                                 cluster_means_reduced,
+                                 thresholds,
+                                 k=1
+                                 )
+    assert set(cluster_assignments.keys()) == set(expected_cluster_assignments_after_merging.keys())
+    for k, v in cluster_assignments.items():
+        assert set(cluster_assignments[k]) == set(expected_cluster_assignments_after_merging[k])
+
