@@ -78,8 +78,8 @@ def expected_chisq_pair_statistics(genes):
     """
         expected pairwise chisq statistics result
     """
-    p_adj = np.array([1., 1., 0.14484933, 1., 1.,1., 1., 1., 1., 1.,
-                1., 1., 1., 0.76935382, 1.,1.])
+    p_adj = np.array([1., 1., 0.144849, 1., 1.,1., 1., 1., 1., 1.,
+                1., 1., 1., 1, 1.,1.])
     p_value = np.array([0.56411274, 0.91457315, 0.00905308, 0.75650982, 0.86908712,
                         0.75828184, 0.66375351, 1., 1., 0.59504199, 0.56411271, 1., 0.46831393, 
                         0.09616923, 0.60574126, 0.87273278])
@@ -151,7 +151,6 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
     expected_chisq_result = expected_chisq_pair_statistics
     expected_p_vals = expected_chisq_result['p_value'].to_numpy()
 
-
     p_vals = vec_chisq_test(pair,
                             cl_present,
                             cl_size)
@@ -171,6 +170,7 @@ def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_
     cl_present = cl_present
     cl_means = cl_means
     cl_size = cl_size
+
 
     expected_de_stats = expected_chisq_pair_statistics
     obtained_de_stats = tc.de_pair_chisq(pair, cl_present, cl_means, cl_size)
