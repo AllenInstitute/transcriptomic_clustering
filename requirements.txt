@@ -8,3 +8,6 @@ scikit-misc
 psutil
 Welford
 Phenograph
+annoy
+networkx
+python-louvain
