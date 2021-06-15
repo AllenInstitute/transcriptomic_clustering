@@ -9,7 +9,7 @@ import pandas as pd
 import scanpy as sc
 from scipy import stats
 from scipy.special import digamma, polygamma
-from statsmodels.stats.multitest import fdrcorrection,multipletests
+from statsmodels.stats.multitest import multipletests
 
 from .diff_expression import get_qdiff, filter_gene_stats, calc_de_score
 
@@ -108,7 +108,6 @@ def moderate_variances(
     var = np.squeeze(variances.to_numpy())
 
     df_prior, var_prior = fit_f_dist(var, df)
-    # _, df_prior, _, var_prior = stats.f.fit(var, fdfn=df, floc=np.zeros(var.shape))
     var_post = (df_prior * var_prior + df * var) / (df + df_prior)
 
     var_post = pd.DataFrame(var_post, index=variances.index)
