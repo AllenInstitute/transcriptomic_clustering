@@ -11,3 +11,5 @@ Phenograph
 annoy
 networkx
 python-louvain
+annoy
+community
