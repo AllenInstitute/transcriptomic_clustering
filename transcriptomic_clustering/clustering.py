@@ -343,9 +343,10 @@ def get_annoy_knn(
 
     csr_graph = _annoy_build_csr_nn_graph(data_matrix, annoy_index_filename, k, n_jobs, nn_measure, weighting_method)
 
+    graph_adata = AnnData(csr_graph, obs=adata.obs, var=adata.obs)
     if graph_filename:
-        return AnnData(csr_graph, obs=adata.obs, var=adata.obs, filename=graph_filename)
-    return AnnData(csr_graph, obs=adata.obs, var=adata.obs)
+        graph_adata.write(graph_filename)
+    return graph_adata
 
 def get_taynaud_louvain(
     nn_adata: AnnData,
