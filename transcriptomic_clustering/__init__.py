@@ -26,3 +26,5 @@ from .projection import project
 from .clustering import cluster_louvain, cluster_louvain_phenograph
 from .filter_known_modes import filter_known_modes
 from .hierarchical_sorting import hclust
+from .diff_expression import de_pair_chisq, vec_chisq_test
+
