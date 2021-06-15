@@ -153,6 +153,5 @@ def test_de_pairs_ebayes(cl_stats, thresholds):
 
     up_genes_expected = ['gene3', 'gene4', 'gene5', 'gene16', 'gene17', 'gene18', 'gene19']
 
-    assert de_pairs[('a','c')]['score'] == 89.57508844372653
+    assert de_pairs[('a','c')]['score'] == 84.26030647753015
     assert set(de_pairs[('a','c')]['up_genes']) == set(up_genes_expected)
-    assert False

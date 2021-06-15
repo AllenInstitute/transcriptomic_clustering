@@ -9,7 +9,7 @@ import pandas as pd
 import scanpy as sc
 from scipy import stats
 from scipy.special import digamma, polygamma
-from statsmodels.stats.multitest import fdrcorrection
+from statsmodels.stats.multitest import fdrcorrection,multipletests
 
 from .diff_expression import get_qdiff, filter_gene_stats, calc_de_score
 
@@ -162,8 +162,8 @@ def de_pairs_ebayes(
     pairs: list of pairs of cluster names
     cl_means: dataframe with index = cluster name, columns = genes,
               values = cluster mean gene expression (E[X])
-    cl_means: dataframe with index = cluster name, columns = genes,
-              values = cluster mean gene expression square (E[X^2])
+    cl_means_sq: dataframe with index = cluster name, columns = genes,
+                 values = cluster mean gene expression square (E[X^2])
     cl_size: dict of cluster name: number of observations in cluster
     de_thresholds: thresholds for filter de
 
@@ -174,17 +174,6 @@ def de_pairs_ebayes(
     cl_vars = get_cl_vars(cl_means, cl_means_sq)
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
     sigma_sq_post, var_prior, df_prior = moderate_variances(sigma_sq, df)
-
-    print(f'cl_size: {cl_size}')
-    print(f'cl_means: {cl_means}')
-    print(f'cl_means_sq: {cl_means_sq}')
-    print(f'cl_vars: {cl_vars}')
-    print(f'sigma_sq: {sigma_sq}')
-    print(f'sigma: {np.sqrt(sigma_sq)}')
-    print(f'df: {df}')
-    print(f'stdev_unsc: {stdev_unscaled}')
-    print(f'df_prior: {df_prior}')
-    print(f'var_prior: {var_prior}')
 
     de_pairs = {}
     for (cluster_a, cluster_b) in pairs:
@@ -197,21 +186,14 @@ def de_pairs_ebayes(
         df_pooled = np.sum(df)
         df_total = min(df_total, df_pooled)
         
-        if (cluster_a, cluster_b) == ('a','c'):
-            print('sigma_sqrt_post\n',np.sqrt(sigma_sq_post))
         t_vals = means_diff / np.sqrt(sigma_sq_post) / stdev_unscaled_comb
-        if (cluster_a, cluster_b) == ('a','c'):
-            print('t_vals\n',t_vals)
         
         p_vals = np.ones((len(t_vals),))
+        p_adj = np.ones((len(t_vals),))
         for i, t in enumerate(t_vals[0]):
             p_vals[i] = 2 * stats.t.cdf(-np.abs(t), df_total)
-        _, p_adj = fdrcorrection(p_vals)
+        reject, p_adj, alphacSidak, alphacBonf= multipletests(p_vals, alpha=de_thresholds['padj_thresh'], method='holm')
         lfc = means_diff
-
-        if (cluster_a, cluster_b) == ('a','c'):
-            print(f'p_vals: {p_vals}')
-            print(f'p_adj: {p_adj}')
 
         # Get DE score
         de_pair_stats = pd.DataFrame(index=cl_means.columns)
@@ -252,6 +234,5 @@ def de_pairs_ebayes(
             'down_num': len(de_pair_down.index),
             'num': len(de_pair_up.index) + len(de_pair_down.index)
         }
-        if (cluster_a, cluster_b) == ('a','c'):
-            print('de:\n',de_pairs[(cluster_a, cluster_b)])
+
     return de_pairs
