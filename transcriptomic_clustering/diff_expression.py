@@ -5,6 +5,7 @@ import pandas as pd
 import scanpy as sc
 from scipy import stats
 import statsmodels.stats.multitest as multi
+import warnings
 
 import sys
 
@@ -50,8 +51,8 @@ def vec_chisq_test(pair: tuple,
             chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
         except:
-#            print(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
-            pass
+            warnings.warn("chi2 exception caught, p value will be assigned to 1")
+    
     return p_vals
 
 def de_pair_chisq(pair: tuple, 
