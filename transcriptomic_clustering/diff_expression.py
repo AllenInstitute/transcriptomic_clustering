@@ -44,15 +44,16 @@ def vec_chisq_test(pair: tuple,
     cl2_absent = cl2_ncells - cl2_present
 
     observed = np.array([cl1_present, cl1_absent, cl2_present, cl2_absent])
-
+    print(observed)
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
         try:
+            print(observed[:,i].reshape(2,2))
             chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
+            print(p_value)
         except:
-            warnings.warn("chi2 exception caught, p value will be assigned to 1")
-    
+            print(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
     return p_vals
 
 def de_pair_chisq(pair: tuple, 
@@ -194,6 +195,8 @@ def filter_gene_stats(
         mask &= de_stats[qa] > q1_thresh
     if cl_size:
         mask &= de_stats[qa] * cl_size >= min_cell_thresh
+    print("mask")
+    print(mask)
     if q2_thresh:
         mask &= de_stats[qb] < q2_thresh
     if qdiff_thresh:

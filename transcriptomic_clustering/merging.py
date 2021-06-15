@@ -12,16 +12,27 @@ from transcriptomic_clustering.diff_expression import (\
     calc_de_score
 )
 
+DEFAULT_THRESHOLDS = {
+    'q1_thresh': 0.5,
+    'q2_thresh': None,
+    'min_cell_thresh': 6,
+    'qdiff_thresh': 0.7,
+    'padj_thresh': 0.05,
+    'lfc_thresh': 1.0,
+    'score_thresh': 150,
+    'low_thresh': 1
+}
+
+
 def merge_clusters(
         adata_norm: ad.AnnData,
         adata_reduced: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
         cluster_by_obs: np.ndarray,
+        thresholds: Dict[str, Any] = DEFAULT_THRESHOLDS,
         min_cluster_size: Optional[int] = 4,
         k: Optional[int] = 2,
-        low_th: Optional[int] = 1,
         de_method: Optional[str] = 'chisq',
-        score_th: Optional[int] = 150,
         chunk_size: Optional[int] = None
 ) -> Dict[Any, np.ndarray]:
     """
@@ -60,7 +71,11 @@ def merge_clusters(
     """
 
     # Calculate cluster means on reduced space
-    cl_means_reduced, _ = tc.get_cluster_means(adata_reduced, cluster_assignments, cluster_by_obs, chunk_size, low_th)
+    cl_means_reduced, _ = tc.get_cluster_means(adata_reduced,
+                                               cluster_assignments,
+                                               cluster_by_obs,
+                                               chunk_size,
+                                               low_th=thresholds['low_thresh'])
 
     # Merge small clusters
     merge_small_clusters(cl_means_reduced, cluster_assignments, min_cluster_size)
@@ -71,10 +86,21 @@ def merge_clusters(
         cluster_by_obs[idxs] = cl_id
 
     # Calculate cluster means on normalized data
-    cl_means, present_cl_means = tc.get_cluster_means(adata_norm, cluster_assignments, cluster_by_obs, chunk_size, low_th)
+    cl_means, present_cl_means = tc.get_cluster_means(adata_norm,
+                                                      cluster_assignments,
+                                                      cluster_by_obs,
+                                                      chunk_size,
+                                                      low_th=thresholds['low_thresh'])
 
     # Merge remaining clusters by differential expression
-    merge_clusters_by_de(cluster_assignments, cl_means, present_cl_means, cl_means_reduced, k, de_method, score_th)
+    merge_clusters_by_de(cluster_assignments,
+                         cl_means,
+                         present_cl_means,
+                         cl_means_reduced,
+                         thresholds,
+                         k,
+                         de_method,
+                         )
 
     return cluster_assignments
 
@@ -305,11 +331,12 @@ def merge_small_clusters(
 
 
 def get_de_scores_for_pairs(
-    pairs: Tuple[int, int],
+    pairs: List[Tuple[int, int]],
     cluster_means: pd.DataFrame,
     present_cluster_means: pd.DataFrame,
     cl_size: Dict[Any, int],
-    de_method: Optional[str] = 'chisq'
+    thresholds: Dict[str, Any],
+    de_method: Optional[str] = 'chisq',
 ) -> pd.DataFrame:
     """
     Calculate the de score for pairs of clusters
@@ -336,15 +363,6 @@ def get_de_scores_for_pairs(
         dataframe of calculated de score for pairs of clusters
     """
 
-    scores = []
-    thresholds = {
-        'q1_thresh': 0.5,
-        'q2_thresh': None,
-        'min_cell_thresh': 6,
-        'qdiff_thresh': 0.7,
-        'padj_thresh': 0.05,
-        'lfc_thresh': 1.0
-    }
 
     for pair in pairs:
         if de_method == 'chisq':
@@ -388,9 +406,9 @@ def merge_clusters_by_de(
     cluster_means: pd.DataFrame,
     present_cluster_means: pd.DataFrame,
     cluster_means_rd: pd.DataFrame,
+    thresholds: Dict[str, Any],
     k: Optional[int] = 2,
     de_method: Optional[str] = 'chisq',
-    score_th: Optional[int] = 150
 ):
     """
     Merge clusters by the calculated gene differential expression score
@@ -413,8 +431,8 @@ def merge_clusters_by_de(
         number of cluster neighbors
     de_method:
         method used for de calculation
-    score_th:
-        threshold of de score for merging
+    thresholds:
+        threshold use de calculation
 
     Returns
     -------
@@ -424,16 +442,24 @@ def merge_clusters_by_de(
 
     cl_size = {k: len(v) for k, v in cluster_assignments.items()}
 
+    score_th = thresholds.pop('score_thresh')
+    thresholds.pop('low_thresh')
+
     while len(cluster_assignments.keys()) > 1:
         # Use updated cluster means in reduced space to get nearest neighbors for each cluster
         # Steps 1-3
         neighbor_pairs = get_k_nearest_clusters(cluster_means_rd, k)
-        neighbor_pairs = order_neighbors(neighbor_pairs)
+        neighbor_pairs = order_pairs(neighbor_pairs)
         if len(neighbor_pairs) == 0:
             break
 
         # Step 4: Get DE for pairs based on de_method
-        scores = get_de_scores_for_pairs(neighbor_pairs, cluster_means, present_cluster_means, cl_size, de_method)
+        scores = get_de_scores_for_pairs(neighbor_pairs,
+                                         cluster_means,
+                                         present_cluster_means,
+                                         cl_size,
+                                         thresholds,
+                                         de_method)
 
         # Sort scores
         scores = scores.sort_values(by='score')
@@ -523,8 +549,22 @@ def get_k_nearest_clusters(
     return list(nearest_neighbors)
 
 
-def order_neighbors(neighbor_pairs):
+def order_pairs(
+        neighbor_pairs: List[Tuple[int, int]]
+) -> List[Tuple[int, int]]:
+    """
+    Order each label such that smaller label is follower by a larger
+    e.g: (3,8), (6,7)
 
+    Parameters
+    ----------
+    neighbor_pairs:
+        list of neighbor pairs
+
+    Returns
+    -------
+    ordered list of neighbor pairs
+    """
     ordered_pairs = []
 
     for p in neighbor_pairs:

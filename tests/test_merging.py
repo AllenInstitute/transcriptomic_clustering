@@ -251,6 +251,16 @@ def test_merge_clusters(tasic_reduced_dim_adata):
         tasic_norm_adata,
         cluster_label_obs="cluster_label_after_merging")
 
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': None,
+        'min_cell_thresh': 6,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.05,
+        'lfc_thresh': 1.0,
+        'score_thresh': 40,
+        'low_thresh': 1
+    }
 
     cluster_by_obs = tasic_norm_adata.obs['cluster_label_before_merging'].values
 
@@ -259,8 +269,8 @@ def test_merge_clusters(tasic_reduced_dim_adata):
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
         cluster_by_obs=cluster_by_obs,
+        thresholds=thresholds,
         min_cluster_size=6,
-        score_th=40,
     )
     print("obtained cluster assignments:")
     print(cluster_assignments_after_merging)
@@ -270,3 +280,52 @@ def test_merge_clusters(tasic_reduced_dim_adata):
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
     for k, v in cluster_assignments_after_merging.items():
         assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+
+
+def test_order_pairs():
+
+    expected = [(2, 3), (4, 5)]
+    obtained = merging.order_pairs([(2, 3), (5, 4)])
+    print(obtained)
+    assert obtained == expected
+
+
+def test_get_de_scores_for_pairs(clusters):
+    cluster_means, present_cluster_means, cluster_assignments = clusters
+
+#    neighbor_pairs = [('11', 4), ('11', '32'), (2, '32'), (2, 4), ('32', 4)]
+    neighbor_pairs = [('11', '4')]
+
+    thresholds = {
+        'q1_thresh': 0.3,
+        'q2_thresh': None,
+        'min_cell_thresh': 1,
+        'qdiff_thresh': 0.1,
+        'padj_thresh': 0.5,
+        'lfc_thresh': .5,
+    }
+    cl_size = {'4': 100, '11': 200}
+
+    cluster_means = pd.DataFrame(
+        np.array([[3.8, 1.5, 4.],
+                  [3., 2., 3.]]),
+        index=['11', '4'],
+        columns=['gene_a','gene_b','gene_c'])
+
+    present_cluster_means = pd.DataFrame(
+        np.array([[.58, .67, .51],
+                  [.4, .6, .4]]),
+        index=['11', '4'],
+        columns=['gene_a', 'gene_b', 'gene_c'])
+
+
+    print(cluster_means)
+    print(present_cluster_means)
+    scores = merging.get_de_scores_for_pairs(neighbor_pairs,
+                                     cluster_means,
+                                     present_cluster_means,
+                                     cl_size,
+                                     thresholds)
+
+    print(scores)
+#   assert False
