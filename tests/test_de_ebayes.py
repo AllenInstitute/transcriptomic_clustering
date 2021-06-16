@@ -68,32 +68,6 @@ def cl_stats():
     }
 
 
-# def test_moderate_variance_robust():
-#     """Verify moderate variance matches R's squeezeVars"""
-#     tmp_var = [20,25,10,15,25,30,110,30,15,20,20,25,30,15,25,20,20,25,15,10] #[20, 25, 10, 15, 25, 30, 110] 
-#     var = pd.DataFrame(tmp_var, index=[f'gene{i}' for i in range(len(tmp_var))])
-#     df = 15
-
-#     df_prior_expected = 208.6846
-#     var_prior_expected = 21.63223
-#     var_post_expected = pd.DataFrame(
-#         [21.52278, 21.85807, 20.85219, 21.18749, 21.85807, 22.19337, 103.06222,
-#          22.19337, 21.18749, 21.52278, 21.52278, 21.85807, 22.19337, 21.18749,
-#          21.85807, 21.52278, 21.52278, 21.85807, 21.18749, 20.85219],
-#         index=var.index
-#     )
-
-#     var_post, var_prior, df_prior = moderate_variances(var, df, winsor_limits=(0.05,0.1))
-    
-#     print(f'df_prior: {df_prior}, expected: {df_prior_expected}')
-#     print(f'var_prior: {var_prior}, expected: {var_prior_expected}')
-#     print(f'var_post: {var_post}, expected: {var_post_expected}')
-
-#     assert_allclose(df_prior, df_prior_expected)
-#     assert_allclose(var_prior, var_prior_expected)
-#     assert_frame_equal(var_post, var_post_expected)
-
-
 def test_moderate_variances_not_robust():
     """Verify moderate variance matches R's squeezeVars"""
     index = [f'gene{i}' for i in range(20)]

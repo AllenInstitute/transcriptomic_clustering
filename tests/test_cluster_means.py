@@ -85,7 +85,6 @@ def test_get_cluster_means_inmemory(adata, clusters):
     obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
         cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
-    print(obtained_cluster_variances)
     assert obtained_cluster_means.index.equals(expected_cluster_means.index)
     assert obtained_cluster_means.columns.equals(expected_cluster_means.columns)
     assert np.allclose(obtained_cluster_means.to_numpy(), expected_cluster_means.to_numpy())
