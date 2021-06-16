@@ -261,7 +261,7 @@ def test_merge_clusters():
 
     cluster_by_obs = tasic_norm_adata.obs['cluster_label_before_merging'].values
 
-    cluster_assignments_after_merging = merging.merge_clusters(
+    cluster_assignments_after_merging = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
