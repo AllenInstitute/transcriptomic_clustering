@@ -66,7 +66,7 @@ def merge_clusters(
     """
 
     # Calculate cluster means on reduced space
-    cl_means_reduced, _ = tc.get_cluster_means(adata_reduced,
+    cl_means_reduced, _, _ = tc.get_cluster_means(adata_reduced,
                                                cluster_assignments,
                                                cluster_by_obs,
                                                chunk_size,
@@ -81,7 +81,7 @@ def merge_clusters(
         cluster_by_obs[idxs] = cl_id
 
     # Calculate cluster means on normalized data
-    cl_means, present_cl_means = tc.get_cluster_means(adata_norm,
+    cl_means, present_cl_means, _ = tc.get_cluster_means(adata_norm,
                                                       cluster_assignments,
                                                       cluster_by_obs,
                                                       chunk_size,

@@ -170,13 +170,13 @@ def test_on_tasic_clusters(tasic_reduced_dim_adata):
     cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label_init")
-    cluster_means, _ = cm.get_cluster_means_inmemory(adata, cluster_assignments)
+    cluster_means, _, _ = cm.get_cluster_means_inmemory(adata, cluster_assignments)
 
     expected_cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label_after_merging_small")
 
-    expected_cluster_means, _ = cm.get_cluster_means_inmemory(adata, expected_cluster_assignments)
+    expected_cluster_means, _, _ = cm.get_cluster_means_inmemory(adata, expected_cluster_assignments)
 
     merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=6)
 

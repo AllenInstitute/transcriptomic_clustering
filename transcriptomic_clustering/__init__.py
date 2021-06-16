@@ -28,3 +28,5 @@ from .filter_known_modes import filter_known_modes
 from .hierarchical_sorting import hclust
 from .cluster_means import get_cluster_means
 from .merging import merge_clusters
+from .diff_expression import de_pair_chisq, vec_chisq_test
+from .de_ebayes import de_pairs_ebayes

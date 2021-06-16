@@ -1,9 +1,10 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import anndata as ad
+from anndata._core.anndata import AnnData
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, issparse
 import transcriptomic_clustering as tc
 import warnings
 
@@ -14,7 +15,7 @@ def get_cluster_means(
         cluster_by_obs: np.ndarray,
         chunk_size: Optional[int]=None,
         low_th: Optional[int]=1
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Compute mean gene expression over cells belonging to each cluster
 
@@ -37,25 +38,29 @@ def get_cluster_means(
         map of cluster label to mean expressions (array of size n_genes)
     present_cluster_means:
         map of cluster label to mean of expressions present filtered by low_th (array of size n_genes)
+    cluster_variances:
+        map of cluster label to variance of expressions (array of size n_genes)
     """
 
     if adata.isbacked:
-        cluster_means, present_cluster_means = get_cluster_means_backed(adata, cluster_assignments, cluster_by_obs, chunk_size, low_th)
+        cluster_means, present_cluster_means, cluster_variances = \
+            get_cluster_means_backed(adata, cluster_assignments, cluster_by_obs, chunk_size, low_th)
     else:
         if chunk_size:
             warnings.warn("In memory processing does not support chunking. "
                           "Ignoring `chunk_size` argument.")
     
-        cluster_means, present_cluster_means = get_cluster_means_inmemory(adata, cluster_assignments, low_th)
+        cluster_means, present_cluster_means, cluster_variances = \
+            get_cluster_means_inmemory(adata, cluster_assignments, low_th)
 
-    return (cluster_means, present_cluster_means)
+    return (cluster_means, present_cluster_means, cluster_variances)
 
 
 def get_cluster_means_inmemory(
         adata: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
         low_th: Optional[int]=1
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Compute mean gene expression over cells belonging to each cluster in memory
     See description of get_cluster_means() for details
@@ -63,11 +68,19 @@ def get_cluster_means_inmemory(
 
     cluster_means_lst = []
     present_cluster_means_lst = []
+    cluster_means_sq_lst = []
 
     for clust in cluster_assignments.values():
         slice = adata.X[clust, :]
         cluster_means_lst.append(np.asarray(np.mean(slice, axis=0)).ravel())
         present_cluster_means_lst.append(np.asarray(np.mean((slice > low_th), axis=0)).ravel())
+
+        if issparse(slice):
+            slice_sq = slice.power(2)
+        else:
+            slice_sq = np.square(slice)
+        cluster_means_sq_lst.append(np.asarray(np.mean(slice_sq, axis=0)).ravel())
+
 
     cluster_means = pd.DataFrame(
         np.vstack(cluster_means_lst),
@@ -79,8 +92,14 @@ def get_cluster_means_inmemory(
         index=list(cluster_assignments.keys()),
         columns=adata.var.index
     )
+    cluster_means_sq = pd.DataFrame(
+        np.vstack(cluster_means_sq_lst),
+        index=list(cluster_assignments.keys()),
+        columns=adata.var.index
+    )
+    cluster_variances = cluster_means_sq - np.square(cluster_means)
 
-    return cluster_means, present_cluster_means
+    return (cluster_means, present_cluster_means, cluster_variances)
 
 
 def get_cluster_means_backed(
@@ -89,7 +108,7 @@ def get_cluster_means_backed(
         cluster_by_obs: np.ndarray,
         chunk_size: int,
         low_th: Optional[int]=1
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Compute mean gene expression over cells belonging to each cluster of file-backed data in chunks
     See description of get_cluster_means() for details
@@ -133,13 +152,21 @@ def get_cluster_means_backed(
     # Calculate cluster and present cluster sums 
     cluster_sums = np.zeros((n_clusters, n_genes))
     present_cluster_sums = np.zeros((n_clusters, n_genes))
+    cluster_sq_sums = np.zeros((n_clusters, n_genes))
     for chunk, start, end in adata.chunked_X(chunk_size):
         cluster_sums += one_hot_cl[:, start:end] @ chunk
         present_cluster_sums += one_hot_cl[:, start:end] @ (chunk > low_th)
 
+        if issparse(chunk):
+            chunk_sq = chunk.power(2)
+        else:
+            chunk_sq = np.square(chunk)
+        cluster_sq_sums += one_hot_cl[:, start:end] @ chunk_sq
+
     # Calculate means
     cl_means = cluster_sums / cluster_sizes
     present_cl_means = present_cluster_sums / cluster_sizes
+    cl_means_sq = cluster_sq_sums / cluster_sizes
 
     # Convert to desired output
     cluster_means = pd.DataFrame(cl_means,
@@ -150,8 +177,13 @@ def get_cluster_means_backed(
                                          index=cluster_labels,
                                          columns=adata.var.index
                                          )
+    cluster_means_sq = pd.DataFrame(cl_means_sq,
+                                    index=cluster_labels,
+                                    columns=adata.var.index
+                                    )
+    cluster_variances = cluster_means_sq - np.square(cluster_means)
 
-    return (cluster_means, present_cluster_means)
+    return (cluster_means, present_cluster_means, cluster_variances)
 
 
 def get_one_hot_cluster_array(
