@@ -44,7 +44,6 @@ def get_means_vars_genes(adata: sc.AnnData,
                                 percent_allowed=25,
                                 process_name='means_vars_genes'
                             )
-            print('chunk_size', chunk_size)
 
         if chunk_size >= adata.n_obs:
             
