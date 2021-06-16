@@ -7,10 +7,7 @@ import logging
 from collections import defaultdict
 import warnings
 import transcriptomic_clustering as tc
-from transcriptomic_clustering.diff_expression import (\
-    filter_gene_stats,
-    calc_de_score
-)
+from transcriptomic_clustering import diff_expression as de
 
 DEFAULT_THRESHOLDS = {
     'q1_thresh': 0.5,
@@ -53,14 +50,12 @@ def merge_clusters(
         array of cells with cluster value
     min_cluster_size:
         minimum number of cells a cluster must contain
+    thresholds:
+        threshold for de calculation
     k:
         number of cluster neighbors
-    low_th:
-        minimum expression value used to filter for expressed genes
     de_method:
         method used for de calculation
-    score_th:
-        threshold of de score for merging
     chunk_size:
         number of observations to process in a single chunk
 
@@ -368,7 +363,7 @@ def get_de_scores_for_pairs(
     for pair in pairs:
         if de_method == 'chisq':
             # TODO: This function is still in PR
-            de_stats = tc.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
+            de_stats = de.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
         elif de_method == 'limma':
             raise NotImplementedError('limma is not implemented')
         else:
@@ -377,22 +372,22 @@ def get_de_scores_for_pairs(
         # Calculate de score
         # TODO: This function is not implemented yet
         first_cluster, second_cluster = pair
-        de_stats_up_genes = filter_gene_stats(
+        de_stats_up_genes = de.filter_gene_stats(
             de_stats=de_stats,
             gene_type='up-regulated',
             cl1_size=cl_size[first_cluster],
             cl2_size=cl_size[second_cluster],
             **thresholds
         )
-        up_score = calc_de_score(de_stats_up_genes['p_adj'])
-        de_stats_down_genes = filter_gene_stats(
+        up_score = de.calc_de_score(de_stats_up_genes['p_adj'])
+        de_stats_down_genes = de.filter_gene_stats(
             de_stats=de_stats,
             gene_type='down-regulated',
             cl1_size=cl_size[first_cluster],
             cl2_size=cl_size[second_cluster],
             **thresholds
         )
-        down_score = calc_de_score(de_stats_down_genes['p_adj'])
+        down_score = de.calc_de_score(de_stats_down_genes['p_adj'])
         score = up_score + down_score
 
         scores.append(score)
