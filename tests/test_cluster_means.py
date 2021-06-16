@@ -37,7 +37,7 @@ def adata():
 
 
 @pytest.fixture
-def clusters():
+def clusters(adata):
     cluster_assignments = {
         '11': [0, 3, 5, 9],
         '2': [1, 2, 6],
@@ -52,7 +52,8 @@ def clusters():
                   [3., 4., 2.],
                   [3., 0.5, 3.],
                   [0., 0., 7.]]),
-        index = ['11', '2', '32', '4']
+        index = ['11', '2', '32', '4'],
+        columns=adata.var_names
     )
 
     present_cluster_means = pd.DataFrame(
@@ -60,7 +61,8 @@ def clusters():
                   [(1/3), (2/3), (1/3)],
                   [0.5, 0., .5],
                   [0., 0., 1.]]),
-        index = ['11', '2', '32', '4']
+        index = ['11', '2', '32', '4'],
+        columns=adata.var_names
     )
 
     cluster_variances = pd.DataFrame(
@@ -68,7 +70,8 @@ def clusters():
                   [(12 + 2/3), 8.0, (2/3)],
                   [1.0, 0.25, 9.0],
                   [0.0, 0.0, 0.0]]),
-        index=['11', '2', '32', '4']
+        index=['11', '2', '32', '4'],
+        columns=adata.var_names
     )
 
     return cluster_means, present_cluster_means, cluster_variances, cluster_assignments, cluster_by_obs
@@ -107,7 +110,7 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     tmpdir = str(tmpdir_factory.mktemp("test_cluster_means"))
     input_file_name = os.path.join(tmpdir, "input.h5ad")
 
-    ad.AnnData(csr_matrix(adata.X)).write(input_file_name) # make tmp input file
+    ad.AnnData(csr_matrix(adata.X), obs=adata.obs, var=adata.var).write(input_file_name) # make tmp input file
 
     adata = sc.read_h5ad(input_file_name, backed='r')
     obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
