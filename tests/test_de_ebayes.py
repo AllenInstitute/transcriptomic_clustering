@@ -142,13 +142,13 @@ def test_get_linear_fit_vals(cl_stats):
 
 def test_de_pairs_ebayes(cl_stats, thresholds):
     cl_means = cl_stats['cl_means']
-    cl_means_sq = cl_stats['cl_means_sq']
+    cl_vars = cl_stats['cl_vars']
     cl_present = cl_stats['cl_present']
     cl_size = cl_stats['cl_size']
 
     de_pairs = de_pairs_ebayes(
         [('a','b'),('a','c'),('b','c')],
-        cl_means, cl_means_sq, cl_present, cl_size, thresholds
+        cl_means, cl_vars, cl_present, cl_size, thresholds
     )
 
     up_genes_expected = ['gene3', 'gene4', 'gene5', 'gene16', 'gene17', 'gene18', 'gene19']

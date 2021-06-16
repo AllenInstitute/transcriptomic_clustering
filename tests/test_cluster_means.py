@@ -63,44 +63,45 @@ def clusters():
         index = ['11', '2', '32', '4']
     )
 
-    cluster_means_sq = pd.DataFrame(
-        np.array([[14, 4.5, 23.5],
-                  [(21 + 2/3), 24.0, (4+2/3)],
-                  [10.0, 0.5, 18.0],
-                  [0.0, 0.0, 49.0]]),
+    cluster_variances = pd.DataFrame(
+        np.array([[5, 2.25, 7.5],
+                  [(12 + 2/3), 8.0, (2/3)],
+                  [1.0, 0.25, 9.0],
+                  [0.0, 0.0, 0.0]]),
         index=['11', '2', '32', '4']
     )
 
-    return cluster_means, present_cluster_means, cluster_means_sq, cluster_assignments, cluster_by_obs
+    return cluster_means, present_cluster_means, cluster_variances, cluster_assignments, cluster_by_obs
 
 
 def test_get_cluster_means_inmemory(adata, clusters):
 
     (expected_cluster_means,
      expected_present_cluster_means,
-     expected_cluster_means_sq,
+     expected_cluster_variances,
      cluster_assignments,
      cluster_by_obs) = clusters
 
-    obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_means_sq = \
+    obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
         cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
+    print(obtained_cluster_variances)
     assert obtained_cluster_means.index.equals(expected_cluster_means.index)
     assert obtained_cluster_means.columns.equals(expected_cluster_means.columns)
     assert np.allclose(obtained_cluster_means.to_numpy(), expected_cluster_means.to_numpy())
     assert obtained_present_cluster_means.index.equals(expected_present_cluster_means.index)
     assert obtained_present_cluster_means.columns.equals(expected_present_cluster_means.columns)
     assert np.allclose(obtained_present_cluster_means.to_numpy(), expected_present_cluster_means.to_numpy())
-    assert obtained_cluster_means_sq.index.equals(expected_cluster_means_sq.index)
-    assert obtained_cluster_means_sq.columns.equals(expected_cluster_means_sq.columns)
-    assert np.allclose(obtained_cluster_means_sq.to_numpy(), expected_cluster_means_sq.to_numpy())
+    assert obtained_cluster_variances.index.equals(expected_cluster_variances.index)
+    assert obtained_cluster_variances.columns.equals(expected_cluster_variances.columns)
+    assert np.allclose(obtained_cluster_variances.to_numpy(), expected_cluster_variances.to_numpy())
 
 
 def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
 
     (expected_cluster_means,
      expected_present_cluster_means,
-     expected_cluster_means_sq,
+     expected_cluster_variances,
      cluster_assignments,
      cluster_by_obs) = clusters
 
@@ -110,7 +111,7 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     ad.AnnData(csr_matrix(adata.X)).write(input_file_name) # make tmp input file
 
     adata = sc.read_h5ad(input_file_name, backed='r')
-    obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_means_sq = \
+    obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
         cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert obtained_cluster_means.index.equals(expected_cluster_means.index)
@@ -119,6 +120,6 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     assert obtained_present_cluster_means.index.equals(expected_present_cluster_means.index)
     assert obtained_present_cluster_means.columns.equals(expected_present_cluster_means.columns)
     assert np.allclose(obtained_present_cluster_means.to_numpy(), expected_present_cluster_means.to_numpy())
-    assert obtained_cluster_means_sq.index.equals(expected_cluster_means_sq.index)
-    assert obtained_cluster_means_sq.columns.equals(expected_cluster_means_sq.columns)
-    assert np.allclose(obtained_cluster_means_sq.to_numpy(), expected_cluster_means_sq.to_numpy())
+    assert obtained_cluster_variances.index.equals(expected_cluster_variances.index)
+    assert obtained_cluster_variances.columns.equals(expected_cluster_variances.columns)
+    assert np.allclose(obtained_cluster_variances.to_numpy(), expected_cluster_variances.to_numpy())

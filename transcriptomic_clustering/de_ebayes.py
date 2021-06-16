@@ -115,16 +115,6 @@ def moderate_variances(
     return var_post, var_prior, df_prior
 
 
-def get_cl_vars(cl_mean: pd.DataFrame, cl_mean_sq: pd.DataFrame):
-    """
-    Computes variances as E[x^2] - E[x]^2
-    """
-    if not(cl_mean.index.equals(cl_mean_sq.index)):
-        raise ValueError(f'cl_mean and cl_mean_sq must have same index')
-    # TODO: may suffer from precision issues, may need different method
-    return cl_mean_sq - np.square(cl_mean)
-
-
 def get_linear_fit_vals(cl_vars: pd.DataFrame, cl_size: Dict[Any, int]):
     """
     Directly computes sigma squared, degrees of freedom, and stdev_unscaled
@@ -141,7 +131,7 @@ def get_linear_fit_vals(cl_vars: pd.DataFrame, cl_size: Dict[Any, int]):
 def de_pairs_ebayes(
         pairs: List[Tuple[Any, Any]],
         cl_means: pd.DataFrame,
-        cl_means_sq: pd.DataFrame,
+        cl_vars: pd.DataFrame,
         cl_present: pd.DataFrame,
         cl_size: Dict[Any, int],
         de_thresholds: Dict[str, Any],
@@ -160,9 +150,9 @@ def de_pairs_ebayes(
     ----------
     pairs: list of pairs of cluster names
     cl_means: dataframe with index = cluster name, columns = genes,
-              values = cluster mean gene expression (E[X])
-    cl_means_sq: dataframe with index = cluster name, columns = genes,
-                 values = cluster mean gene expression square (E[X^2])
+              values = per cluster mean of gene expression (E[X])
+    cl_vars: dataframe with index = cluster name, columns = genes,
+                 values = per cluster variance of gene expression
     cl_size: dict of cluster name: number of observations in cluster
     de_thresholds: thresholds for filter de
 
@@ -170,7 +160,6 @@ def de_pairs_ebayes(
     -------
     Dict with key: cluster_pair, value: dict of de values
     """
-    cl_vars = get_cl_vars(cl_means, cl_means_sq)
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
     sigma_sq_post, var_prior, df_prior = moderate_variances(sigma_sq, df)
 

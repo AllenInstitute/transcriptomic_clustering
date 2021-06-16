@@ -38,22 +38,22 @@ def get_cluster_means(
         map of cluster label to mean expressions (array of size n_genes)
     present_cluster_means:
         map of cluster label to mean of expressions present filtered by low_th (array of size n_genes)
-    cluster_means_sq:
-        map of cluster label to mean expression ** 2 (array of size n_genes)
+    cluster_variances:
+        map of cluster label to variance of expressions (array of size n_genes)
     """
 
     if adata.isbacked:
-        cluster_means, present_cluster_means, cluster_means_sq = \
+        cluster_means, present_cluster_means, cluster_variances = \
             get_cluster_means_backed(adata, cluster_assignments, cluster_by_obs, chunk_size, low_th)
     else:
         if chunk_size:
             warnings.warn("In memory processing does not support chunking. "
                           "Ignoring `chunk_size` argument.")
     
-        cluster_means, present_cluster_means, cluster_means_sq = \
+        cluster_means, present_cluster_means, cluster_variances = \
             get_cluster_means_inmemory(adata, cluster_assignments, low_th)
 
-    return (cluster_means, present_cluster_means, cluster_means_sq)
+    return (cluster_means, present_cluster_means, cluster_variances)
 
 
 def get_cluster_means_inmemory(
@@ -97,8 +97,9 @@ def get_cluster_means_inmemory(
         index=list(cluster_assignments.keys()),
         columns=adata.var.index
     )
+    cluster_variances = cluster_means_sq - np.square(cluster_means)
 
-    return (cluster_means, present_cluster_means, cluster_means_sq)
+    return (cluster_means, present_cluster_means, cluster_variances)
 
 
 def get_cluster_means_backed(
@@ -180,8 +181,9 @@ def get_cluster_means_backed(
                                     index=cluster_labels,
                                     columns=adata.var.index
                                     )
+    cluster_variances = cluster_means_sq - np.square(cluster_means)
 
-    return (cluster_means, present_cluster_means, cluster_means_sq)
+    return (cluster_means, present_cluster_means, cluster_variances)
 
 
 def get_one_hot_cluster_array(
