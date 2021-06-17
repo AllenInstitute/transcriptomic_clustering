@@ -287,5 +287,5 @@ def test_de_pairs_chisq():
                                 cl_size,
                                 de_thresholds)
 
-    np.testing.assert_almost_equal(de_pairs[(11,4)]['score'], expected_score, decimal=10)
-    assert set(de_pairs[(11,4)]['up_genes']) == set(expected_up_genes_index)
+    np.testing.assert_almost_equal(de_pairs.loc[(11,4)]['score'], expected_score, decimal=10)
+    assert set(de_pairs.loc[(11,4)]['up_genes']) == set(expected_up_genes_index)

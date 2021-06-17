@@ -7,7 +7,6 @@ import logging
 from collections import defaultdict
 import warnings
 import transcriptomic_clustering as tc
-from transcriptomic_clustering import diff_expression as de
 
 DEFAULT_THRESHOLDS = {
     'q1_thresh': 0.5,
@@ -348,8 +347,8 @@ def merge_small_clusters(
 def merge_clusters_by_de(
     cluster_assignments: Dict[Any, np.ndarray],
     cluster_means: pd.DataFrame,
-    present_cluster_means: pd.DataFrame,
     cluster_variances: pd.DataFrame,
+    present_cluster_means: pd.DataFrame,
     cluster_means_rd: pd.DataFrame,
     thresholds: Dict[str, Any],
     k: Optional[int] = 2,
@@ -368,6 +367,8 @@ def merge_clusters_by_de(
         map of cluster label to cell idx belonging to cluster
     cluster_means:
         dataframe of cluster means indexed by cluster label in a normalized space
+    cluster_variances:
+        dataframe of cluster variances indexed by cluster label in a normalized space
     present_cluster_means:
         dataframe of cluster means indexed by cluster label filtered by low_th in a normalized space
     cluster_means_rd:
@@ -400,7 +401,7 @@ def merge_clusters_by_de(
 
         # Step 4: Get DE for pairs based on de_method
         if de_method == 'ebayes':
-            scores = de_pairs_ebayes(
+            scores = tc.de_pairs_ebayes(
                 neighbor_pairs,
                 cluster_means,
                 cluster_variances,
@@ -409,7 +410,7 @@ def merge_clusters_by_de(
                 thresholds,
             )
         elif de_method == 'chisq':
-            scores = de_pairs_chisq(
+            scores = tc.de_pairs_chisq(
                 neighbor_pairs,
                 cluster_means,
                 present_cluster_means,
