@@ -1,5 +1,6 @@
 import os
 import pytest
+from pandas.testing import assert_frame_equal
 
 import numpy as np
 import pandas as pd
@@ -48,7 +49,7 @@ def adata():
 
 
 @pytest.fixture
-def clusters():
+def clusters(adata):
     cluster_assignments = {
         '11': [0, 3, 5, 9],
         2: [1, 2, 6],
@@ -61,7 +62,8 @@ def clusters():
                   [3., 4., 2.],
                   [3., 0.5, 3.],
                   [0., 0., 7.]]),
-        index = ['11', 2, '32', 4]
+        index = ['11', 2, '32', 4],
+        columns=adata.var_names
     )
 
     present_cluster_means = pd.DataFrame(
@@ -69,22 +71,30 @@ def clusters():
                   [(1/3), (2/3), (1/3)],
                   [0.5, 0., .5],
                   [0., 0., 1.]]),
-        index = ['11', 2, '32', 4]
+        index = ['11', 2, '32', 4],
+        columns=adata.var_names
     )
+    cluster_variances = pd.DataFrame(
+        np.array([[5, 2.25, 7.5],
+                  [(12 + 2/3), 8.0, (2/3)],
+                  [1.0, 0.25, 9.0],
+                  [0.0, 0.0, 0.0]]),
+        index=['11', 2, '32', 4],
+        columns=adata.var_names
+    )
+    return cluster_means, present_cluster_means, cluster_variances, cluster_assignments
 
-    return cluster_means, present_cluster_means, cluster_assignments
 
+def test_merge_two_clusters(adata, clusters):
 
-def test_merge_two_clusters(clusters):
-
-    cluster_means, present_cluster_means, cluster_assignments = clusters
+    cluster_means, present_cluster_means, cluster_variances, cluster_assignments = clusters
 
     merging.merge_two_clusters(cluster_assignments,
                                label_source=4,
                                label_dest=2,
                                cluster_means=cluster_means,
+                               cluster_variances=cluster_variances,
                                present_cluster_means=present_cluster_means)
-                               
 
     expected_cluster_assignments = {
         '11': [0, 3, 5, 9],
@@ -98,7 +108,8 @@ def test_merge_two_clusters(clusters):
             (np.array([3., 4., 2.])*3 + np.array([0., 0., 7.])*1)/(3+1),
             np.array([3., 0.5, 3.])
         ]),
-        index = ['11', 2, '32']
+        index = ['11', 2, '32'],
+        columns=adata.var_names
     )
 
     expected_present_cluster_means = pd.DataFrame(
@@ -107,15 +118,24 @@ def test_merge_two_clusters(clusters):
             (np.array([(1/3), (2/3), (1/3)])*3 + np.array([0., 0., 1.])*1)/(3+1),
             np.array([0.5, 0., .5])
         ]),
-        index = ['11', 2, '32']
+        index = ['11', 2, '32'],
+        columns=adata.var_names
+    )
+    expected_cluster_variances = pd.DataFrame(
+        np.asarray([[5, 2.25, 7.5],
+                    [10.131944, 8.333333, 5.131944],
+                    [1.0, 0.25, 9.0]]),
+        index = ['11', 2, '32'],
+        columns=adata.var_names
     )
 
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments.keys())
     for k, v in expected_cluster_assignments.items():
         assert np.array_equal(cluster_assignments[k], expected_cluster_assignments[k])
 
-    assert cluster_means.equals(expected_cluster_means)
-    assert present_cluster_means.equals(expected_present_cluster_means)
+    assert_frame_equal(cluster_means, expected_cluster_means)
+    assert_frame_equal(cluster_variances,expected_cluster_variances)
+    assert_frame_equal(present_cluster_means, expected_present_cluster_means)
 
 
 def test_pdist_normalized():
@@ -133,7 +153,7 @@ def test_pdist_normalized():
 
 def test_find_most_similar(clusters):
 
-    cluster_means, _, _ = clusters
+    cluster_means, _, _, _ = clusters
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
 
@@ -149,7 +169,7 @@ def test_find_most_similar(clusters):
 
 def test_merge_small_clusters(clusters):
 
-    cluster_means, _, cluster_assignments = clusters
+    cluster_means, _, _, cluster_assignments = clusters
 
     expected_cluster_assignments = {
         '11': [0, 3, 5, 9, 4, 7, 8],
@@ -190,7 +210,7 @@ def test_on_tasic_clusters(tasic_reduced_dim_adata):
 
 def test_calculate_similarity(clusters):
 
-    cluster_means, _, _ = clusters
+    cluster_means, _, _, _ = clusters
 
     group_rows = ['32', 4]
     group_cols = ['11', 2, '32', 4]
@@ -210,7 +230,7 @@ def test_calculate_similarity(clusters):
 
 def test_get_k_nearest_clusters(clusters):
 
-    cluster_means, _, _ = clusters
+    cluster_means, _, _, _ = clusters
 
     expected_nns = [('11', 4), ('11', '32'), (2, '32'), (2, 4), ('32', 4)]
 
@@ -223,7 +243,7 @@ def test_get_k_nearest_clusters(clusters):
 
 def test_get_cluster_assignments(adata, clusters):
 
-    _, _, cluster_assignments = clusters
+    _, _, _, cluster_assignments = clusters
     obtained_cluster_assignments = merging.get_cluster_assignments(
         adata,
         cluster_label_obs="cluster_label")
@@ -282,43 +302,6 @@ def test_order_pairs():
     assert obtained == expected
 
 
-def test_get_de_scores_for_pairs():
-
-    pairs = [(11, 4)]
-    thresholds = {
-        'q1_thresh': 0.3,
-        'q2_thresh': None,
-        'min_cell_thresh': 1,
-        'qdiff_thresh': 0.1,
-        'padj_thresh': 0.5,
-        'lfc_thresh': .4,
-    }
-    cl_size = {4: 100, 11: 200}
-
-    cluster_means = pd.DataFrame(
-        np.array([[3.8, 1.5, 4.],
-                  [3., 2., 3.]]),
-        index=[11, 4],
-        columns=['gene_a', 'gene_b', 'gene_c'])
-
-    present_cluster_means = pd.DataFrame(
-        np.array([[.85, .67, .51],
-                  [.1, .6, .4]]),
-        index=[11, 4],
-        columns=['gene_a', 'gene_b', 'gene_c'])
-
-    scores = merging.get_de_scores_for_pairs(pairs,
-                                     cluster_means,
-                                     present_cluster_means,
-                                     cl_size,
-                                     thresholds)
-
-    expected_score = 35.24165
-    obtained_score = scores.iloc[0].score
-
-    assert np.isclose(expected_score, obtained_score)
-
-
 def test_merge_clusters_by_de():
 
     cluster_assignments = {
@@ -344,6 +327,12 @@ def test_merge_clusters_by_de():
                   [3., 2., 3.]]),
         index=[11, 4],
         columns=['gene_a', 'gene_b', 'gene_c'])
+    
+    cluster_variances = pd.DataFrame(
+        np.array([[10, 10, 10,],
+                  [10, 10, 10]]),
+        index=[11, 4],
+        columns=['gene_a', 'gene_b', 'gene_c'])
 
     present_cluster_means = pd.DataFrame(
         np.array([[.1, .67, .51],
@@ -355,6 +344,7 @@ def test_merge_clusters_by_de():
 
     merging.merge_clusters_by_de(cluster_assignments,
                                  cluster_means,
+                                 cluster_variances,
                                  present_cluster_means,
                                  cluster_means_reduced,
                                  thresholds,
