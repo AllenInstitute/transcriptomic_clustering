@@ -81,7 +81,7 @@ def merge_clusters(
         cluster_by_obs[idxs] = cl_id
 
     # Calculate cluster means on normalized data
-    cl_means, present_cl_means, _ = tc.get_cluster_means(adata_norm,
+    cl_means, present_cl_means, cl_vars = tc.get_cluster_means(adata_norm,
                                                       cluster_assignments,
                                                       cluster_by_obs,
                                                       chunk_size,
@@ -90,6 +90,7 @@ def merge_clusters(
     # Merge remaining clusters by differential expression
     merge_clusters_by_de(cluster_assignments,
                          cl_means,
+                         cl_vars,
                          present_cl_means,
                          cl_means_reduced,
                          thresholds,
@@ -105,11 +106,12 @@ def merge_two_clusters(
         label_source: Any,
         label_dest: Any,
         cluster_means: pd.DataFrame,
+        cluster_variances: Optional[pd.DataFrame]=None,
         present_cluster_means: pd.DataFrame=None
 ):
     """
     Merge source cluster into a destination cluster by:
-    1. updating cluster means
+    1. updating cluster means and variances
     2. updating mean of expressions present if not None
     3. updating cluster assignments
 
@@ -123,6 +125,8 @@ def merge_two_clusters(
         label of cluster merged into
     cluster_means:
         dataframe of cluster means indexed by cluster label
+    cluster_variances:
+        dataframe of cluster variances indexed by cluster label
     present_cluster_means:
         dataframe of cluster means indexed by cluster label filtered by low_th
 
@@ -130,53 +134,69 @@ def merge_two_clusters(
     -------
     """
 
-    merge_cluster_means(cluster_means, cluster_assignments, label_source, label_dest)
+    merge_cluster_means_vars(cluster_assignments, label_source, label_dest, cluster_means, cluster_variances)
 
     if present_cluster_means is not None:
-        merge_cluster_means(present_cluster_means, cluster_assignments, label_source, label_dest)
+        merge_cluster_means_vars(cluster_assignments, label_source, label_dest, present_cluster_means, None)
 
     # merge cluster assignments
     cluster_assignments[label_dest] += cluster_assignments[label_source]
     cluster_assignments.pop(label_source)
 
 
-def merge_cluster_means(
-        cluster_means: pd.DataFrame,
+def merge_cluster_means_vars(
         cluster_assignments: Dict[Any, np.ndarray],
         label_source: Any,
-        label_dest: Any
+        label_dest: Any,
+        cluster_means: pd.DataFrame,
+        cluster_variances: Optional[pd.DataFrame]
 ):
     """
     Merge source cluster into a destination cluster by:
     1. computing the updated cluster centroid (mean gene expression)
         of the destination cluster
-    2. deleting source cluster after merged
+    2. compute updated variance
+    3. deleting source cluster after merged
 
     Parameters
     ----------
-    cluster_means:
-        dataframe of cluster means indexed by cluster label
     cluster_assignments:
         map of cluster label to cell idx belonging to cluster
     label_source:
         label of cluster being merged
     label_dest:
         label of cluster merged into
+    cluster_means:
+        dataframe of cluster means indexed by cluster label
+    cluster_variances:
+        dataframe of cluster variances indexed by cluster label
 
     Returns
     -------
     """
 
     # update cluster means:
-    n_source = len(cluster_assignments[label_source])
-    n_dest = len(cluster_assignments[label_dest])
+    n1 = len(cluster_assignments[label_source])
+    n2 = len(cluster_assignments[label_dest])
+    mean1 = cluster_means.loc[label_source]
+    mean2 = cluster_means.loc[label_dest]
 
-    cluster_means.loc[label_dest] = (cluster_means.loc[label_source] * n_source +
-                                     cluster_means.loc[label_dest] * n_dest
-                                    ) / (n_source + n_dest)
+    mean_comb = (mean1 * n1 + mean2 * n2) / (n1 + n2)
 
-    # remove merged cluster
+    cluster_means.loc[label_dest] = mean_comb
     cluster_means.drop(label_source, inplace=True)
+
+    if cluster_variances is not None:
+        var1 = cluster_variances.loc[label_source]
+        var2 = cluster_variances.loc[label_dest]
+        
+        var_comb = 1 / (n1 + n2 - 1) * (
+            (n1 - 1) * var1 + n1 * (mean1 - mean_comb) ** 2 +
+            (n2 - 1) * var2 + n1 * (mean2 - mean_comb) ** 2
+        )
+
+        cluster_variances.loc[label_dest] = var_comb
+        cluster_variances.drop(label_source, inplace=True)
 
 
 def pdist_normalized(
@@ -325,82 +345,11 @@ def merge_small_clusters(
     return cluster_assignments
 
 
-def get_de_scores_for_pairs(
-    pairs: List[Tuple[int, int]],
-    cluster_means: pd.DataFrame,
-    present_cluster_means: pd.DataFrame,
-    cl_size: Dict[Any, int],
-    thresholds: Dict[str, Any],
-    de_method: Optional[str] = 'chisq',
-) -> pd.DataFrame:
-    """
-    Calculate the de score for pairs of clusters
-
-    1. calculate de stats for each pair
-    2. use stats to calculate score
-
-    Parameters
-    ----------
-    pairs:
-        pairs of clusters to get score for
-    cluster_means:
-        dataframe of cluster means indexed by cluster label
-    present_cluster_means:
-        dataframe of cluster means indexed by cluster label filtered by low_th
-    cl_size:
-        mapping of cluster label to cluster size
-    de_method:
-        method used for de calculation
-
-    Returns
-    -------
-    scores_df:
-        dataframe of calculated de score for pairs of clusters
-    """
-
-    scores = []
-
-    for pair in pairs:
-        if de_method == 'chisq':
-            # TODO: This function is still in PR
-            de_stats = de.de_pair_chisq(pair, present_cluster_means, cluster_means, cl_size)
-        elif de_method == 'limma':
-            raise NotImplementedError('limma is not implemented')
-        else:
-            raise NotImplementedError(f'{de_method} is not implemented')
-
-        # Calculate de score
-        # TODO: This function is not implemented yet
-        first_cluster, second_cluster = pair
-        de_stats_up_genes = de.filter_gene_stats(
-            de_stats=de_stats,
-            gene_type='up-regulated',
-            cl1_size=cl_size[first_cluster],
-            cl2_size=cl_size[second_cluster],
-            **thresholds
-        )
-        up_score = de.calc_de_score(de_stats_up_genes['p_adj'])
-        de_stats_down_genes = de.filter_gene_stats(
-            de_stats=de_stats,
-            gene_type='down-regulated',
-            cl1_size=cl_size[first_cluster],
-            cl2_size=cl_size[second_cluster],
-            **thresholds
-        )
-        down_score = de.calc_de_score(de_stats_down_genes['p_adj'])
-        score = up_score + down_score
-
-        scores.append(score)
-
-    scores_df = pd.DataFrame(scores, columns=['score'], index=pairs)
-
-    return scores_df
-
-
 def merge_clusters_by_de(
     cluster_assignments: Dict[Any, np.ndarray],
     cluster_means: pd.DataFrame,
     present_cluster_means: pd.DataFrame,
+    cluster_variances: pd.DataFrame,
     cluster_means_rd: pd.DataFrame,
     thresholds: Dict[str, Any],
     k: Optional[int] = 2,
@@ -450,12 +399,23 @@ def merge_clusters_by_de(
             break
 
         # Step 4: Get DE for pairs based on de_method
-        scores = get_de_scores_for_pairs(neighbor_pairs,
-                                         cluster_means,
-                                         present_cluster_means,
-                                         cl_size,
-                                         thresholds,
-                                         de_method)
+        if de_method == 'ebayes':
+            scores = de_pairs_ebayes(
+                neighbor_pairs,
+                cluster_means,
+                cluster_variances,
+                present_cluster_means,
+                cl_size,
+                thresholds,
+            )
+        elif de_method == 'chisq':
+            scores = de_pairs_chisq(
+                neighbor_pairs,
+                cluster_means,
+                present_cluster_means,
+                cl_size,
+                thresholds,
+            )
 
         # Sort scores
         scores = scores.sort_values(by='score')
@@ -481,10 +441,10 @@ def merge_clusters_by_de(
             logging.info(f"Merging cluster {src_label} into {dst_label} -- de score: {score}")
 
             # Update cluster means on reduced space
-            merge_cluster_means(cluster_means_rd, cluster_assignments, src_label, dst_label)
+            merge_cluster_means_vars(cluster_assignments, src_label, dst_label, cluster_means_rd, None)
 
             # Update cluster means and cluster assignments
-            merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, present_cluster_means)
+            merge_two_clusters(cluster_assignments, src_label, dst_label, cluster_means, cluster_variances, present_cluster_means)
             merged_clusters.add(src_label)
             merged_clusters.add(dst_label)
 
