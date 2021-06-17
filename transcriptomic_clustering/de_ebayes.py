@@ -223,4 +223,5 @@ def de_pairs_ebayes(
             'num': len(de_pair_up.index) + len(de_pair_down.index)
         }
 
+    de_pairs = pd.DataFrame(de_pairs).T
     return de_pairs
