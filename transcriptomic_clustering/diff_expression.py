@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy import stats
-from statsmodels.stats.multitest import fdrcorrection
-
+import statsmodels.stats.multitest as multi
+import warnings
 import sys
 
 
@@ -43,16 +43,15 @@ def vec_chisq_test(pair: tuple,
     cl2_absent = cl2_ncells - cl2_present
 
     observed = np.array([cl1_present, cl1_absent, cl2_present, cl2_absent])
-
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
         try:
             chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
         except:
-            print("chi2 exception catched, p value will be assigned to 1")
-    
+            warnings.warn(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
     return p_vals
+
 
 def de_pair_chisq(pair: tuple, 
                   cl_present: Union[pd.DataFrame, pd.Series],
@@ -78,9 +77,9 @@ def de_pair_chisq(pair: tuple,
             meanB: mean expression value for the second cluster in the pair
             q1: proportion of cells expressing each gene for the first cluster
             q2: proportion of cells expressing each gene for the second cluster
+            qdiff: normalized difference between q1 and q2
 
     """
-
     if len(pair) != 2:
         raise ValueError("The pair must contain two cluster labels")
 
@@ -101,8 +100,7 @@ def de_pair_chisq(pair: tuple,
                             cl_present_sorted,
                             cl_size)
     
-    rejected,p_adj = fdrcorrection(p_vals)
-
+    reject, p_adj, alphacSidak, alphacBonf = multi.multipletests(p_vals, method="holm", is_sorted=False)
     lfc = cl_means_sorted.loc[first_cluster].to_numpy() - cl_means_sorted.loc[second_cluster].to_numpy()
 
     q1 = cl_present_sorted.loc[first_cluster].to_numpy()
@@ -171,7 +169,6 @@ def filter_gene_stats(
     -------
     filtered dataframe
     """
-
     if gene_type == 'up-regulated':
         mask = de_stats['lfc'] > 0
         qa = 'q1'
@@ -244,3 +241,64 @@ def calc_de_score(
     de_score = np.sum(-np.log10(padj)) if len(padj) else 0
 
     return de_score
+
+def de_pairs_chisq(
+        pairs: List[Tuple[Any, Any]],
+        cl_means: pd.DataFrame,
+        cl_present: pd.DataFrame,
+        cl_size: Dict[Any, int],
+        de_thresholds: Dict[str, Any],
+    ):
+    """
+    Compute Chi square test for pairs of cluster
+
+    Parameters
+    ----------
+    pairs: list of pairs of cluster names
+    cl_means: a data frame of normalized mean gene expression values ( clusters x genes)
+    cl_present: a data frame of gene detection proportions ( clusters x genes)
+    cl_size: dict of cluster name: number of observations in cluster
+    de_thresholds: thresholds for filter de
+
+    Returns
+    -------
+    Dict with key: cluster_pair, value: dict of de values
+    """
+    de_pairs = {}
+    for pair in pairs:
+        # chisq test
+        de_pair_stats = de_pair_chisq(pair, cl_present, cl_means, cl_size)
+
+        # get de score
+        first_cluster, second_cluster = pair
+
+        de_pair_up = filter_gene_stats(
+            de_stats=de_pair_stats,
+            gene_type='up-regulated',
+            cl1_size=cl_size[first_cluster],
+            cl2_size=cl_size[second_cluster],
+            **de_thresholds
+        )
+        up_score = calc_de_score(de_pair_up['p_adj'])
+
+        de_pair_down = filter_gene_stats(
+            de_stats=de_pair_stats,
+            gene_type='down-regulated',
+            cl1_size=cl_size[first_cluster],
+            cl2_size=cl_size[second_cluster],
+            **de_thresholds
+        )
+        down_score = calc_de_score(de_pair_down['p_adj'])
+
+        de_pairs[pair] = {
+            'score': up_score + down_score,
+            'up_score': up_score,
+            'down_score': down_score,
+            'up_genes': de_pair_up.index.to_list(),
+            'down_genes': de_pair_down.index.to_list(),
+            'up_num': len(de_pair_up.index),
+            'down_num': len(de_pair_down.index),
+            'num': len(de_pair_up.index) + len(de_pair_down.index)
+        }
+    de_pairs = pd.DataFrame(de_pairs).T
+    return de_pairs

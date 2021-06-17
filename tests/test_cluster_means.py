@@ -37,7 +37,7 @@ def adata():
 
 
 @pytest.fixture
-def clusters():
+def clusters(adata):
     cluster_assignments = {
         '11': [0, 3, 5, 9],
         '2': [1, 2, 6],
@@ -52,7 +52,8 @@ def clusters():
                   [3., 4., 2.],
                   [3., 0.5, 3.],
                   [0., 0., 7.]]),
-        index = ['11', '2', '32', '4']
+        index = ['11', '2', '32', '4'],
+        columns=adata.var_names
     )
 
     present_cluster_means = pd.DataFrame(
@@ -60,17 +61,32 @@ def clusters():
                   [(1/3), (2/3), (1/3)],
                   [0.5, 0., .5],
                   [0., 0., 1.]]),
-        index = ['11', '2', '32', '4']
+        index = ['11', '2', '32', '4'],
+        columns=adata.var_names
     )
 
-    return cluster_means, present_cluster_means, cluster_assignments, cluster_by_obs
+    cluster_variances = pd.DataFrame(
+        np.array([[6+2/3, 3, 10],
+                  [19, 12.0, 1.0],
+                  [2.0, 0.5, 18.0],
+                  [0.0, 0.0, 0.0]]),
+        index=['11', '2', '32', '4'],
+        columns=adata.var_names
+    )
+
+    return cluster_means, present_cluster_means, cluster_variances, cluster_assignments, cluster_by_obs
 
 
 def test_get_cluster_means_inmemory(adata, clusters):
 
-    expected_cluster_means, expected_present_cluster_means, cluster_assignments, cluster_by_obs = clusters
+    (expected_cluster_means,
+     expected_present_cluster_means,
+     expected_cluster_variances,
+     cluster_assignments,
+     cluster_by_obs) = clusters
 
-    obtained_cluster_means, obtained_present_cluster_means = cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
+    obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
+        cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert obtained_cluster_means.index.equals(expected_cluster_means.index)
     assert obtained_cluster_means.columns.equals(expected_cluster_means.columns)
@@ -78,19 +94,27 @@ def test_get_cluster_means_inmemory(adata, clusters):
     assert obtained_present_cluster_means.index.equals(expected_present_cluster_means.index)
     assert obtained_present_cluster_means.columns.equals(expected_present_cluster_means.columns)
     assert np.allclose(obtained_present_cluster_means.to_numpy(), expected_present_cluster_means.to_numpy())
+    assert obtained_cluster_variances.index.equals(expected_cluster_variances.index)
+    assert obtained_cluster_variances.columns.equals(expected_cluster_variances.columns)
+    assert np.allclose(obtained_cluster_variances.to_numpy(), expected_cluster_variances.to_numpy())
 
 
 def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
 
-    expected_cluster_means, expected_present_cluster_means, cluster_assignments, cluster_by_obs = clusters
+    (expected_cluster_means,
+     expected_present_cluster_means,
+     expected_cluster_variances,
+     cluster_assignments,
+     cluster_by_obs) = clusters
 
     tmpdir = str(tmpdir_factory.mktemp("test_cluster_means"))
     input_file_name = os.path.join(tmpdir, "input.h5ad")
 
-    ad.AnnData(csr_matrix(adata.X)).write(input_file_name) # make tmp input file
+    ad.AnnData(csr_matrix(adata.X), obs=adata.obs, var=adata.var).write(input_file_name) # make tmp input file
 
     adata = sc.read_h5ad(input_file_name, backed='r')
-    obtained_cluster_means, obtained_present_cluster_means = cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
+    obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
+        cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
     assert obtained_cluster_means.index.equals(expected_cluster_means.index)
     assert obtained_cluster_means.columns.equals(expected_cluster_means.columns)
@@ -98,3 +122,6 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     assert obtained_present_cluster_means.index.equals(expected_present_cluster_means.index)
     assert obtained_present_cluster_means.columns.equals(expected_present_cluster_means.columns)
     assert np.allclose(obtained_present_cluster_means.to_numpy(), expected_present_cluster_means.to_numpy())
+    assert obtained_cluster_variances.index.equals(expected_cluster_variances.index)
+    assert obtained_cluster_variances.columns.equals(expected_cluster_variances.columns)
+    assert np.allclose(obtained_cluster_variances.to_numpy(), expected_cluster_variances.to_numpy())
