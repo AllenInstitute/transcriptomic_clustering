@@ -66,9 +66,9 @@ def clusters(adata):
     )
 
     cluster_variances = pd.DataFrame(
-        np.array([[5, 2.25, 7.5],
-                  [(12 + 2/3), 8.0, (2/3)],
-                  [1.0, 0.25, 9.0],
+        np.array([[6+2/3, 3, 10],
+                  [19, 12.0, 1.0],
+                  [2.0, 0.5, 18.0],
                   [0.0, 0.0, 0.0]]),
         index=['11', '2', '32', '4'],
         columns=adata.var_names
@@ -88,6 +88,7 @@ def test_get_cluster_means_inmemory(adata, clusters):
     obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
         cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 
+    print('var', obtained_cluster_variances)
     assert obtained_cluster_means.index.equals(expected_cluster_means.index)
     assert obtained_cluster_means.columns.equals(expected_cluster_means.columns)
     assert np.allclose(obtained_cluster_means.to_numpy(), expected_cluster_means.to_numpy())

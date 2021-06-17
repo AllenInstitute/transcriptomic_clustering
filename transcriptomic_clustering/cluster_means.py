@@ -83,7 +83,7 @@ def get_cluster_means_inmemory(
         if slice.shape[0] == 1:
             cluster_variances = np.zeros(slice.shape)
         else:
-            cluster_variances = np.var(slice, axis=0, ddof=0)
+            cluster_variances = np.var(slice, axis=0, ddof=1)
         cluster_variances_lst.append(np.asarray(cluster_variances).ravel())
 
 
@@ -171,7 +171,7 @@ def get_cluster_means_backed(
     # Calculate means
     cl_means = cluster_sums / cluster_sizes
     present_cl_means = present_cluster_sums / cluster_sizes
-    cl_variances = np.vstack([w.var_p for w in cluster_welfords])
+    cl_variances = np.vstack([w.var_s for w in cluster_welfords])
     cl_variances[np.isnan(cl_variances)] = 0.0
 
     # Convert to desired output
