@@ -1,3 +1,4 @@
+import enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import anndata as ad
@@ -5,6 +6,7 @@ from anndata._core.anndata import AnnData
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, issparse
+from welford import Welford
 import transcriptomic_clustering as tc
 import warnings
 
@@ -68,7 +70,7 @@ def get_cluster_means_inmemory(
 
     cluster_means_lst = []
     present_cluster_means_lst = []
-    cluster_means_sq_lst = []
+    cluster_variances_lst = []
 
     for clust in cluster_assignments.values():
         slice = adata.X[clust, :]
@@ -76,10 +78,13 @@ def get_cluster_means_inmemory(
         present_cluster_means_lst.append(np.asarray(np.mean((slice > low_th), axis=0)).ravel())
 
         if issparse(slice):
-            slice_sq = slice.power(2)
+            slice = slice.toarray()
+        slice = np.atleast_2d(slice)
+        if slice.shape[0] == 1:
+            cluster_variances = np.zeros(slice.shape)
         else:
-            slice_sq = np.square(slice)
-        cluster_means_sq_lst.append(np.asarray(np.mean(slice_sq, axis=0)).ravel())
+            cluster_variances = np.var(slice, axis=0, ddof=0)
+        cluster_variances_lst.append(np.asarray(cluster_variances).ravel())
 
 
     cluster_means = pd.DataFrame(
@@ -92,12 +97,11 @@ def get_cluster_means_inmemory(
         index=list(cluster_assignments.keys()),
         columns=adata.var.index
     )
-    cluster_means_sq = pd.DataFrame(
-        np.vstack(cluster_means_sq_lst),
+    cluster_variances = pd.DataFrame(
+        np.vstack(cluster_variances_lst),
         index=list(cluster_assignments.keys()),
         columns=adata.var.index
     )
-    cluster_variances = cluster_means_sq - np.square(cluster_means)
 
     return (cluster_means, present_cluster_means, cluster_variances)
 
@@ -152,21 +156,23 @@ def get_cluster_means_backed(
     # Calculate cluster and present cluster sums 
     cluster_sums = np.zeros((n_clusters, n_genes))
     present_cluster_sums = np.zeros((n_clusters, n_genes))
-    cluster_sq_sums = np.zeros((n_clusters, n_genes))
+    cluster_welfords = [Welford() for i in range(n_clusters)]
     for chunk, start, end in adata.chunked_X(chunk_size):
         cluster_sums += one_hot_cl[:, start:end] @ chunk
         present_cluster_sums += one_hot_cl[:, start:end] @ (chunk > low_th)
 
+        chunk_clust_by_obs = cluster_by_obs[start:end]
         if issparse(chunk):
-            chunk_sq = chunk.power(2)
-        else:
-            chunk_sq = np.square(chunk)
-        cluster_sq_sums += one_hot_cl[:, start:end] @ chunk_sq
+            chunk = chunk.toarray()
+        for i, clust in enumerate(cluster_assignments.keys()):
+            new_obs = chunk[chunk_clust_by_obs == clust,:]
+            cluster_welfords[i].add_all(new_obs)
 
     # Calculate means
     cl_means = cluster_sums / cluster_sizes
     present_cl_means = present_cluster_sums / cluster_sizes
-    cl_means_sq = cluster_sq_sums / cluster_sizes
+    cl_variances = np.vstack([w.var_p for w in cluster_welfords])
+    cl_variances[np.isnan(cl_variances)] = 0.0
 
     # Convert to desired output
     cluster_means = pd.DataFrame(cl_means,
@@ -177,11 +183,10 @@ def get_cluster_means_backed(
                                          index=cluster_labels,
                                          columns=adata.var.index
                                          )
-    cluster_means_sq = pd.DataFrame(cl_means_sq,
+    cluster_variances = pd.DataFrame(cl_variances,
                                     index=cluster_labels,
                                     columns=adata.var.index
                                     )
-    cluster_variances = cluster_means_sq - np.square(cluster_means)
 
     return (cluster_means, present_cluster_means, cluster_variances)
 
