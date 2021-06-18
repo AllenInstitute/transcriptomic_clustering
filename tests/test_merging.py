@@ -288,6 +288,7 @@ def test_merge_clusters():
         cluster_by_obs=cluster_by_obs,
         thresholds=thresholds,
         min_cluster_size=6,
+        de_method='ebayes',
     )
 
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())

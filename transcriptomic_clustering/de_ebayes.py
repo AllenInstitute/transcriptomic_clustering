@@ -106,6 +106,10 @@ def moderate_variances(
     """
 
     var = np.squeeze(variances.to_numpy())
+    idxs_zero = np.where(var == 0)[0]
+    if idxs_zero.size > 0:
+        warnings.warn(f'offsetting zero variances from zero')
+        var[idxs_zero] += np.finfo(var.dtype).eps
 
     df_prior, var_prior = fit_f_dist(var, df)
     var_post = (df_prior * var_prior + df * var) / (df + df_prior)
