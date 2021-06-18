@@ -253,20 +253,14 @@ def test_get_cluster_assignments(adata, clusters):
         assert set(cluster_assignments[k]) == set(obtained_cluster_assignments[k])
 
 
-def test_merge_clusters():
+@pytest.fixture
+def tasic_data_for_merge():
 
-    tasic_norm_path = os.path.join(DATA_DIR, "tasic_normed_select.h5ad")
-    tasic_norm_adata = sc.read_h5ad(tasic_norm_path)
-    tasic_reduced_dim_path = os.path.join(DATA_DIR, "tasic_projected.h5ad")
-    tasic_reduced_dim_adata = sc.read_h5ad(tasic_reduced_dim_path)
+    normalized_path = os.path.join(DATA_DIR, "tasic_normed_select.h5ad")
+    normalized_adata = sc.read_h5ad(normalized_path)
 
-    cluster_assignments_before_merging = merging.get_cluster_assignments(
-        tasic_norm_adata,
-        cluster_label_obs="cluster_label_before_merging")
-
-    expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
-        tasic_norm_adata,
-        cluster_label_obs="cluster_label_after_merging")
+    reduced_dim_path = os.path.join(DATA_DIR, "tasic_projected.h5ad")
+    reduced_dim_adata = sc.read_h5ad(reduced_dim_path)
 
     thresholds = {
         'q1_thresh': 0.5,
@@ -278,14 +272,52 @@ def test_merge_clusters():
         'score_thresh': 40,
         'low_thresh': 1
     }
+    return normalized_adata, reduced_dim_adata, thresholds
 
-    cluster_by_obs = tasic_norm_adata.obs['cluster_label_before_merging'].values
+
+def test_merge_clusters_de_chisq(tasic_data_for_merge):
+
+    tasic_norm_adata, tasic_reduced_dim_adata, thresholds = tasic_data_for_merge
+
+    cluster_assignments_before_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_before_merging")
+
+    expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_after_merging_chisq")
 
     cluster_assignments_after_merging = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
-        cluster_by_obs=cluster_by_obs,
+        cluster_by_obs=tasic_norm_adata.obs['cluster_label_before_merging'].values,
+        thresholds=thresholds,
+        de_method='chisq',
+    )
+
+    assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
+    for k, v in cluster_assignments_after_merging.items():
+        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+
+
+def test_merge_clusters_de_ebayes(tasic_data_for_merge):
+
+    tasic_norm_adata, tasic_reduced_dim_adata, thresholds = tasic_data_for_merge
+
+    cluster_assignments_before_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_before_merging")
+
+    expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_after_merging_ebayes")
+
+    cluster_assignments_after_merging = tc.merge_clusters(
+        adata_norm=tasic_norm_adata,
+        adata_reduced=tasic_reduced_dim_adata,
+        cluster_assignments=cluster_assignments_before_merging,
+        cluster_by_obs=tasic_norm_adata.obs['cluster_label_before_merging'].values,
         thresholds=thresholds,
         de_method='ebayes',
     )
@@ -319,7 +351,6 @@ def test_merge_clusters_by_de():
         'lfc_thresh': .4,
         'score_thresh': 40,
         'low_thresh': 1
-
     }
 
     cluster_means = pd.DataFrame(
