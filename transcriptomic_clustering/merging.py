@@ -11,7 +11,7 @@ import transcriptomic_clustering as tc
 DEFAULT_THRESHOLDS = {
     'q1_thresh': 0.5,
     'q2_thresh': None,
-    'min_cell_thresh': 6,
+    'cluster_size_thresh': 6,
     'qdiff_thresh': 0.7,
     'padj_thresh': 0.05,
     'lfc_thresh': 1.0,
@@ -26,7 +26,6 @@ def merge_clusters(
         cluster_assignments: Dict[Any, np.ndarray],
         cluster_by_obs: np.ndarray,
         thresholds: Dict[str, Any] = DEFAULT_THRESHOLDS,
-        min_cluster_size: Optional[int] = 4,
         k: Optional[int] = 2,
         de_method: Optional[str] = 'chisq',
         chunk_size: Optional[int] = None
@@ -47,8 +46,6 @@ def merge_clusters(
         map of cluster label to cell idx belonging to cluster
     cluster_by_obs:
         array of cells with cluster value
-    min_cluster_size:
-        minimum number of cells a cluster must contain
     thresholds:
         threshold for de calculation
     k:
@@ -72,6 +69,7 @@ def merge_clusters(
                                                low_th=thresholds['low_thresh'])
 
     # Merge small clusters
+    min_cluster_size = thresholds['cluster_size_thresh']
     merge_small_clusters(cl_means_reduced, cluster_assignments, min_cluster_size)
 
     # Create new cluster_by_obs based on updated cluster assignments

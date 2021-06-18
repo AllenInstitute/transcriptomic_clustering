@@ -133,7 +133,7 @@ def filter_gene_stats(
     cl2_size: float = None,
     q1_thresh: float = None,
     q2_thresh: float = None,
-    min_cell_thresh: int = None,
+    cluster_size_thresh: int = None,
     qdiff_thresh: float = None,
     padj_thresh: float = None,
     lfc_thresh: float = None
@@ -191,7 +191,7 @@ def filter_gene_stats(
     if q1_thresh:
         mask &= de_stats[qa] > q1_thresh
     if cl_size:
-        mask &= de_stats[qa] * cl_size >= min_cell_thresh
+        mask &= de_stats[qa] * cl_size >= cluster_size_thresh
     if q2_thresh:
         mask &= de_stats[qb] < q2_thresh
     if qdiff_thresh:

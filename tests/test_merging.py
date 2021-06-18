@@ -271,7 +271,7 @@ def test_merge_clusters():
     thresholds = {
         'q1_thresh': 0.5,
         'q2_thresh': None,
-        'min_cell_thresh': 6,
+        'cluster_size_thresh': 6,
         'qdiff_thresh': 0.7,
         'padj_thresh': 0.05,
         'lfc_thresh': 1.0,
@@ -287,7 +287,6 @@ def test_merge_clusters():
         cluster_assignments=cluster_assignments_before_merging,
         cluster_by_obs=cluster_by_obs,
         thresholds=thresholds,
-        min_cluster_size=6,
         de_method='ebayes',
     )
 
@@ -314,7 +313,7 @@ def test_merge_clusters_by_de():
     thresholds = {
         'q1_thresh': 0.3,
         'q2_thresh': None,
-        'min_cell_thresh': 1,
+        'cluster_size_thresh': 1,
         'qdiff_thresh': 0.1,
         'padj_thresh': 0.5,
         'lfc_thresh': .4,
