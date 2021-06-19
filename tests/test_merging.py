@@ -15,13 +15,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 
 @pytest.fixture
-def tasic_reduced_dim_adata():
-
-    tasic_reduced_path = os.path.join(DATA_DIR, "tasic_reduced_dim.h5ad")
-    return sc.read_h5ad(tasic_reduced_path)
-
-
-@pytest.fixture
 def adata():
 
     X = np.array([
@@ -181,31 +174,6 @@ def test_merge_small_clusters(clusters):
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments.keys())
     for k, v in cluster_assignments.items():
         assert np.array_equal(cluster_assignments[k], expected_cluster_assignments[k])
-
-
-def test_on_tasic_clusters(tasic_reduced_dim_adata):
-
-    adata = tasic_reduced_dim_adata
-
-    cluster_assignments = merging.get_cluster_assignments(
-        adata,
-        cluster_label_obs="cluster_label_init")
-    cluster_means, _, _ = cm.get_cluster_means_inmemory(adata, cluster_assignments)
-
-    expected_cluster_assignments = merging.get_cluster_assignments(
-        adata,
-        cluster_label_obs="cluster_label_after_merging_small")
-
-    expected_cluster_means, _, _ = cm.get_cluster_means_inmemory(adata, expected_cluster_assignments)
-
-    merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=6)
-
-    for k, v in cluster_assignments.items():
-        assert set(cluster_assignments[k]) == set(expected_cluster_assignments[k])
-
-    assert cluster_means.index.equals(expected_cluster_means.index)
-    assert cluster_means.columns.equals(expected_cluster_means.columns)
-    assert np.allclose(cluster_means.to_numpy(), expected_cluster_means.to_numpy(), equal_nan=True)
 
 
 def test_calculate_similarity(clusters):
