@@ -1,17 +1,21 @@
 import os
 import functools
 from datetime import datetime
+import annoy
 import community as community_louvain
 import networkx as nx
 from multiprocessing import Pool
 from tqdm import tqdm
 import numpy as np
+import leidenalg
 from annoy import AnnoyIndex
 from scanpy import AnnData
 from scanpy.external.tl import phenograph
 from scipy.sparse import csr_matrix
 from math import log
 import tempfile
+from typing import List
+import igraph as ig
 
 
 def cluster_louvain_phenograph(
@@ -26,7 +30,7 @@ def cluster_louvain_phenograph(
 
     Parameters
     -----------
-    adata: an AnnData or array of data to cluster
+    adata: an AnnData of data to cluster
     k: number of nearest neighbors to use during graph construction
     annotate: if True, community labels are added to adata as observations. Otherwise
              all scanpy pheongraph outputs are returned.
@@ -47,13 +51,10 @@ def cluster_louvain_phenograph(
         **kwargs
     )
 
-    obs_by_cluster = {}
-    for i in range(len(cluster_by_obs)):
-        cluster = cluster_by_obs[i]
-        if cluster not in obs_by_cluster:
-            obs_by_cluster[cluster] = []
-        obs_by_cluster[cluster].append(i)
+    obs_by_cluster = _cluster_obs_list_to_dict(cluster_by_obs)
 
+    # phenograph returns all unclustered cells with a -1 label
+    # this code splits that null cluster
     if -1 in obs_by_cluster:
         max_cluster = max(list(obs_by_cluster.keys()))
         for obs in obs_by_cluster[-1]:
@@ -67,6 +68,28 @@ def cluster_louvain_phenograph(
         adata.obs['pheno_louvain'] = cluster_by_obs
 
     return cluster_by_obs, obs_by_cluster, graph, q
+
+def _cluster_obs_list_to_dict(cluster_by_obs: List[int]):
+    """
+    Converts observation clusters in a list to a dict
+    mapping clusters to all observations in the cluster
+
+    Parameters
+    -----------
+    cluster_by_obs: an array of community labels for each cell in adata, in order
+
+    Returns
+    -----------
+    obs_by_cluster: a map of community labels to lists of cell indices in that community in order
+    """
+    obs_by_cluster = {}
+    for i in range(len(cluster_by_obs)):
+        cluster = cluster_by_obs[i]
+        if cluster not in obs_by_cluster:
+            obs_by_cluster[cluster] = []
+        obs_by_cluster[cluster].append(i)
+
+    return obs_by_cluster
 
 def cluster_louvain(
     adata: AnnData,
@@ -90,7 +113,7 @@ def cluster_louvain(
 
     Parameters
     -----------
-    adata: an AnnData or array of data to cluster
+    adata: an AnnData of data to cluster
     k: number of nearest neighbors to use during graph construction
     annotate: if True, community labels are added to adata as observations. Otherwise
               all scanpy pheongraph outputs are returned.
@@ -117,27 +140,34 @@ def cluster_louvain(
     """
     if knn_method == 'annoy':
         nn_adata = get_annoy_knn(
-            adata,
-            k,
-            nn_measure,
-            weighting_method,
-            annoy_trees,
-            n_jobs,
-            annoy_index_filename,
-            graph_filename,
-            random_seed
+            adata = adata,
+            k = k,
+            nn_measure = nn_measure,
+            weighting_method = weighting_method,
+            annoy_trees = annoy_trees,
+            n_jobs = n_jobs,
+            annoy_index_filename = annoy_index_filename,
+            graph_filename = graph_filename,
+            random_seed = random_seed
         )
     else:
         raise ValueError(f"{knn_method} is not a valid knn method! Only available method is annoy")
 
     if louvain_method == 'taynaud':
-        cluster_by_obs, obs_by_cluster, q = get_taynaud_louvain(
-            nn_adata,
-            resolution,
-            random_seed
+        cluster_by_obs, q = get_taynaud_louvain(
+            nn_adata = nn_adata,
+            resolution = resolution,
+            random_seed = random_seed
+        )
+    if louvain_method == 'vtraag':
+        cluster_by_obs, q = get_vtraag_leiden(
+            nn_adata = nn_adata,
+            random_seed = random_seed
         )
     else:
-        raise ValueError(f"{louvain_method} is not a valid louvain method! Only available method is taynaud")
+        raise ValueError(f"{louvain_method} is not a valid louvain method! Only available methods are taynaud and vtraag")
+
+    obs_by_cluster = _cluster_obs_list_to_dict(cluster_by_obs)
 
     if annotate:
         adata.obs['pheno_louvain'] = cluster_by_obs
@@ -166,7 +196,7 @@ def _uniform_csr_from_nn_dict(nn_dict):
         csr_indices.extend(nn_dict.pop(i))
 
     csr_weights = [1 for i in range(n * k)]
-    csr_indptr = [i * k for i in range(n)]
+    csr_indptr = [i * k for i in range(n + 1)]
 
     return csr_matrix((csr_weights, csr_indices, csr_indptr), shape=(n, n), dtype=float)
 
@@ -180,7 +210,7 @@ def _calc_jaccard(idx, max_union, nn_set_dict):
     Parameters
     -----------
     idx: index of the observation to evaluate
-    max_union: 2°k, provided for computational brevity
+    max_union: 2k, provided for computational brevity
     nn_dict: dictionary mapping indices to sets of their nearest neighbor indices
 
     Returns
@@ -216,6 +246,8 @@ def _jaccard_csr_from_nn_dict(nn_dict, n_jobs = 1):
     picklable_jaccard = functools.partial(_calc_jaccard, max_union = 2*k, nn_set_dict = nn_set_dict)
     for chunk_result in tqdm(pool.imap_unordered(picklable_jaccard, range(n), chunksize=chunk_size), total=n):
         weight_map[chunk_result[0]] = chunk_result[1]
+
+    pool.close()
 
     csr_weights = []
     csr_indices = []
@@ -283,10 +315,12 @@ def _annoy_build_csr_nn_graph(
     for chunk_result in tqdm(pool.imap_unordered(picklable_search, range(n), chunksize=chunk_size), total=n):
         graph_map[chunk_result[0]] = chunk_result[1]
 
+    pool.close()
+
     if weighting_method == 'jaccard':
         return _jaccard_csr_from_nn_dict(graph_map, n_jobs)
     if weighting_method == 'uniform':
-        return _uniform_csr_from_nn_dict(graph_map, n_jobs)
+        return _uniform_csr_from_nn_dict(graph_map)
     else:
         raise ValueError(f"{weighting_method} is not a valid weighting option! Must use jaccard or uniform")
 
@@ -308,7 +342,7 @@ def get_annoy_knn(
 
     Parameters
     -----------
-    adata: an AnnData or array of data to cluster
+    adata: an AnnData of data to cluster
     k: number of nearest neighbors to use during graph construction
     nn_measure: metric to use for nearest neighbor evaluation. Can be "angular",
                 "euclidean", "manhattan", "hamming", or "dot"
@@ -316,7 +350,8 @@ def get_annoy_knn(
                       Can currently be "jaccard" or "uniform".
     annoy_trees: Number of trees to use in annoy random forest index. More trees gives higher
                  precision but is more computationally expensive.
-    n_jobs: Number of processes to use in any parallelizable steps
+    n_jobs: Number of processes to use in any parallelizable steps.
+            Note that AnnoyIndex builds differently on different n_jobs values
     annoy_index_filename: File to store annoy index in, defaults to temp file
     graph_filename: File to store KNN graph AnnData in, if unset does not save graph
     random_seed: int to use as random seed 
@@ -327,19 +362,22 @@ def get_annoy_knn(
     """
     data_matrix = adata.X
     ai = AnnoyIndex(data_matrix.shape[1], nn_measure)
-    if not annoy_index_filename:
-        annoy_index_filename = os.path.join(tempfile.gettempdir(), f"annoy_index_{datetime.now().strftime('%Y%m%d%H%M%S')}")
-    ai.on_disk_build(annoy_index_filename)
-    if random_seed:
-        ai.set_seed(random_seed)
+    if annoy_index_filename and os.path.isfile(annoy_index_filename):
+        ai.load(annoy_index_filename)
+    else:
+        if not annoy_index_filename:
+            annoy_index_filename = os.path.join(tempfile.gettempdir(), f"annoy_index_{datetime.now().strftime('%Y%m%d%H%M%S')}")
+        ai.on_disk_build(annoy_index_filename)
+        if random_seed:
+            ai.set_seed(random_seed)
 
-    for i in range(data_matrix.shape[0]):
-        ai.add_item(i, data_matrix[i])
+        for i in range(data_matrix.shape[0]):
+            ai.add_item(i, data_matrix[i])
 
-    if not annoy_trees:
-        annoy_trees = max(1, int(log(data_matrix.shape[0], 2)))
+        if not annoy_trees:
+            annoy_trees = max(1, int(log(data_matrix.shape[0], 2)))
 
-    ai.build(annoy_trees, n_jobs=n_jobs)
+        ai.build(annoy_trees, n_jobs=n_jobs)
 
     csr_graph = _annoy_build_csr_nn_graph(data_matrix, annoy_index_filename, k, n_jobs, nn_measure, weighting_method)
 
@@ -366,7 +404,6 @@ def get_taynaud_louvain(
     Returns
     -----------
     cluster_by_obs: an array of community labels for each cell in adata, in order
-    obs_by_cluster: a map of community labels to lists of cell indices in that community in order
     q: the maximum modularity of the final clustering 
     """
     nn_coo = nn_adata.X.tocoo()
@@ -374,15 +411,36 @@ def get_taynaud_louvain(
     G.add_weighted_edges_from(list(zip(nn_coo.row, nn_coo.col, nn_coo.data)))
 
     partition = community_louvain.best_partition(G, resolution=resolution, random_state=random_seed)
-    cluster_by_obs = [-1 for i in range(nn_coo.shape[0])]
-    obs_by_cluster = {}
-    for cell, cluster in partition.items():
-        cluster_by_obs[cell] = cluster
-        if cluster not in obs_by_cluster:
-            obs_by_cluster[cluster] = [cell]
-        else:
-            obs_by_cluster[cluster].append(cell)
+    cluster_by_obs = [partition[i] for i in range(len(partition))]
 
     q = community_louvain.modularity(partition, G)
 
-    return cluster_by_obs, obs_by_cluster, q
+    return cluster_by_obs, q
+
+def get_vtraag_leiden(
+    nn_adata: AnnData,
+    random_seed: int = None
+):
+    """
+    Given an AnnData object containing a weighted nearest neighbor graph, computes the
+    louvain partition of the graph. This method is faster than taynaud, but not necessarily
+    as optimal.
+
+    Parameters
+    -----------
+    nn_adata: An AnnData object with a weighted nearest neighbor graph of the observations
+    random_seed: int to use as random seed 
+
+    Returns
+    -----------
+    cluster_by_obs: an array of community labels for each cell in adata, in order
+    q: the maximum modularity of the final clustering 
+    """
+    nn_coo = nn_adata.X.tocoo()
+    nn_igraph = ig.Graph(edges=list(zip(nn_coo.row, nn_coo.col)), edge_attrs={'weights': nn_coo.data})
+    optimiser = leidenalg.Optimiser()
+    if random_seed:
+        optimiser.set_rng_seed(random_seed)
+    partition = leidenalg.ModularityVertexPartition(nn_igraph, weights='weights')
+    optimiser.optimise_partition(partition)
+    return partition.membership, partition.quality()
