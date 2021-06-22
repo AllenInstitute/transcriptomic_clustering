@@ -129,7 +129,7 @@ def thresholds():
     thresholds = {
         'q1_thresh': 0.5,
         'q2_thresh': 0.7,
-        'min_cell_thresh': 4,
+        'cluster_size_thresh': 4,
         'qdiff_thresh': 0.7,
         'padj_thresh': 0.01,
         'lfc_thresh': 1.0
@@ -251,7 +251,7 @@ def test_de_pairs_chisq():
     de_thresholds = {
         'q1_thresh': 0.3,
         'q2_thresh': None,
-        'min_cell_thresh': 1,
+        'cluster_size_thresh': 1,
         'qdiff_thresh': 0.1,
         'padj_thresh': 0.5,
         'lfc_thresh': .4,

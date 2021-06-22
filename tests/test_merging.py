@@ -15,13 +15,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 
 @pytest.fixture
-def tasic_reduced_dim_adata():
-
-    tasic_reduced_path = os.path.join(DATA_DIR, "tasic_reduced_dim.h5ad")
-    return sc.read_h5ad(tasic_reduced_path)
-
-
-@pytest.fixture
 def adata():
 
     X = np.array([
@@ -183,31 +176,6 @@ def test_merge_small_clusters(clusters):
         assert np.array_equal(cluster_assignments[k], expected_cluster_assignments[k])
 
 
-def test_on_tasic_clusters(tasic_reduced_dim_adata):
-
-    adata = tasic_reduced_dim_adata
-
-    cluster_assignments = merging.get_cluster_assignments(
-        adata,
-        cluster_label_obs="cluster_label_init")
-    cluster_means, _, _ = cm.get_cluster_means_inmemory(adata, cluster_assignments)
-
-    expected_cluster_assignments = merging.get_cluster_assignments(
-        adata,
-        cluster_label_obs="cluster_label_after_merging_small")
-
-    expected_cluster_means, _, _ = cm.get_cluster_means_inmemory(adata, expected_cluster_assignments)
-
-    merging.merge_small_clusters(cluster_means, cluster_assignments, min_size=6)
-
-    for k, v in cluster_assignments.items():
-        assert set(cluster_assignments[k]) == set(expected_cluster_assignments[k])
-
-    assert cluster_means.index.equals(expected_cluster_means.index)
-    assert cluster_means.columns.equals(expected_cluster_means.columns)
-    assert np.allclose(cluster_means.to_numpy(), expected_cluster_means.to_numpy(), equal_nan=True)
-
-
 def test_calculate_similarity(clusters):
 
     cluster_means, _, _, _ = clusters
@@ -253,12 +221,31 @@ def test_get_cluster_assignments(adata, clusters):
         assert set(cluster_assignments[k]) == set(obtained_cluster_assignments[k])
 
 
-def test_merge_clusters():
+@pytest.fixture
+def tasic_data_for_merge():
 
-    tasic_norm_path = os.path.join(DATA_DIR, "tasic_normed_select.h5ad")
-    tasic_norm_adata = sc.read_h5ad(tasic_norm_path)
-    tasic_reduced_dim_path = os.path.join(DATA_DIR, "tasic_projected.h5ad")
-    tasic_reduced_dim_adata = sc.read_h5ad(tasic_reduced_dim_path)
+    normalized_path = os.path.join(DATA_DIR, "tasic_normed_select.h5ad")
+    normalized_adata = sc.read_h5ad(normalized_path)
+
+    reduced_dim_path = os.path.join(DATA_DIR, "tasic_projected.h5ad")
+    reduced_dim_adata = sc.read_h5ad(reduced_dim_path)
+
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': None,
+        'cluster_size_thresh': 6,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.05,
+        'lfc_thresh': 1.0,
+        'score_thresh': 40,
+        'low_thresh': 1
+    }
+    return normalized_adata, reduced_dim_adata, thresholds
+
+
+def test_merge_clusters_de_chisq(tasic_data_for_merge):
+
+    tasic_norm_adata, tasic_reduced_dim_adata, thresholds = tasic_data_for_merge
 
     cluster_assignments_before_merging = merging.get_cluster_assignments(
         tasic_norm_adata,
@@ -266,28 +253,41 @@ def test_merge_clusters():
 
     expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
         tasic_norm_adata,
-        cluster_label_obs="cluster_label_after_merging")
-
-    thresholds = {
-        'q1_thresh': 0.5,
-        'q2_thresh': None,
-        'min_cell_thresh': 6,
-        'qdiff_thresh': 0.7,
-        'padj_thresh': 0.05,
-        'lfc_thresh': 1.0,
-        'score_thresh': 40,
-        'low_thresh': 1
-    }
-
-    cluster_by_obs = tasic_norm_adata.obs['cluster_label_before_merging'].values
+        cluster_label_obs="cluster_label_after_merging_chisq")
 
     cluster_assignments_after_merging = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
-        cluster_by_obs=cluster_by_obs,
+        cluster_by_obs=tasic_norm_adata.obs['cluster_label_before_merging'].values,
         thresholds=thresholds,
-        min_cluster_size=6,
+        de_method='chisq',
+    )
+
+    assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
+    for k, v in cluster_assignments_after_merging.items():
+        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+
+
+def test_merge_clusters_de_ebayes(tasic_data_for_merge):
+
+    tasic_norm_adata, tasic_reduced_dim_adata, thresholds = tasic_data_for_merge
+
+    cluster_assignments_before_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_before_merging")
+
+    expected_cluster_assignments_after_merging = merging.get_cluster_assignments(
+        tasic_norm_adata,
+        cluster_label_obs="cluster_label_after_merging_ebayes")
+
+    cluster_assignments_after_merging = tc.merge_clusters(
+        adata_norm=tasic_norm_adata,
+        adata_reduced=tasic_reduced_dim_adata,
+        cluster_assignments=cluster_assignments_before_merging,
+        cluster_by_obs=tasic_norm_adata.obs['cluster_label_before_merging'].values,
+        thresholds=thresholds,
+        de_method='ebayes',
     )
 
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
@@ -313,13 +313,12 @@ def test_merge_clusters_by_de():
     thresholds = {
         'q1_thresh': 0.3,
         'q2_thresh': None,
-        'min_cell_thresh': 1,
+        'cluster_size_thresh': 1,
         'qdiff_thresh': 0.1,
         'padj_thresh': 0.5,
         'lfc_thresh': .4,
         'score_thresh': 40,
         'low_thresh': 1
-
     }
 
     cluster_means = pd.DataFrame(
