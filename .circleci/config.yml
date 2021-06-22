@@ -41,6 +41,8 @@ jobs:
               -p ~/.conda_envs/build_env_tx_clustering/
             fi
             conda activate ~/.conda_envs/build_env_tx_clustering
+            conda install -y gcc_linux-64
+            conda install -y gxx_linux-64
             pip install -r requirements.txt -U
             pip install -r test_requirements.txt -U
             pip install .
