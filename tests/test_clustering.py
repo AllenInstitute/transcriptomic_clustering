@@ -28,6 +28,17 @@ def sample_index_file():
     return os.path.join(DIR_NAME, "data/sample_annoy_index.ann")
 
 @pytest.fixture
+def sample_nn_dict():
+    return {
+        0: [2, 4],
+        1: [3, 5],
+        2: [0, 4],
+        3: [1, 5],
+        4: [0, 2],
+        5: [1, 3]
+    }
+
+@pytest.fixture
 def annoy_taynaud_sample_partition():
     sample_output_adata = sc.read_h5ad(os.path.join(DIR_NAME, "data/annoy_taynaud_15_nn_rs_5.h5ad"))
     sample_cluster_by_obs = sample_output_adata.obs['pheno_louvain'].values.tolist()
@@ -67,6 +78,30 @@ def test_phenograph_outlier_label_handling():
         cluster_by_obs, obs_by_cluster, _, _ = cluster_louvain_phenograph(test_adata, 4, False)
     assert cluster_by_obs == [4, 1, 5, 2, 6, 3]
     assert obs_by_cluster == {1: [1], 4: [0], 5: [2], 2: [3], 6: [4], 3: [5]}
+
+def test_uniform_csr_from_nn_dict(sample_nn_dict):
+    expected_matrix = np.array([
+        [0., 0., 1., 0., 1., 0.],
+        [0., 0., 0., 1., 0., 1.],
+        [1., 0., 0., 0., 1., 0.],
+        [0., 1., 0., 0., 0., 1.],
+        [1., 0., 1., 0., 0., 0.],
+        [0., 1., 0., 1., 0., 0.]
+    ])
+    result_matrix = tc.clustering._uniform_csr_from_nn_dict(sample_nn_dict).todense()
+    assert np.array_equal(expected_matrix, result_matrix)
+
+def test_jaccard_csr_from_nn_dict(sample_nn_dict):
+    expected_matrix = np.array([
+        [0., 0., 1/3, 0., 1/3, 0.],
+        [0., 0., 0., 1/3, 0., 1/3],
+        [1/3, 0., 0., 0., 1/3, 0.],
+        [0., 1/3, 0., 0., 0., 1/3],
+        [1/3, 0., 1/3, 0., 0., 0.],
+        [0., 1/3, 0., 1/3, 0., 0.]
+    ])
+    result_matrix = tc.clustering._jaccard_csr_from_nn_dict(sample_nn_dict).todense()
+    assert np.array_equal(expected_matrix, result_matrix)
 
 def test_annoy_build_csr_nn_graph_reproducibility(pca_data, sample_graph, sample_index_file):
     graph_csr = tc.clustering._annoy_build_csr_nn_graph(pca_data, sample_index_file, TEST_K)
