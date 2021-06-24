@@ -21,6 +21,12 @@ with open(readme_path, "r") as readme_file:
     readme = readme_file.read()
 
 
+requirements_path = os.path.join(
+    os.path.dirname(__file__), 'requirements.txt'
+)
+with open(requirements_path) as f:
+    requirements = f.read().splitlines()
+
 class CheckVersionCommand(Command):
     description = (
         "Check that this package's version matches a user-supplied version"
@@ -52,6 +58,7 @@ setup(
     author_email="Marmot@AllenInstitute.onmicrosoft.com",
     packages=find_packages(),
     include_package_data=True,
+    install_requires=requirements,
     description="clustering pipeline for transcriptomic data",
     long_description=readme,
     long_description_content_type='text/markdown',
