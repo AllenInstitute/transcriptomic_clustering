@@ -159,7 +159,7 @@ def cluster_louvain(
             resolution = resolution,
             random_seed = random_seed
         )
-    if louvain_method == 'vtraag':
+    elif louvain_method == 'vtraag':
         cluster_by_obs, q = get_vtraag_leiden(
             nn_adata = nn_adata,
             random_seed = random_seed
