@@ -1,0 +1,2 @@
+include transcriptomic_clustering/VERSION.txt
+include transcriptomic_clustering/logging_config.ini
