@@ -205,7 +205,7 @@ def de_pairs_ebayes(
             cl2_size=cl_size[cluster_b],
             **de_thresholds
         )
-        up_score = calc_de_score(de_pair_up['p_adj'])
+        up_score = calc_de_score(de_pair_up['p_adj'].values)
 
         de_pair_down = filter_gene_stats(
             de_stats=de_pair_stats,
@@ -214,7 +214,7 @@ def de_pairs_ebayes(
             cl2_size=cl_size[cluster_b],
             **de_thresholds
         )
-        down_score = calc_de_score(de_pair_down['p_adj'])
+        down_score = calc_de_score(de_pair_down['p_adj'].values)
 
         de_pairs[(cluster_a, cluster_b)] = {
             'score': up_score + down_score,
