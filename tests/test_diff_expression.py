@@ -146,16 +146,18 @@ def test_vec_chisq_test(pair, cl_present,cl_size, expected_chisq_pair_statistics
 
     expected_chisq_result = expected_chisq_pair_statistics
     expected_p_vals = expected_chisq_result['p_value'].to_numpy()
-
     p_vals = de.vec_chisq_test(pair,
                             cl_present,
                             cl_size)
+    print(p_vals)
+    print(expected_p_vals)
 
     np.testing.assert_allclose(p_vals,
                             expected_p_vals,
                             rtol=1e-06,
                             atol=1e-06,
                             )
+    assert False
 
 
 def test_de_pair_chisq(pair, cl_present, cl_means, cl_size, expected_chisq_pair_statistics):

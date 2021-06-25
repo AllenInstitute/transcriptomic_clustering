@@ -46,8 +46,13 @@ def vec_chisq_test(pair: tuple,
     p_vals = np.ones(n_genes)
     for i in range(n_genes):
         try:
-            chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
+            observed_gene = observed[:, i].reshape(2, 2)
+            print(f"observed gene:")
+            print(observed_gene)
+
+            chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed_gene, correction=True)
             p_vals[i] = p_value
+            print(f"pval:{p_value}")
         except:
             warnings.warn(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
     return p_vals
