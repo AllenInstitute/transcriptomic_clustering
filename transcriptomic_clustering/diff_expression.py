@@ -156,7 +156,7 @@ def filter_gene_stats(
         threshold for proportion of cells expressing each gene in the first cluster
     q2_thresh:
         threshold for proportion of cells expressing each gene in the second cluster
-    min_cell_thresh:
+    cluster_size_thresh:
         threshold for min number of cells in cluster
     qdiff_thresh:
         threshold for qdiff
@@ -238,7 +238,8 @@ def calc_de_score(
     -------
     differential expression score
     """
-    de_score = np.sum(-np.log10(padj)) if len(padj) else 0
+    with np.errstate(divide='ignore'): # allow de_score = inf for padj = 0
+        de_score = np.sum(-np.log10(padj)) if len(padj) else 0
 
     return de_score
 
@@ -279,7 +280,7 @@ def de_pairs_chisq(
             cl2_size=cl_size[second_cluster],
             **de_thresholds
         )
-        up_score = calc_de_score(de_pair_up['p_adj'])
+        up_score = calc_de_score(de_pair_up['p_adj'].values)
 
         de_pair_down = filter_gene_stats(
             de_stats=de_pair_stats,
@@ -288,7 +289,7 @@ def de_pairs_chisq(
             cl2_size=cl_size[second_cluster],
             **de_thresholds
         )
-        down_score = calc_de_score(de_pair_down['p_adj'])
+        down_score = calc_de_score(de_pair_down['p_adj'].values)
 
         de_pairs[pair] = {
             'score': up_score + down_score,
