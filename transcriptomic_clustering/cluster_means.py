@@ -123,7 +123,7 @@ def get_cluster_means_backed(
     n_clusters = len(cluster_assignments.keys())
 
     itemsize = adata.X.dtype.itemsize
-    process_memory_estimate = (n_cells * n_genes) * itemsize / (1024 ** 3)
+    process_memory_estimate = 2 * (n_cells * n_genes) * itemsize / (1024 ** 3)
     output_memory_estimate = 2 * (n_clusters * n_genes) * itemsize / (1024 ** 3)
     
     estimated_chunk_size = tc.memory.estimate_chunk_size(
