@@ -20,7 +20,6 @@ def pca(
         use_highly_variable: bool=False,
         svd_solver: str='auto',
         n_comps: Optional[int]=None,
-        zero_center: bool=True,
         random_state: Union[None, int, np.random.RandomState]=None,
         chunk_size: Optional[int]=None,
     ):
@@ -74,7 +73,7 @@ def pca(
         Explained variance, equivalent to the eigenvalues of the
         covariance matrix.
     mean
-        Dataframe containing the subtracted mean (or None if zero_center=False)
+        Dataframe containing the subtracted mean
 
     """
     # Handle defaults
