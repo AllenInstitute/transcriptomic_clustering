@@ -90,7 +90,7 @@ def pca(
         # random sample
         if cell_select > adata.n_obs:
             cell_select = adata.n_obs
-        cell_mask = np.random.choice(adata.n_obs, cell_select, replace=False)
+        cell_mask = random_state.choice(adata.n_obs, cell_select, replace=False)
         cell_mask.sort()
     else:
         cell_mask = cell_select
