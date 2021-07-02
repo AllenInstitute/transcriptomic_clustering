@@ -70,22 +70,23 @@ def merge_clusters(
 
     # Merge small clusters
     min_cluster_size = thresholds['cluster_size_thresh']
-    merge_small_clusters(cl_means_reduced, cluster_assignments, min_cluster_size)
+    cluster_assignments_merge = cluster_assignments.copy()
+    merge_small_clusters(cl_means_reduced, cluster_assignments_merge, min_cluster_size)
 
     # Create new cluster_by_obs based on updated cluster assignments
     cluster_by_obs = np.zeros((adata_norm.shape[0],))
-    for cl_id, idxs in cluster_assignments.items():
+    for cl_id, idxs in cluster_assignments_merge.items():
         cluster_by_obs[idxs] = cl_id
 
     # Calculate cluster means on normalized data
     cl_means, present_cl_means, cl_vars = tc.get_cluster_means(adata_norm,
-                                                      cluster_assignments,
+                                                      cluster_assignments_merge,
                                                       cluster_by_obs,
                                                       chunk_size,
                                                       low_th=thresholds['low_thresh'])
 
     # Merge remaining clusters by differential expression
-    merge_clusters_by_de(cluster_assignments,
+    merge_clusters_by_de(cluster_assignments_merge,
                          cl_means,
                          cl_vars,
                          present_cl_means,
@@ -95,7 +96,7 @@ def merge_clusters(
                          de_method,
                          )
 
-    return cluster_assignments
+    return cluster_assignments_merge
 
 
 def merge_two_clusters(
@@ -339,7 +340,6 @@ def merge_small_clusters(
         small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
         all_cluster_labels = list(cluster_assignments.keys())
 
-    return cluster_assignments
 
 
 def merge_clusters_by_de(
@@ -451,7 +451,6 @@ def merge_clusters_by_de(
             cl_size[dst_label] += cl_size[src_label]
             cl_size.pop(src_label)
 
-    return cluster_assignments
 
 
 def get_k_nearest_clusters(
