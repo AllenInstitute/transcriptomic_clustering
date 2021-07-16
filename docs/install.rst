@@ -14,8 +14,10 @@ Two popular tools for managing Python environments are `anaconda <https://anacon
 
 .. code-block:: bash
 
-    conda create -y --name environment-name python=3.8
+    conda create -y --name environment-name --prefix full/path/to/environment python=3.8
     conda activate environment-name
+    conda install gcc_linux-64 (or distro appropriate package)
+    conda install gxx_linux-64 (or distro appropriate package)
 
 and using venv:
 
