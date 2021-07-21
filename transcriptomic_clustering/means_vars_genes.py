@@ -45,44 +45,26 @@ def get_means_vars_genes(adata: sc.AnnData,
                                 process_name='means_vars_genes'
                             )
 
-        if chunk_size >= adata.n_obs:
-            
-            means, variances = sc.pp._utils._get_mean_var(np.expm1(adata.X[()]), axis=0)
-            
-            matrix_gene_mask = (adata.X[()] > low_thresh).sum(axis=0) >= min_cells
-            if hasattr(adata.X, "format_str"):
-                if adata.X.format_str == "csr":
-                    gene_mask = matrix_gene_mask.tolist()[0]
+        w_mat = Welford()
+        num_cells_above_thresh = np.zeros(adata.n_vars).transpose()
+
+        for chunk, start, end in adata.chunked_X(chunk_size):
+
+            num_cells_above_thresh_chunk = (chunk > low_thresh).sum(axis=0)
+            num_cells_above_thresh += np.squeeze(np.asarray(num_cells_above_thresh_chunk))
+
+            if issparse(chunk):
+                if isinstance(chunk, csr_matrix):
+                    w_mat.add_all(np.expm1(chunk).toarray())
                 else:
-                    gene_mask = matrix_gene_mask.tolist()
+                    raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
             else:
-                if issparse(adata.X):
-                    gene_mask = matrix_gene_mask.tolist()[0]
-                else:
-                    gene_mask = matrix_gene_mask.tolist()
+                w_mat.add_all(np.expm1(chunk))
 
-            return means[gene_mask], variances[gene_mask], gene_mask
-        else:
-            w_mat = Welford()
-            num_cells_above_thresh = np.zeros(adata.n_vars).transpose()
+        matrix_gene_mask = num_cells_above_thresh >= min_cells
+        gene_mask = matrix_gene_mask.tolist()
 
-            for chunk, start, end in adata.chunked_X(chunk_size):
-                
-                num_cells_above_thresh_chunk = (chunk > low_thresh).sum(axis=0)
-                num_cells_above_thresh += np.squeeze(np.asarray(num_cells_above_thresh_chunk))
-
-                if issparse(chunk):
-                    if isinstance(chunk, csr_matrix):
-                        w_mat.add_all(np.expm1(chunk).toarray())
-                    else:
-                        raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
-                else:
-                    w_mat.add_all(np.expm1(chunk))
-                    
-            matrix_gene_mask = num_cells_above_thresh >= min_cells
-            gene_mask = matrix_gene_mask.tolist()
-            
-            return w_mat.mean[gene_mask], w_mat.var_p[gene_mask], gene_mask
+        return w_mat.mean[gene_mask], w_mat.var_p[gene_mask], gene_mask
     else:
         means, variances = sc.pp._utils._get_mean_var(np.expm1(adata.X), axis=0)
             
