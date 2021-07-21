@@ -46,6 +46,7 @@ jobs:
             pip install -r requirements.txt -U
             pip install -r test_requirements.txt -U
             pip install .
+            conda list
 
       - run: 
           name: run tests
