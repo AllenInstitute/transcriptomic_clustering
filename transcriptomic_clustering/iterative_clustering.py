@@ -137,11 +137,11 @@ def onestep_clust(
 def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
     if tmp_dir is None:
         tmp_dir = tempfile.mkdtemp()
-    
+
     cluster_by_obs = np.zeros((adata.shape[0],))
     for cl_id, idxs in enumerate(clusters):
         cluster_by_obs[idxs] = cl_id
-    
+
     adata_size_GB = (adata.n_obs * adata.n_vars) * adata.itemsize / (1024 ** 3)
     chunk_size = tc.memory.estimate_chunk_size(
         adata,
@@ -164,7 +164,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
                     writers[cl_id] = AnndataIterWriter(filename, sliced_chunk, obs, var)
                 else:
                     writers[cl_id].add_chunk(sliced_chunk)
-                    
+
         new_adatas = [writers[cl_id].adata for cl_id, _ in enumerate(clusters)]
 
     else:
@@ -172,9 +172,9 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
         for i, cell_ids in enumerate(clusters):
             filename = f'{adata.filename}_{i}.h5ad'
             new_adatas.append(adata[cell_ids, :].copy(filename=filename))
-    
+
     return new_adatas
-    
+
 
 def manage_cluster_adata(norm_adata, clusters, tmp_dir: Optional[str]=None):
     """
@@ -200,7 +200,6 @@ def manage_cluster_adata(norm_adata, clusters, tmp_dir: Optional[str]=None):
         new_adatas = [norm_adata[cell_ids,:] for cell_ids in clusters]
 
     return new_adatas
-        
 
 
 def iter_cluster(
@@ -211,7 +210,7 @@ def iter_cluster(
         tmp_dir: Optional[str]=None) -> List[np.ndarray]:
     """
     Function to iteratively call onestep cluster
-    
+
     Parameters
     ----------
     norm_adata: log normalized adata (see tc.normalization for computation details)
@@ -220,7 +219,7 @@ def iter_cluster(
     Returns
     -------
     List of arrays of cell ids, one array per cluster
-    
+
     """
     clusters = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
 
@@ -231,7 +230,7 @@ def iter_cluster(
     # Generate new cluster_adata objects (slicing Anndata is questionable...)
     cluster_adata = manage_cluster_adata(norm_adata, clusters)
     del norm_adata
-    
+
     # For each existing cluster, generate new clusters from it.
     new_clusters = []
     for cluster_cell_id_array, cluster_adata in zip(clusters, cluster_adata):
@@ -247,7 +246,7 @@ def iter_cluster(
                     tmp_dir=tmp_dir
                 )
             )
-    
+
     return new_clusters
 
 
