@@ -35,7 +35,7 @@ def highly_variable_genes(adata: sc.AnnData,
             variances: np.array,
             gene_mask: list,
             max_genes: Optional[int] = 3000,
-            annotate: bool = True
+            annotate: bool = False
             ) -> Optional[pd.DataFrame]:
     """
         select highly variable genes using the method in scrattch.hicat that

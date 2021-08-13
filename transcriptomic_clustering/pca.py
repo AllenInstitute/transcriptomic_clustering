@@ -18,7 +18,7 @@ def pca(
         cell_select: Optional[Union[int, Mask]]=None,
         gene_mask: Mask=None,
         use_highly_variable: bool=False,
-        svd_solver: str='auto',
+        svd_solver: str='randomized',
         n_comps: Optional[int]=None,
         random_state: Union[None, int, np.random.RandomState]=None,
         chunk_size: Optional[int]=None,
@@ -77,7 +77,7 @@ def pca(
 
     """
     # Handle defaults
-    if use_highly_variable and  'highly_variable' not in adata.var:
+    if use_highly_variable and 'highly_variable' not in adata.var:
         raise ValueError(
             'use_highly_variable is true but '
             'AnnData.var does not contain "highly_variable"'
