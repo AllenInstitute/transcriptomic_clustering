@@ -1,7 +1,7 @@
 from typing import Dict, Optional, List, Any
 import logging
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import scanpy as sc
@@ -33,13 +33,13 @@ class AnndataIterWriter():
 @dataclass
 class OnestepKwargs:
     """Dataclass for kwargs in onestep_clust"""
-    means_vars_kwargs: Dict = {}
-    highly_variable_kwargs: Dict = {}
-    pca_kwargs: Dict = {}
-    filter_known_modes_kwargs: Dict = {}
-    project_kwargs: Dict = {}
-    cluster_louvain_kwargs: Dict = {}
-    merge_clusters_kwargs: Dict = {}
+    means_vars_kwargs: Dict = field(default_factory = lambda: ({}))
+    highly_variable_kwargs: Dict = field(default_factory = lambda: ({}))
+    pca_kwargs: Dict = field(default_factory = lambda: ({}))
+    filter_known_modes_kwargs: Dict = field(default_factory = lambda: ({}))
+    project_kwargs: Dict = field(default_factory = lambda: ({}))
+    cluster_louvain_kwargs: Dict = field(default_factory = lambda: ({}))
+    merge_clusters_kwargs: Dict = field(default_factory = lambda: ({}))
 
 
 def onestep_clust(
@@ -202,7 +202,7 @@ def manage_cluster_adata(norm_adata, clusters, tmp_dir: Optional[str]=None):
     return new_adatas
 
 
-def iter_cluster(
+def iter_clust(
         norm_adata,
         min_samples: int=4,
         onestep_kwargs: OnestepKwargs=OnestepKwargs(),
@@ -238,7 +238,7 @@ def iter_cluster(
             new_clusters.append(cluster_cell_id_array)
         else:
             new_clusters.extend(
-                iter_cluster(
+                iter_clust(
                     cluster_adata,
                     min_samples,
                     onestep_kwargs=onestep_kwargs,
