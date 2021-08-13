@@ -129,8 +129,8 @@ def pca(
     # Run PCA
     if chunk_size >= adata.n_obs:
         _pca = PCA(n_components=n_comps, svd_solver=svd_solver, random_state=random_state)
-        X = adata.X
-        if scp.sparse.isspmatrix(X):
+        X = adata.X[:,:]
+        if scp.sparse.issparse(X):
             X = X.toarray()
         X = X[:, vidx]
         _pca.fit(X)

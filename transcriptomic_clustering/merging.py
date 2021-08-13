@@ -8,6 +8,8 @@ from collections import defaultdict
 import warnings
 import transcriptomic_clustering as tc
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_THRESHOLDS = {
     'q1_thresh': 0.5,
     'q2_thresh': None,
@@ -27,7 +29,7 @@ def merge_clusters(
         cluster_by_obs: np.ndarray,
         thresholds: Dict[str, Any] = DEFAULT_THRESHOLDS,
         k: Optional[int] = 2,
-        de_method: Optional[str] = 'chisq',
+        de_method: Optional[str] = 'ebayes',
         chunk_size: Optional[int] = None
 ) -> Dict[Any, np.ndarray]:
     """
@@ -60,6 +62,8 @@ def merge_clusters(
     cluster_assignments:
         updated mapping of cluster assignments
     """
+    if len(cluster_assignments.keys()) == 1:
+        return cluster_assignments.copy()
 
     # Calculate cluster means on reduced space
     cl_means_reduced, _, _ = tc.get_cluster_means(adata_reduced,
@@ -212,7 +216,6 @@ def pdist_normalized(
     similarity:
         measure of similarity
     """
-
     dist = squareform(pdist(X))
     dist_norm = dist / np.max(dist)
 
@@ -325,6 +328,9 @@ def merge_small_clusters(
     small_cluster_labels = find_small_clusters(cluster_assignments, min_size=min_size)
 
     while small_cluster_labels:
+        if len(cluster_assignments.keys()) == 1:
+            break
+
         similarity_small_to_all_df = calculate_similarity(
             cluster_means,
             group_rows=small_cluster_labels,
@@ -333,7 +339,7 @@ def merge_small_clusters(
         source_label, dest_label, max_similarity = find_most_similar(
             similarity_small_to_all_df,
         )
-        logging.info(f"Merging small cluster {source_label} into {dest_label} -- similarity: {max_similarity}")
+        logger.info(f"Merging small cluster {source_label} into {dest_label} -- similarity: {max_similarity}")
         merge_two_clusters(cluster_assignments, source_label, dest_label, cluster_means)
 
         # update labels:
@@ -350,7 +356,7 @@ def merge_clusters_by_de(
     cluster_means_rd: pd.DataFrame,
     thresholds: Dict[str, Any],
     k: Optional[int] = 2,
-    de_method: Optional[str] = 'chisq',
+    de_method: Optional[str] = 'ebayes',
 ):
     """
     Merge clusters by the calculated gene differential expression score
@@ -383,9 +389,9 @@ def merge_clusters_by_de(
     cluster_assignments:
         updated mapping of cluster assignments
     """
-
     cl_size = {k: len(v) for k, v in cluster_assignments.items()}
 
+    thresholds = thresholds.copy()
     score_th = thresholds.pop('score_thresh')
     thresholds.pop('low_thresh')
 
@@ -415,6 +421,8 @@ def merge_clusters_by_de(
                 cl_size,
                 thresholds,
             )
+        else:
+            raise ValueError(f'Unknown de_method {de_method}, must be one of [chisq, ebayes]')
 
         # Sort scores
         scores = scores.sort_values(by='score')
@@ -437,7 +445,7 @@ def merge_clusters_by_de(
             if dst_label in merged_clusters or src_label in merged_clusters:
                 continue
 
-            logging.info(f"Merging cluster {src_label} into {dst_label} -- de score: {score}")
+            logger.info(f"Merging cluster {src_label} into {dst_label} -- de score: {score}")
 
             # Update cluster means on reduced space
             merge_cluster_means_vars(cluster_assignments, src_label, dst_label, cluster_means_rd, None)
@@ -477,8 +485,8 @@ def get_k_nearest_clusters(
 
     if k >= len(cluster_labels):
         warnings.warn("k cannot be greater than or the same as the number of clusters. "
-                          "Defaulting to 2.")
-        k = 2
+                          "Defaulting to number of clusters - 1.")
+        k = len(cluster_labels) - 1
 
     similarity = calculate_similarity(
             cluster_means,

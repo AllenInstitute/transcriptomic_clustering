@@ -3,6 +3,7 @@ from numpy.core.fromnumeric import var
 from numpy.typing import ArrayLike
 
 import warnings
+import logging
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ from statsmodels.stats.multitest import multipletests
 
 from .diff_expression import get_qdiff, filter_gene_stats, calc_de_score
 
-
+logger = logging.getLogger(__name__)
 
 """
 Implements functions for calculating differential expression
@@ -108,7 +109,7 @@ def moderate_variances(
     var = np.squeeze(variances.to_numpy())
     idxs_zero = np.where(var == 0)[0]
     if idxs_zero.size > 0:
-        warnings.warn(f'offsetting zero variances from zero')
+        logger.info(f'offsetting zero variances from zero')
         var[idxs_zero] += np.finfo(var.dtype).eps
 
     df_prior, var_prior = fit_f_dist(var, df)

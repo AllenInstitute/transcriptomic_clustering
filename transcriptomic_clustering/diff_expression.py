@@ -6,8 +6,10 @@ import scanpy as sc
 from scipy import stats
 import statsmodels.stats.multitest as multi
 import warnings
+import logging
 import sys
 
+logger = logging.getLogger(__name__)
 
 def vec_chisq_test(pair: tuple,
                   cl_present: pd.DataFrame,
@@ -49,7 +51,7 @@ def vec_chisq_test(pair: tuple,
             chi_squared_stat, p_value, dof, ex = stats.chi2_contingency(observed[:,i].reshape(2,2), correction=True)
             p_vals[i] = p_value
         except:
-            warnings.warn(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
+            logger.debug(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
     return p_vals
 
 

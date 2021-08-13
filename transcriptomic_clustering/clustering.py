@@ -20,7 +20,7 @@ import igraph as ig
 
 def cluster_louvain_phenograph(
     adata: AnnData,
-    k: int,
+    k: int=15,
     annotate: bool = False,
     **kwargs):
     """
@@ -93,7 +93,7 @@ def _cluster_obs_list_to_dict(cluster_by_obs: List[int]):
 
 def cluster_louvain(
     adata: AnnData,
-    k: int,
+    k: int=15,
     annotate: bool = False,
     nn_measure: str = 'euclidean',
     knn_method: str = 'annoy',
