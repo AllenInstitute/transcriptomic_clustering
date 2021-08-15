@@ -58,7 +58,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
                 sliced_chunk = chunk[np.where(cluster_by_obs[start:end] == cl_id)]
 
                 if first[cl_id]:
-                    filename = f'{old_filename)}_{cl_id}.h5ad'
+                    filename = f'{old_filename}_{cl_id}.h5ad'
                     obs = adata[cell_ids, :].obs
                     var = adata[cell_ids, :].var
                     writers[cl_id] = AnndataIterWriter(filename, sliced_chunk, obs, var)
