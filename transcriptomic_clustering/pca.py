@@ -10,6 +10,8 @@ from sklearn.utils import check_random_state
 
 from .utils.memory import memory
 
+logger = logging.getLogger(__name__)
+
 Mask = Union[Sequence[int], slice, np.ndarray]
 DEFAULT_NCOMPS = 50
 
@@ -108,8 +110,15 @@ def pca(
     n_genes = len(vidx)
     
     # select n_comps
+    max_comps = min(adata.n_obs, n_genes) - 1
     if not n_comps:
-        n_comps = min(adata.n_obs - 1, n_genes - 1, DEFAULT_NCOMPS)
+        n_comps = min(max_comps, DEFAULT_NCOMPS)
+    elif n_comps > max_comps:
+        logger.warn(
+            f'n_comps {n_comps} > min(n_obs={adata.n_obs}, n_genes={n_genes}) -1\n',
+            'Setting n_comps to {max_comps}'
+        )
+        n_comps = max_comps
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
