@@ -1,6 +1,7 @@
 from typing import Dict, Optional, List, Any
 import logging
 import os
+from pathlib import Path
 import tempfile
 from dataclasses import dataclass, field
 
@@ -48,6 +49,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
         process_name='create_filebacked_clusters'
     )
 
+    old_filename = Path(adata.filename).with_suffix('')
     if chunk_size > adata.n_obs:
         writers = {}
         first = [True] * len(clusters)
@@ -56,7 +58,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
                 sliced_chunk = chunk[np.where(cluster_by_obs[start:end] == cl_id)]
 
                 if first[cl_id]:
-                    filename = f'{adata.filename}_{cl_id}.h5ad'
+                    filename = f'{old_filename)}_{cl_id}.h5ad'
                     obs = adata[cell_ids, :].obs
                     var = adata[cell_ids, :].var
                     writers[cl_id] = AnndataIterWriter(filename, sliced_chunk, obs, var)
@@ -69,7 +71,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
     else:
         new_adatas = []
         for i, cell_ids in enumerate(clusters):
-            filename = f'{adata.filename}_{i}.h5ad'
+            filename = f'{old_filename}_{i}.h5ad'
             logger.debug('Created filebacked AnnData {filename}')
             new_adatas.append(adata[cell_ids, :].copy(filename=filename))
 
