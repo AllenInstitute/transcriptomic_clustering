@@ -72,7 +72,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
         new_adatas = []
         for i, cell_ids in enumerate(clusters):
             filename = f'{old_filename}_{i}.h5ad'
-            logger.debug('Created filebacked AnnData {filename}')
+            logger.debug(f'Created filebacked AnnData {filename}')
             new_adatas.append(adata[cell_ids, :].copy(filename=filename))
 
     return new_adatas
