@@ -171,5 +171,5 @@ def build_cluster_dict(clusters):
     """Builds a cluster dictionary from a list of lists of samples, each represents a cluster."""
     output = {}
     for i in range(len(clusters)):
-        output[i + 1] = clusters[i]
+        output[i + 1] = clusters[i].tolist()
     return output
