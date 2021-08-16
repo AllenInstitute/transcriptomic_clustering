@@ -149,7 +149,8 @@ def iter_clust(
         random_seed: Optional[int]=None,
         tmp_dir: Optional[str]=None) -> List[np.ndarray]:
     """
-    Function to iteratively call onestep cluster
+    Function to call onestep_clustering, and recursively call iterclust on each generated cluster
+    if the cluster has n cells > min_samples
 
     Parameters
     ----------
