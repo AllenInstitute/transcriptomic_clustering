@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class AnndataIterWriter():
+    """
+    Class to handle iteratively writing filebacked AnnData Objects
+    """
     def __init__(self, filename, initial_chunk, obs, var):
         self.initialize_file(filename, initial_chunk, obs, var)
         self.adata = sc.read_h5ad(filename, backed='r+')
@@ -34,6 +37,21 @@ class AnndataIterWriter():
 
 
 def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
+    """
+    Handles creating a new AnnData filebacked object for each cluster
+
+    Parameters
+    ----------
+    adata: adata object
+    clusters: list of lists of cell ids in each cluster
+    tmp_dir: directory to write new cluster adata objects
+             if too large for memory
+
+    Returns
+    -------
+    List of new filebacked adata objects for each cluster
+
+    """
     if tmp_dir is None:
         tmp_dir = tempfile.mkdtemp()
 
@@ -81,6 +99,14 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
 def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
     """
     Function for managing memory when iterating
+    Will decide whether to load cluster into memory or write new AnnData file
+
+    Parameters
+    ----------
+    adata: adata object
+    clusters: list of lists of cell ids in each cluster
+    tmp_dir: directory to write new cluster adata objects
+             if too large for memory
 
     Returns
     -------
@@ -128,7 +154,10 @@ def iter_clust(
     Parameters
     ----------
     norm_adata: log normalized adata (see tc.normalization for computation details)
+    min_samples: minimum number of obs (cells) to call onestep clust on
     onestep_kwargs: Dataclass containg keyword arguments for each function (see OnestepKwargs)
+    random_seed: random seed for repeatability
+    tmp_dir: directory to write temporary subcluster files (necessary for large datasets)
 
     Returns
     -------
