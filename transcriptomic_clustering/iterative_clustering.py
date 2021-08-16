@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Union, Sequence
 import logging
 import os
 from pathlib import Path
@@ -196,9 +196,20 @@ def iter_clust(
     return new_clusters
 
 
-def build_cluster_dict(clusters):
-    """Builds a cluster dictionary from a list of lists of samples, each represents a cluster."""
+def build_cluster_dict(clusters: List[Union[np.ndarray, Sequence]]) -> Dict[int, List]:
+    """
+    Builds a dictionary from a list of lists of samples in each cluster
+
+    Parameters
+    ----------
+    clusters: list of lists of samples, one list per cluster
+
+    Returns
+    -------
+    Dict[int, List of samples]
+
+    """
     output = {}
     for i in range(len(clusters)):
-        output[i + 1] = clusters[i].tolist()
+        output[i + 1] = np.asarray(clusters[i]).tolist()
     return output
