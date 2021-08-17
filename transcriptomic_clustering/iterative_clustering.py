@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import math
 import numpy as np
 import scanpy as sc
+import scipy as scp
 import anndata as ad
 import h5py
 import transcriptomic_clustering as tc
@@ -22,18 +23,34 @@ class AnndataIterWriter():
     Class to handle iteratively writing filebacked AnnData Objects
     """
     def __init__(self, filename, initial_chunk, obs, var):
+        self.issparse = scp.sparse.issparse(initial_chunk)
         self.initialize_file(filename, initial_chunk, obs, var)
         self.adata = sc.read_h5ad(filename, backed='r+')
+
 
     def initialize_file(self, filename, initial_chunk, obs, var):
         """Uses initial chunk to determine grouptype"""
         with h5py.File(filename, "w") as f:
-            ad._io.h5ad.write_attribute(f, "X", initial_chunk)
+            if self.issparse:
+                ad._io.h5ad.write_attribute(f, "X", initial_chunk)
+            else:
+                initial_chunk = np.atleast_2d(initial_chunk)
+                ad._io.h5ad.write_array(f, "X", initial_chunk, {'maxshape': (None, initial_chunk.shape[1])})
             ad._io.h5ad.write_attribute(f, "obs", obs)
             ad._io.h5ad.write_attribute(f, "var", var)
 
+
     def add_chunk(self, chunk):
-        self.adata.X.append(chunk)
+        if self.issparse:
+            self.adata.X.append(chunk)
+        else:
+            chunk = np.atleast_2d(chunk)
+            chunk_nrows = chunk.shape[0]
+            self.adata.X.resize(
+                (self.adata.X.shape[0] + chunk_nrows),
+                axis = 0
+            )
+            self.adata.X[-chunk_nrows:] = chunk
 
 
 def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
