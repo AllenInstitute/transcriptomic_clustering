@@ -35,7 +35,7 @@ def highly_variable_genes(adata: sc.AnnData,
             variances: np.array,
             gene_mask: list,
             max_genes: Optional[int] = 3000,
-            annotate: bool = True
+            annotate: bool = False
             ) -> Optional[pd.DataFrame]:
     """
         select highly variable genes using the method in scrattch.hicat that
@@ -103,12 +103,11 @@ def highly_variable_genes(adata: sc.AnnData,
 
     hvg_set = set(df['gene'][0:max_genes].tolist())
     hvg_dict = {gene: (gene in hvg_set) for gene in adata.var_names}
+    df = pd.Series(data=hvg_dict)
 
     if annotate:
         adata.uns['hvg'] = {'flavor': 'hicat'}
-        adata.var['highly_variable'] = pd.Series(data=hvg_dict)
-    else:
-        df = df[0:max_genes]
-        df['highly_variable'] = True
-        return df
+        adata.var['highly_variable'] = df
+    
+    return df
 

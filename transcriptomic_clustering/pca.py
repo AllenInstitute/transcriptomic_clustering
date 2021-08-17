@@ -10,6 +10,8 @@ from sklearn.utils import check_random_state
 
 from .utils.memory import memory
 
+logger = logging.getLogger(__name__)
+
 Mask = Union[Sequence[int], slice, np.ndarray]
 DEFAULT_NCOMPS = 50
 
@@ -18,7 +20,7 @@ def pca(
         cell_select: Optional[Union[int, Mask]]=None,
         gene_mask: Mask=None,
         use_highly_variable: bool=False,
-        svd_solver: str='auto',
+        svd_solver: str='randomized',
         n_comps: Optional[int]=None,
         random_state: Union[None, int, np.random.RandomState]=None,
         chunk_size: Optional[int]=None,
@@ -77,7 +79,7 @@ def pca(
 
     """
     # Handle defaults
-    if use_highly_variable and  'highly_variable' not in adata.var:
+    if use_highly_variable and 'highly_variable' not in adata.var:
         raise ValueError(
             'use_highly_variable is true but '
             'AnnData.var does not contain "highly_variable"'
@@ -108,8 +110,15 @@ def pca(
     n_genes = len(vidx)
     
     # select n_comps
+    max_comps = min(adata.n_obs, n_genes) - 1
     if not n_comps:
-        n_comps = min(adata.n_obs - 1, n_genes - 1, DEFAULT_NCOMPS)
+        n_comps = min(max_comps, DEFAULT_NCOMPS)
+    elif n_comps > max_comps:
+        logger.warn(
+            f'n_comps {n_comps} > min(n_obs={adata.n_obs}, n_genes={n_genes}) -1\n',
+            'Setting n_comps to {max_comps}'
+        )
+        n_comps = max_comps
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
@@ -129,8 +138,8 @@ def pca(
     # Run PCA
     if chunk_size >= adata.n_obs:
         _pca = PCA(n_components=n_comps, svd_solver=svd_solver, random_state=random_state)
-        X = adata.X
-        if scp.sparse.isspmatrix(X):
+        X = adata.X[:,:]
+        if scp.sparse.issparse(X):
             X = X.toarray()
         X = X[:, vidx]
         _pca.fit(X)

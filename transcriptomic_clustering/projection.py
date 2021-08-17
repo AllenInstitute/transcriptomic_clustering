@@ -39,6 +39,7 @@ def project(
     mean = mean.to_numpy().T
 
     n_obs = adata.n_obs
+    n_vars = adata.n_vars
     n_comps = principal_comps.shape[1]
     n_genes = principal_comps.shape[0]
 
@@ -49,7 +50,7 @@ def project(
     # Estimate memory
     if not chunk_size:
         itemsize = adata.X.dtype.itemsize
-        process_memory = n_obs * n_genes * itemsize / (1024 ** 3)
+        process_memory = n_obs * n_vars * itemsize / (1024 ** 3)
         if issparse:
             process_memory *= 2
 
