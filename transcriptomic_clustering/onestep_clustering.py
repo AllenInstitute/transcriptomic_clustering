@@ -93,13 +93,14 @@ def onestep_clust(
 
     #Louvain Clustering
     logger.info('Starting Louvain Clustering')
-    k = onestep_kwargs.cluster_louvain_kwargs.get('k', 15)
+    cluster_louvain_kwargs = onestep_kwargs.cluster_louvain_kwargs.copy()
+    k = cluster_louvain_kwargs.pop('k', 15)
     k = min(k, math.floor(projected_adata.n_vars))
     cluster_by_obs, obs_by_cluster, graph, qc = tc.cluster_louvain(
         projected_adata,
         k=k,
         random_seed=random_seed,
-        **onestep_kwargs.cluster_louvain_kwargs
+        **cluster_louvain_kwargs
     )
     logger.info(f'Completed Louvain Clustering, found {len(obs_by_cluster.keys())} clusters')
 

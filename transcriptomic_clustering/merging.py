@@ -484,7 +484,7 @@ def get_k_nearest_clusters(
     cluster_labels = list(cluster_means.index)
 
     if k >= len(cluster_labels):
-        warnings.warn("k cannot be greater than or the same as the number of clusters. "
+        logger.debug("k cannot be greater than or the same as the number of clusters. "
                           "Defaulting to number of clusters - 1.")
         k = len(cluster_labels) - 1
 

@@ -185,6 +185,9 @@ def iter_clust(
     logger.info('----------Starting Onestep_clust----------')
     clusters = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
     logger.info('----------Finished Onestep_clust----------')
+    logger.info(
+        f'Split cluster of size {norm_adata.n_obs} into new clusters with sizes:\n{[len(cluster) for cluster in clusters]}'
+    )
 
     # If only one cluster, return. Otherwise iterate.
     if len(clusters) == 1:
@@ -231,3 +234,81 @@ def build_cluster_dict(clusters: List[Union[np.ndarray, Sequence]]) -> Dict[int,
     for i in range(len(clusters)):
         output[i + 1] = np.asarray(clusters[i]).tolist()
     return output
+
+
+def summarize_final_clusters(
+        norm_adata: ad.AnnData,
+        clusters: List[np.ndarray],
+        de_thresholds: Dict[str, Any],
+        low_th: float=1,
+        de_method: str='ebayes'):
+    """
+    Helper function to return differential expression and linkage/labels for final clusters
+
+    Parameters
+    ----------
+    norm_adata: normalized adata
+    clusters: list of lists of samples, one list per cluster (output of iter_clust or onestep_clust)
+    de_thresholds: thresholds for differential expression
+    low_th: minimum gene expression value for computing means and variances
+        (onestep_kwargs.merge_clusters_kwargs['thresholds']['low_thresh'] or
+         onestep_kwargs.means_vars_kwargs['low_th'])
+    de_method: differential expression method
+
+    Returns
+    -------
+    Pandas dataframe indexed by (cluster A, cluster B) containing:
+        total score, upscore, downscore, upgenes, downgenes, upnum, downnum
+
+    """
+
+    # Build cluster dict and cluster_by_obs
+    cluster_dict = build_cluster_dict(clusters)
+
+    cluster_by_obs = np.zeros(norm_adata.n_obs, dtype=int)
+    for cluster, obs in cluster_dict.items():
+        cluster_by_obs[obs] = cluster
+
+    # get cluster means and variances and sizes
+    cl_means, present_cl_means, cl_vars = tc.get_cluster_means(
+        norm_adata,
+        cluster_dict,
+        cluster_by_obs,
+        low_th=low_th
+    )
+    cl_size = {k: len(v) for k, v in cluster_dict.items()}
+
+    # all pairs [(0,1),(0,2),(0,3),(1,2),(1,3),(2,3), etc]
+    cluster_ids = list(cluster_dict.keys())
+    pairs = [(a, b) for idx, a in enumerate(cluster_ids) for b in cluster_ids[idx + 1:]]
+
+    # Compute differential expression scores
+    de_thresholds = de_thresholds.copy()
+    de_thresholds.pop('score_thresh', None)
+    de_thresholds.pop('low_thresh', None)
+
+    # Compute differential expression for all pairs
+    if de_method == 'ebayes':
+        de_table = tc.de_pairs_ebayes(
+            pairs,
+            cl_means,
+            cl_vars,
+            present_cl_means,
+            cl_size,
+            de_thresholds,
+        )
+    elif de_method == 'chisq':
+        de_table = tc.de_pairs_chisq(
+            pairs,
+            cl_means,
+            present_cl_means,
+            cl_size,
+            de_thresholds,
+        )
+    else:
+        raise ValueError(f'Unknown de_method {de_method}, must be one of [chisq, ebayes]')
+
+    # Get linkage
+    linkage, labels = tc.hclust(cl_means)
+
+    return de_table, linkage, labels
