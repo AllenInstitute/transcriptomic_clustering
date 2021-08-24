@@ -75,6 +75,7 @@ def onestep_clust(
         **onestep_kwargs.pca_kwargs
     )
     logger.info(f'Computed {components.shape[1]} principal components')
+
     # Filter PCA
     components = tc.dimension_reduction.filter_components(
         components,
@@ -82,13 +83,6 @@ def onestep_clust(
         explained_variance_ratio,
         **onestep_kwargs.filter_pcs_kwargs
     )
-    
-    #Filter Known Modes
-    if onestep_kwargs.filter_known_modes_kwargs:
-        logger.info('Filtering Known Modes')
-        components = tc.filter_known_modes(components, **onestep_kwargs.filter_known_modes_kwargs)
-    else:
-        logger.info('No known modes, skipping Filter Known Modes')
     
     #Projection
     logger.info("Projecting normalized adata into PCA space")
@@ -98,6 +92,13 @@ def onestep_clust(
         **onestep_kwargs.project_kwargs
     )
     logger.info(f'Projected Adata Dimensions: {projected_adata.shape}')
+
+    #Filter Known Modes
+    if onestep_kwargs.filter_known_modes_kwargs:
+        logger.info('Filtering Known Modes')
+        projected_adata = tc.filter_known_modes(projected_adata, **onestep_kwargs.filter_known_modes_kwargs)
+    else:
+        logger.info('No known modes, skipping Filter Known Modes')
 
     #Louvain Clustering
     logger.info('Starting Louvain Clustering')
