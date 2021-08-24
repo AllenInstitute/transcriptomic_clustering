@@ -259,6 +259,7 @@ def summarize_final_clusters(
     -------
     Pandas dataframe indexed by (cluster A, cluster B) containing:
         total score, upscore, downscore, upgenes, downgenes, upnum, downnum
+    linkage and labels from scipy.cluster.dendogram
 
     """
 
