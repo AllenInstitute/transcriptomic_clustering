@@ -18,6 +18,7 @@ class OnestepKwargs:
     means_vars_kwargs: Dict = field(default_factory = lambda: ({}))
     highly_variable_kwargs: Dict = field(default_factory = lambda: ({}))
     pca_kwargs: Dict = field(default_factory = lambda: ({}))
+    filter_pcs_kwargs: Dict = field(default_factory= lambda: ({}))
     filter_known_modes_kwargs: Dict = field(default_factory = lambda: ({}))
     project_kwargs: Dict = field(default_factory = lambda: ({}))
     cluster_louvain_kwargs: Dict = field(default_factory = lambda: ({}))
@@ -74,6 +75,13 @@ def onestep_clust(
         **onestep_kwargs.pca_kwargs
     )
     logger.info(f'Computed {components.shape[1]} principal components')
+    # Filter PCA
+    components = tc.dimension_reduction.filter_components(
+        components,
+        explained_variance,
+        explained_variance_ratio,
+        **onestep_kwargs.filter_pcs_kwargs
+    )
     
     #Filter Known Modes
     if onestep_kwargs.filter_known_modes_kwargs:
