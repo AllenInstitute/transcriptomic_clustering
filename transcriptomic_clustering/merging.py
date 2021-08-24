@@ -339,7 +339,7 @@ def merge_small_clusters(
         source_label, dest_label, max_similarity = find_most_similar(
             similarity_small_to_all_df,
         )
-        logger.info(f"Merging small cluster {source_label} into {dest_label} -- similarity: {max_similarity}")
+        logger.debug(f"Merging small cluster {source_label} into {dest_label} -- similarity: {max_similarity}")
         merge_two_clusters(cluster_assignments, source_label, dest_label, cluster_means)
 
         # update labels:
@@ -445,7 +445,7 @@ def merge_clusters_by_de(
             if dst_label in merged_clusters or src_label in merged_clusters:
                 continue
 
-            logger.info(f"Merging cluster {src_label} into {dst_label} -- de score: {score}")
+            logger.debug(f"Merging cluster {src_label} into {dst_label} -- de score: {score}")
 
             # Update cluster means on reduced space
             merge_cluster_means_vars(cluster_assignments, src_label, dst_label, cluster_means_rd, None)

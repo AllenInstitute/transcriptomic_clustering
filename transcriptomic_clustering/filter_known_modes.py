@@ -3,53 +3,42 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 import scanpy as sc
+import anndata as ad
 
-def filter_known_modes(principal_components: Union[pd.DataFrame, pd.Series],
-                    known_modes: Union[pd.DataFrame, pd.Series],
-                    similarity_threshold: Optional[float] = 0.7):
+def filter_known_modes(
+        projected_adata: ad.AnnData,
+        known_modes: Union[pd.DataFrame, pd.Series],
+        similarity_threshold: Optional[float] = 0.7):
     """
         Filters out principal components which correlate strongly with the known modes
 
         Parameters
         ----------
-        principal_components: pincipal components from dimension reduction,
-                        index is gene names, columns are principal components
-        known_modes: eigen vectors of gene expressions to filter out
-                        index is gene names, columns are known modes
+        projected_adata: adata projected into principal components space
+        known_modes: adata projected into a principal component to remove
+                        index is obs (cell) names, columns are known modes
         similarity_threshold: threshold of correlation coefficients
 
         Returns
         -------
-        principal_components: after filtering out correlated principal components
+        projected_adata: after filtering out correlated principal components
 
     """
-    if isinstance(principal_components, pd.Series):
-        principal_components = principal_components.to_frame()
     if isinstance(known_modes, pd.Series):
         known_modes = known_modes.to_frame()
 
-    pcs_index_sorted = principal_components.sort_index()
-    kns_index_sorted = known_modes.sort_index()
-
-    if not pcs_index_sorted.index.equals(kns_index_sorted.index):
-        raise ValueError("The indices (genes) of the principal components and the known modes do not match")
-
-    mat_pcs = pcs_index_sorted.to_numpy()
+    kns_index_sorted, _ = known_modes.align(projected_adata.obs, 'right', axis=0)
     mat_kns = kns_index_sorted.to_numpy()
 
-    n_pcs = mat_pcs.shape[1]
-    n_evs = mat_kns.shape[1]
+    n_pcs = projected_adata.n_vars
+    n_remove = mat_kns.shape[1]
 
-    corr_pc_ev = np.corrcoef(mat_pcs, mat_kns, rowvar=False)[:n_pcs, -n_evs:]
+    corr_pc_ev = np.corrcoef(projected_adata.X, mat_kns, rowvar=False)[:n_pcs, -n_remove:]
 
     corr_pcs = np.amax(abs(corr_pc_ev), axis=1)
 
     rm_pcs_mask = corr_pcs > similarity_threshold
+    projected_adata = projected_adata[:,~rm_pcs_mask]
 
-    rm_pcs = pcs_index_sorted.columns[rm_pcs_mask]
-
-    if not rm_pcs.empty:
-        pcs_index_sorted.drop(rm_pcs, axis='columns', inplace=True)
-
-    return pcs_index_sorted
+    return projected_adata
 

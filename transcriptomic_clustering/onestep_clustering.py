@@ -18,6 +18,7 @@ class OnestepKwargs:
     means_vars_kwargs: Dict = field(default_factory = lambda: ({}))
     highly_variable_kwargs: Dict = field(default_factory = lambda: ({}))
     pca_kwargs: Dict = field(default_factory = lambda: ({}))
+    filter_pcs_kwargs: Dict = field(default_factory= lambda: ({}))
     filter_known_modes_kwargs: Dict = field(default_factory = lambda: ({}))
     project_kwargs: Dict = field(default_factory = lambda: ({}))
     cluster_louvain_kwargs: Dict = field(default_factory = lambda: ({}))
@@ -74,13 +75,16 @@ def onestep_clust(
         **onestep_kwargs.pca_kwargs
     )
     logger.info(f'Computed {components.shape[1]} principal components')
-    
-    #Filter Known Modes
-    if onestep_kwargs.filter_known_modes_kwargs:
-        logger.info('Filtering Known Modes')
-        components = tc.filter_known_modes(components, **onestep_kwargs.filter_known_modes_kwargs)
-    else:
-        logger.info('No known modes, skipping Filter Known Modes')
+
+    # Filter PCA
+    logger.info('Filtering PCA Components')
+    components = tc.dimension_reduction.filter_components(
+        components,
+        explained_variance,
+        explained_variance_ratio,
+        **onestep_kwargs.filter_pcs_kwargs
+    )
+    logger.info(f'Filtered to {components.shape[1]} principal components')
     
     #Projection
     logger.info("Projecting normalized adata into PCA space")
@@ -90,6 +94,14 @@ def onestep_clust(
         **onestep_kwargs.project_kwargs
     )
     logger.info(f'Projected Adata Dimensions: {projected_adata.shape}')
+
+    #Filter Known Modes
+    if onestep_kwargs.filter_known_modes_kwargs:
+        logger.info('Filtering Known Modes')
+        projected_adata = tc.filter_known_modes(projected_adata, **onestep_kwargs.filter_known_modes_kwargs)
+        logger.info('Projected Adata Dimensions after Filtering Known Modes: {projected_adata.shape}')
+    else:
+        logger.info('No known modes, skipping Filter Known Modes')
 
     #Louvain Clustering
     logger.info('Starting Louvain Clustering')
