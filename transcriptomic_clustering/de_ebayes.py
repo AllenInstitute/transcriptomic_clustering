@@ -109,7 +109,7 @@ def moderate_variances(
     var = np.squeeze(variances.to_numpy())
     idxs_zero = np.where(var == 0)[0]
     if idxs_zero.size > 0:
-        logger.info(f'offsetting zero variances from zero')
+        logger.debug(f'offsetting zero variances from zero')
         var[idxs_zero] += np.finfo(var.dtype).eps
 
     df_prior, var_prior = fit_f_dist(var, df)
@@ -181,10 +181,8 @@ def de_pairs_ebayes(
         
         t_vals = means_diff / np.sqrt(sigma_sq_post) / stdev_unscaled_comb
         
-        p_vals = np.ones((len(t_vals),))
         p_adj = np.ones((len(t_vals),))
-        for i, t in enumerate(t_vals[0]):
-            p_vals[i] = 2 * stats.t.cdf(-np.abs(t), df_total)
+        p_vals = 2 * stats.t.sf(np.abs(t_vals[0]), df_total)
         reject, p_adj, alphacSidak, alphacBonf= multipletests(p_vals, alpha=de_thresholds['padj_thresh'], method='holm')
         lfc = means_diff
 

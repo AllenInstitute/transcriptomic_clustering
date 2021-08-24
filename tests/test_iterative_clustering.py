@@ -13,7 +13,8 @@ from numpy.testing import assert_allclose
 
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.iterative_clustering import (
-    AnndataIterWriter, manage_cluster_adata, create_filebacked_clusters, iter_clust
+    AnndataIterWriter, manage_cluster_adata, create_filebacked_clusters, iter_clust,
+    summarize_final_clusters,
 )
 
 
@@ -130,3 +131,37 @@ def test_iter_clust():
         for samples in clusters:
             set_indxs.update(samples.tolist())
         assert set(range(n_obs)) == set(set_indxs)
+
+
+def test_summarize_final_clusters():
+    X = np.asarray([
+        [50, 50, 0, 0, 0, 0],
+        [75, 75, 0, 0, 0, 0],
+        [60, 60, 0, 0, 0, 0],
+        [0, 0, 20, 20, 0, 0],
+        [0, 0, 20, 25, 0, 0],
+        [0, 0, 0, 0, 100, 110],
+        [0, 0, 0, 0, 90, 100],
+        [0, 0, 0, 0, 95, 105],
+    ])
+    genes = pd.DataFrame(index=[f'Gene_{i}' for i in range(X.shape[1])])
+    cells = pd.DataFrame(index=[f'Cell_{i}' for i in range(X.shape[0])])
+    norm_adata = ad.AnnData(X, var=genes, obs=cells)
+    clusters = [np.asarray([0,1,2]), np.asarray([3,4]), np.asarray([5,6,7])]
+    thresholds = {
+        'q1_thresh': 0.5,
+        'q2_thresh': 0.7,
+        'cluster_size_thresh': 0,
+        'qdiff_thresh': 0.7,
+        'padj_thresh': 0.01,
+        'lfc_thresh': 1.0
+    }
+    de_table, linkage, labels = summarize_final_clusters(
+        norm_adata,
+        clusters,
+        thresholds,
+        de_method='ebayes'
+    )
+
+    assert all(de_table['up_num'] == 2)
+    assert all(labels == [1,2,3])

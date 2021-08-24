@@ -114,9 +114,9 @@ def pca(
     if not n_comps:
         n_comps = min(max_comps, DEFAULT_NCOMPS)
     elif n_comps > max_comps:
-        logger.warn(
-            f'n_comps {n_comps} > min(n_obs={adata.n_obs}, n_genes={n_genes}) -1\n',
-            'Setting n_comps to {max_comps}'
+        logger.debug(
+            f'n_comps {n_comps} > min(n_obs={adata.n_obs}, n_genes={n_genes}) -1\n'
+            f'Setting n_comps to {max_comps}'
         )
         n_comps = max_comps
 
