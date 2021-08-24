@@ -231,8 +231,10 @@ def filter_explained_variances_elbow(explained_variances):
     Filters out principal components by removing those whose explained variance
     are beyond the elbow of the explained variance curve
 
-    To get elbow: Draw line from first and last point. Determine all points 
-        normal distance to line, select max value as elbow
+    To get elbow:
+        Draw diagonal line from first point to last point (slopes down to left).
+        Draw perpendicular lines from diagonal line to each point
+        Select point with maximum distance to line, as long as it is below the line
 
     Parameters
     ----------
