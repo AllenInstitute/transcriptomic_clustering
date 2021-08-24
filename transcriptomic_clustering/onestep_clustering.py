@@ -77,12 +77,14 @@ def onestep_clust(
     logger.info(f'Computed {components.shape[1]} principal components')
 
     # Filter PCA
+    logger.info('Filtering PCA Components')
     components = tc.dimension_reduction.filter_components(
         components,
         explained_variance,
         explained_variance_ratio,
         **onestep_kwargs.filter_pcs_kwargs
     )
+    logger.info(f'Filtered to {components.shape[1]} principal components')
     
     #Projection
     logger.info("Projecting normalized adata into PCA space")
@@ -97,6 +99,7 @@ def onestep_clust(
     if onestep_kwargs.filter_known_modes_kwargs:
         logger.info('Filtering Known Modes')
         projected_adata = tc.filter_known_modes(projected_adata, **onestep_kwargs.filter_known_modes_kwargs)
+        logger.info('Projected Adata Dimensions after Filtering Known Modes: {projected_adata.shape}')
     else:
         logger.info('No known modes, skipping Filter Known Modes')
 

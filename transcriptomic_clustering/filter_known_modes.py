@@ -27,7 +27,7 @@ def filter_known_modes(
     if isinstance(known_modes, pd.Series):
         known_modes = known_modes.to_frame()
 
-    kns_index_sorted = known_modes.loc[projected_adata.obs.iloc[:,0],:]
+    kns_index_sorted, _ = known_modes.align(projected_adata.obs, 'right', axis=0)
     mat_kns = kns_index_sorted.to_numpy()
 
     n_pcs = projected_adata.n_vars
@@ -40,5 +40,5 @@ def filter_known_modes(
     rm_pcs_mask = corr_pcs > similarity_threshold
     projected_adata = projected_adata[:,~rm_pcs_mask]
 
-    return projected_adata, rm_pcs_mask
+    return projected_adata
 

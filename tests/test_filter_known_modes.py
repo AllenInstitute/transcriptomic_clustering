@@ -5,6 +5,7 @@ import pandas as pd
 import scipy as scp
 import scanpy as sc
 import anndata as ad
+from pandas.testing import assert_frame_equal
 
 import transcriptomic_clustering as tc
 
@@ -25,17 +26,21 @@ def test_filter_known_modes():
     X -= X.mean(axis=0)
     X = X @ pcs
 
-    projected_adata = ad.AnnData(X, obs=obs_list, var=pcs_list)
+    projected_adata = ad.AnnData(
+        X,
+        obs=pd.DataFrame(index=obs_list),
+        var=pd.DataFrame(index=pcs_list)
+    )
 
     knowns = 0.95 * X[:,[1,7,14]] + 0.05 * X[:,[5,10,1]]
 
     df_kns = pd.DataFrame(knowns, index=obs_list)
 
-    filtered_proj_data, rm_mask = tc.filter_known_modes(projected_adata[::2,:], df_kns)
-    expected_rm_mask = np.zeros((n_pcs,), dtype=bool)
-    expected_rm_mask[[1,7,14]] = 1
+    filtered_proj_data = tc.filter_known_modes(projected_adata[::2,:], df_kns)
+    expected_keep_mask = np.ones((n_pcs,), dtype=bool)
+    expected_keep_mask[[1,7,14]] = 0
 
-    assert all(rm_mask == expected_rm_mask)
+    assert_frame_equal(filtered_proj_data.var, projected_adata[::2, expected_keep_mask].var)
 
 
 
