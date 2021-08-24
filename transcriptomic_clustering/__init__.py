@@ -21,7 +21,7 @@ from .utils.memory import memory
 from .normalization import normalize
 from .highly_variable_genes import highly_variable_genes
 from .means_vars_genes import get_means_vars_genes
-from .pca import pca
+from .dimension_reduction import pca
 from .projection import project
 from .clustering import cluster_louvain, cluster_louvain_phenograph
 from .filter_known_modes import filter_known_modes
