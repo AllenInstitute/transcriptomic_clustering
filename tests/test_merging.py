@@ -131,17 +131,16 @@ def test_merge_two_clusters(adata, clusters):
     assert_frame_equal(present_cluster_means, expected_present_cluster_means)
 
 
-def test_pdist_normalized():
+def test_cdist_normalized():
+    XA = np.array([[1], [3]])
+    XB = np.array([[1], [6], [7]])
     expected_similarity = np.array(
-        [[1, 0.5, 0 ],
-         [0.5, 1, 0.5],
-         [0,  0.5, 1 ]]
+        [[1, 1/6, 0],
+         [4/6, 3/6, 2/6]]
     )
 
-    cluster_means_arr = np.array([[1], [3], [5]])
-    obtained_similarity = merging.pdist_normalized(cluster_means_arr)
-
-    assert np.array_equal(expected_similarity, obtained_similarity)
+    obtained_similarity = merging.cdist_normalized(XA, XB)
+    np.testing.assert_allclose(expected_similarity, obtained_similarity)
 
 
 def test_find_most_similar(clusters):
