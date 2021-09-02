@@ -2,7 +2,7 @@ from typing import Any, Tuple, Dict, List, Optional
 import anndata as ad
 import pandas as pd
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import cdist
 import logging
 from collections import defaultdict
 import warnings
@@ -201,8 +201,9 @@ def merge_cluster_means_vars(
         cluster_variances.drop(label_source, inplace=True)
 
 
-def pdist_normalized(
-        X: np.ndarray
+def cdist_normalized(
+        X: np.ndarray,
+        Y: np.ndarray,
 ) -> np.ndarray:
     """
     Calculate similarity metric as (1 - pairwise_distance/max_distance)
@@ -216,10 +217,12 @@ def pdist_normalized(
     similarity:
         measure of similarity
     """
-    dist = squareform(pdist(X))
-    dist_norm = dist / np.max(dist)
+    similarity = cdist(X, Y, 'euclidean')
+    similarity /= np.max(similarity)
+    similarity *= -1
+    similarity += 1
 
-    return 1 - dist_norm
+    return similarity
 
 
 def calculate_similarity(
@@ -246,22 +249,28 @@ def calculate_similarity(
     similarity:
         array of similarity measure
     """
-
-    cluster_labels_subset = set(group_rows + group_cols)
-    means = cluster_means.loc[cluster_labels_subset]
-    n_clusters, n_vars = means.shape
+    # cluster_labels_subset = set(group_rows + group_cols)
+    source_means = cluster_means.loc[group_rows]
+    destination_means = cluster_means.loc[group_cols]
+    _, n_vars = cluster_means.shape
 
     if n_vars > 2:
-        similarity_df = means.T.corr()
+        similarity = cdist(source_means, destination_means, 'correlation')
+        similarity *= -1
+        similarity += 1
     else:
-        similarity = pdist_normalized(means)
-        similarity_df = pd.DataFrame(similarity,
-                                     index=cluster_labels_subset,
-                                     columns=cluster_labels_subset)
+        similarity = cdist_normalized(source_means, destination_means)
 
-    np.fill_diagonal(similarity_df.values, np.nan)
+    similarity_df = pd.DataFrame(
+        similarity,
+        index=group_rows,
+        columns=group_cols,
+        copy=False
+    )
+    for common in (set(group_rows) & set(group_cols)):
+        similarity_df[common, common] = np.nan
 
-    return similarity_df.loc[group_rows][group_cols]
+    return similarity_df
 
 
 def find_most_similar(
