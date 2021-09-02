@@ -268,7 +268,7 @@ def calculate_similarity(
         copy=False
     )
     for common in (set(group_rows) & set(group_cols)):
-        similarity_df[common, common] = np.nan
+        similarity_df.at[common, common] = np.nan
 
     return similarity_df
 
@@ -287,7 +287,6 @@ def find_most_similar(
     source_label, dest_label, max_similarity:
         labels of the source and destination clusters and their similarity value
     """
-
 
     similarity_df = similarity_df.transpose()
 
