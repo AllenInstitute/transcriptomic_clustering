@@ -249,7 +249,6 @@ def calculate_similarity(
     similarity:
         array of similarity measure
     """
-    # cluster_labels_subset = set(group_rows + group_cols)
     source_means = cluster_means.loc[group_rows]
     destination_means = cluster_means.loc[group_cols]
     _, n_vars = cluster_means.shape
