@@ -36,8 +36,10 @@ def filter_known_modes(
     corr_pc_ev = np.corrcoef(projected_adata.X, mat_kns, rowvar=False)[:n_pcs, -n_remove:]
 
     corr_pcs = np.amax(abs(corr_pc_ev), axis=1)
+    logger.debug(f'corr pcs: {corr pcs}')
 
     rm_pcs_mask = corr_pcs > similarity_threshold
+    logger.info(f'Removing {rm_pcs.mask.sum()} PC(s)')
     projected_adata = projected_adata[:,~rm_pcs_mask]
 
     return projected_adata

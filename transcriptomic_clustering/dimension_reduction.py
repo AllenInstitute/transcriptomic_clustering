@@ -155,6 +155,7 @@ def pca(
             chunk = chunk[:, vidx]
             _pca.partial_fit(chunk)
 
+    logging.debug(f'explained_variance_ratios: {_pca.explained_variance_ratio_}')
     return (
         pd.DataFrame(_pca.components_.T, index=adata.var_names[vidx]),
         _pca.explained_variance_ratio_,
@@ -223,6 +224,7 @@ def filter_ev_ratios_zscore(explained_variance_ratios, threshold=2):
 
     """
     z_scores = scp.stats.zscore(explained_variance_ratios)
+    logging.debug(f'zscores: {z_scores}')
     return z_scores > threshold
 
 
