@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 import anndata as ad
+import logging
+
+logger = logging.getLogger(__name__)
 
 def filter_known_modes(
         projected_adata: ad.AnnData,
@@ -39,7 +42,7 @@ def filter_known_modes(
     logger.debug(f'corr pcs: {corr_pcs}')
 
     rm_pcs_mask = corr_pcs > similarity_threshold
-    logger.info(f'Removing {rm_pcs.mask.sum()} PC(s)')
+    logger.info(f'Removing {rm_pcs_mask.sum()} PC(s)')
     projected_adata = projected_adata[:,~rm_pcs_mask]
 
     return projected_adata
