@@ -63,7 +63,7 @@ def onestep_clust(
 
     toc = time.perf_counter()
     logger.info(f'Means Vars Elapsed Time: {toc - tic}')
-    
+
     #Highly Variable
     logger.info('Computing Highly Variable Genes')
     tic = time.perf_counter()
