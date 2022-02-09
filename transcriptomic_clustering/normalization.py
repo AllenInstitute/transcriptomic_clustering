@@ -14,43 +14,8 @@ import scanpy as sc
 from scipy.sparse import csr_matrix, issparse, vstack
 import warnings
 import transcriptomic_clustering as tc
+from transcriptomic_clustering.iter_writer import AnnDataIterWriter
 from tqdm import tqdm
-
-
-def copy_anndata_without_X(
-        adata: AnnData,
-        filename: Union[Path, str]
-) -> AnnData:
-
-
-    """
-    Create a new file-backed adata that that has annotations from the source adata object, but with empty X
-
-    Parameters
-    ----------
-    adata: AnnData object
-    filename: name of h5ad file to create
-
-    Returns
-    -------
-    An :class:`AnnData` object
-    """
-
-    if os.path.isfile(filename):
-        raise ValueError(f"File {filename} already exists. "
-                         f"Cannot back to the existing file.")
-
-    f = h5py.File(filename, "w")
-    if adata.X.format_str != 'csr':
-        raise TypeError("Writing to backed file supports only CSR format")
-
-    ad._io.h5ad.write_elem(f, "X", csr_matrix((0, adata.n_vars), dtype='float32'))
-    ad._io.h5ad.write_elem(f, "obs", adata.obs)
-    ad._io.h5ad.write_elem(f, "var", adata.var)
-    f.close()
-
-    adata = sc.read_h5ad(filename, backed='r+')
-    return adata
 
 
 def normalize(
@@ -154,20 +119,21 @@ def normalize_backed(
 
     nchunks = math.ceil(adata.n_obs/chunk_size)
 
-    if copy_to:
-        adata_output = copy_anndata_without_X(adata, copy_to)
-    else:
+    if not copy_to:
         raise AttributeError(
             "Missing required `copy_to` argument for the file-backed processing"
         )
-
+    first = True
     for chunk, start, end in tqdm( adata.chunked_X(chunk_size), desc="processing", total=nchunks ):
         sys.stdout.flush()
         counts_per_cell = chunk.sum(1)
         chunk = sc.pp._normalization._normalize_data(chunk, counts_per_cell, after=1e6)
         chunk = sc.pp.log1p(chunk)
-        adata_output.X.append(chunk)
-
+        if first:
+            writer = AnnDataIterWriter(copy_to, chunk, adata.obs, adata.var)
+            first = False
+        else:
+            writer.add_chunk(chunk)
 
     return adata_output
 

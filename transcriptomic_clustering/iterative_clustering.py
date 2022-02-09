@@ -13,47 +13,10 @@ import anndata as ad
 import h5py
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.onestep_clustering import onestep_clust, OnestepKwargs
+from transcriptomic_clustering.iter_writer import AnnDataIterWriter
 
 
 logger = logging.getLogger(__name__)
-
-
-class AnndataIterWriter():
-    """
-    Class to handle iteratively writing filebacked AnnData Objects
-    """
-    def __init__(self, filename, initial_chunk, obs, var):
-        self.issparse = scp.sparse.issparse(initial_chunk)
-        self.initialize_file(filename, initial_chunk, obs, var)
-        self.adata = sc.read_h5ad(filename, backed='r+')
-
-
-    def initialize_file(self, filename, initial_chunk, obs, var):
-        """Uses initial chunk to determine grouptype"""
-        with h5py.File(filename, "w") as f:
-            if self.issparse:
-                ad._io.h5ad.write_elem(f, "X", initial_chunk)
-            else:
-                initial_chunk = np.atleast_2d(initial_chunk)
-                ad._io.h5ad.write_elem(
-                    f, "X", initial_chunk,
-                    dataset_kwargs={'maxshape': (None, initial_chunk.shape[1])}
-                )
-            ad._io.h5ad.write_elem(f, "obs", obs)
-            ad._io.h5ad.write_elem(f, "var", var)
-
-
-    def add_chunk(self, chunk):
-        if self.issparse:
-            self.adata.X.append(chunk)
-        else:
-            chunk = np.atleast_2d(chunk)
-            chunk_nrows = chunk.shape[0]
-            self.adata.X.resize(
-                (self.adata.X.shape[0] + chunk_nrows),
-                axis = 0
-            )
-            self.adata.X[-chunk_nrows:] = chunk
 
 
 def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
@@ -99,7 +62,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
                     filename = f'{old_filename}_{cl_id}.h5ad'
                     obs = adata[cell_ids, :].obs
                     var = adata[cell_ids, :].var
-                    writers[cl_id] = AnndataIterWriter(filename, sliced_chunk, obs, var)
+                    writers[cl_id] = AnnDataIterWriter(filename, sliced_chunk, obs, var)
                     first[cl_id] = False
                 else:
                     writers[cl_id].add_chunk(sliced_chunk)
