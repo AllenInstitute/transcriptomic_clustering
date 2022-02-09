@@ -32,12 +32,15 @@ class AnndataIterWriter():
         """Uses initial chunk to determine grouptype"""
         with h5py.File(filename, "w") as f:
             if self.issparse:
-                ad._io.h5ad.write_attribute(f, "X", initial_chunk)
+                ad._io.h5ad.write_elem(f, "X", initial_chunk)
             else:
                 initial_chunk = np.atleast_2d(initial_chunk)
-                ad._io.h5ad.write_array(f, "X", initial_chunk, {'maxshape': (None, initial_chunk.shape[1])})
-            ad._io.h5ad.write_attribute(f, "obs", obs)
-            ad._io.h5ad.write_attribute(f, "var", var)
+                ad._io.h5ad.write_elem(
+                    f, "X", initial_chunk,
+                    dataset_kwargs={'maxshape': (None, initial_chunk.shape[1])}
+                )
+            ad._io.h5ad.write_elem(f, "obs", obs)
+            ad._io.h5ad.write_elem(f, "var", var)
 
 
     def add_chunk(self, chunk):

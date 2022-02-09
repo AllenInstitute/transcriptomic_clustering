@@ -44,9 +44,9 @@ def copy_anndata_without_X(
     if adata.X.format_str != 'csr':
         raise TypeError("Writing to backed file supports only CSR format")
 
-    ad._io.h5ad.write_attribute(f, "X", csr_matrix((0, adata.n_vars), dtype='float32'))
-    ad._io.h5ad.write_attribute(f, "obs", adata.obs)
-    ad._io.h5ad.write_attribute(f, "var", adata.var)
+    ad._io.h5ad.write_elem(f, "X", csr_matrix((0, adata.n_vars), dtype='float32'))
+    ad._io.h5ad.write_elem(f, "obs", adata.obs)
+    ad._io.h5ad.write_elem(f, "var", adata.var)
     f.close()
 
     adata = sc.read_h5ad(filename, backed='r+')
