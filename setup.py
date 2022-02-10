@@ -64,7 +64,8 @@ setup(
     long_description_content_type='text/markdown',
     entry_points={
         "console_scripts": [
-            "",
+            ("convert_FBM=transcriptomic_clustering.commands"
+             ".convert_FBM:convert_FBM_cmd"),
         ]
     },
     keywords=["neuroscience", "bioinformatics", "scientific"],
