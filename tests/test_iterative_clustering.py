@@ -13,38 +13,9 @@ from numpy.testing import assert_allclose
 
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.iterative_clustering import (
-    AnndataIterWriter, manage_cluster_adata, create_filebacked_clusters, iter_clust,
+    manage_cluster_adata, create_filebacked_clusters, iter_clust,
     summarize_final_clusters,
 )
-
-
-def test_anndata_iter_writer_sparse():
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        X = scp.sparse.csr_matrix(np.asarray([[1,2,3],[4,5,6],[7,8,9]]))
-        adata_writer = AnndataIterWriter(
-            os.path.join(tmp_dir, 'test_adata'),
-            X[0,:],
-            pd.DataFrame(index=['obs1', 'obs2', 'obs3']),
-            pd.DataFrame(index=['var1', 'var2', 'var3']),
-        )
-        adata_writer.add_chunk(X[1:3,:])
-        adata = adata_writer.adata.to_memory()
-        assert_allclose(X.todense(), adata.X.todense())
-
-
-def test_anndata_iter_writer_dense():
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        X = np.asarray([[1,2,3],[4,5,6],[7,8,9]])
-        adata_writer = AnndataIterWriter(
-            os.path.join(tmp_dir, 'test_adata'),
-            X[0,:],
-            pd.DataFrame(index=['obs1', 'obs2', 'obs3']),
-            pd.DataFrame(index=['var1', 'var2', 'var3']),
-        )
-        adata_writer.add_chunk(X[1,:])
-        adata_writer.add_chunk(X[2,:])
-        adata = adata_writer.adata.to_memory()
-        assert_allclose(X, adata.X)
 
 
 def test_create_filebacked_clusters_chunked():
