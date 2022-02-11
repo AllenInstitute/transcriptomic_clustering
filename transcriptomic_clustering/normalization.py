@@ -135,5 +135,4 @@ def normalize_backed(
         else:
             writer.add_chunk(chunk)
 
-    return adata_output
-
+    return writer.adata
