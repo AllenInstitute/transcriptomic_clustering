@@ -122,7 +122,10 @@ def get_cluster_means_backed(
     n_genes = adata.n_vars
     n_clusters = len(cluster_assignments.keys())
 
-    itemsize = adata.X.dtype.itemsize
+    if not adata.is_view:  # .X on view will try to load entire X into memory
+        itemsize = adata.X.dtype.itemsize
+    else:
+        itemsize = np.dtype(np.float64).itemsize
     process_memory_estimate = 2 * (n_cells * n_genes) * itemsize / (1024 ** 3)
     output_memory_estimate = 2 * (n_clusters * n_genes) * itemsize / (1024 ** 3)
     

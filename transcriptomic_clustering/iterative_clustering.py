@@ -42,7 +42,11 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
     for cl_id, idxs in enumerate(clusters):
         cluster_by_obs[idxs] = cl_id
 
-    adata_size_GB = (adata.n_obs * adata.n_vars) * adata.X.dtype.itemsize / (1024 ** 3)
+    if not adata.is_view:  # .X on view will try to load entire X into memory
+        itemsize = adata.X.dtype.itemsize
+    else:
+        itemsize = np.dtype(np.float64).itemsize
+    adata_size_GB = (adata.n_obs * adata.n_vars) * itemsize / (1024 ** 3)
     chunk_size = tc.memory.estimate_chunk_size(
         adata,
         process_memory=adata_size_GB*2,
@@ -50,31 +54,33 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
         process_name='create_filebacked_clusters'
     )
 
-    old_filename = Path(adata.filename).with_suffix('')
-    if chunk_size > adata.n_obs:
-        writers = {}
-        first = [True] * len(clusters)
-        for chunk, start, end in adata.chunked_X(chunk_size):
-            for cl_id, cell_ids in enumerate(clusters):
-                sliced_chunk = chunk[np.where(cluster_by_obs[start:end] == cl_id)]
-
+    old_filename = Path(adata.filename).stem
+    # TODO: Hack
+    chunk_size = 10000
+    # if chunk_size < adata.n_obs:
+    writers = {}
+    first = [True] * len(clusters)
+    for chunk, start, end in adata.chunked_X(chunk_size):
+        for cl_id, cell_ids in enumerate(clusters):
+            sliced_chunk = chunk[np.where(cluster_by_obs[start:end] == cl_id)]
+            if sliced_chunk.shape[0] > 0:
                 if first[cl_id]:
-                    filename = f'{old_filename}_{cl_id}.h5ad'
-                    obs = adata[cell_ids, :].obs
-                    var = adata[cell_ids, :].var
+                    filename = Path(tmp_dir) / f'{old_filename}_{cl_id}.h5ad'
+                    obs = adata.obs.iloc[cell_ids]
+                    var = adata.var
                     writers[cl_id] = AnnDataIterWriter(filename, sliced_chunk, obs, var)
                     first[cl_id] = False
                 else:
                     writers[cl_id].add_chunk(sliced_chunk)
 
-        new_adatas = [writers[cl_id].adata for cl_id, _ in enumerate(clusters)]
+    new_adatas = [writers[cl_id].adata for cl_id, _ in enumerate(clusters)]
 
-    else:
-        new_adatas = []
-        for i, cell_ids in enumerate(clusters):
-            filename = f'{old_filename}_{i}.h5ad'
-            logger.debug(f'Created filebacked AnnData {filename}')
-            new_adatas.append(adata[cell_ids, :].copy(filename=filename))
+    # else:
+    #     new_adatas = []
+    #     for i, cell_ids in enumerate(clusters):
+    #         filename = Path(tmp_dir) / f'{old_filename}_{i}.h5ad'
+    #         logger.debug(f'Created filebacked AnnData {filename}')
+    #         new_adatas.append(adata[cell_ids, :].copy(filename=filename))
 
     return new_adatas
 
@@ -98,7 +104,11 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
 
     # Estimate memory
     if adata.isbacked:
-        adata_size_GB = (adata.n_obs * adata.n_vars) * adata.X.dtype.itemsize / (1024 ** 3)
+        if not adata.is_view:  # .X on view will try to load entire X into memory
+            itemsize = adata.X.dtype.itemsize
+        else:
+            itemsize = np.dtype(np.float64).itemsize
+        adata_size_GB = (adata.n_obs * adata.n_vars) * itemsize / (1024 ** 3)
         necessary_memory_estimate_GB =  adata_size_GB * 6 # arbritrary factor of 6 to handle whole pipeline in memory
         memory_available_GB = tc.memory.get_available_memory_GB()
         filebacked_clusters = (memory_available_GB < necessary_memory_estimate_GB)
@@ -117,10 +127,12 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
     
     # remove old adata
     old_filename = adata.filename
-    del adata
-    if old_filename:
-        os.remove(old_filename)
-        logger.debug('Deleted filebacked AnnData {old_filename}')
+    # TODO: Hack
+    if str(old_filename)[-15:] != "normalized.h5ad":
+        del adata
+        if old_filename:
+            os.remove(old_filename)
+            logger.debug(f'Deleted filebacked AnnData {old_filename}')
 
     return new_adatas
 

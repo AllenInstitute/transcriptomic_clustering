@@ -49,7 +49,10 @@ def project(
     
     # Estimate memory
     if not chunk_size:
-        itemsize = adata.X.dtype.itemsize
+        if not adata.is_view:  # .X on view will try to load entire X into memory
+            itemsize = adata.X.dtype.itemsize
+        else:
+            itemsize = np.dtype(np.float64).itemsize
         process_memory = n_obs * n_vars * itemsize / (1024 ** 3)
         if issparse:
             process_memory *= 2

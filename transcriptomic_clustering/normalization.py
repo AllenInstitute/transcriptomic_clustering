@@ -95,7 +95,11 @@ def normalize_backed(
     Normalize file-backed data in chunks
     See description of normalize() for details
     """
-    process_memory_est = adata.n_obs * adata.n_vars * adata.X.dtype.itemsize/(1024**3)
+    if not adata.is_view:  # .X on view will try to load entire X into memory
+        itemsize = adata.X.dtype.itemsize
+    else:
+        itemsize = np.dtype(np.float64).itemsize
+    process_memory_est = adata.n_obs * adata.n_vars * itemsize/(1024**3)
     output_memory_est = 0.1 * process_memory_est
 
     estimated_chunk_size = tc.memory.estimate_chunk_size(
