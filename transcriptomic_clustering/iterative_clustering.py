@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 from dataclasses import dataclass, field
+import time
 
 import math
 import numpy as np
@@ -19,7 +20,7 @@ from transcriptomic_clustering.iter_writer import AnnDataIterWriter
 logger = logging.getLogger(__name__)
 
 
-def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
+def create_filebacked_clusters(adata, clusters, tmp_dir: Path):
     """
     Handles creating a new AnnData filebacked object for each cluster
 
@@ -35,8 +36,8 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
     List of new filebacked adata objects for each cluster
 
     """
-    if tmp_dir is None:
-        tmp_dir = tempfile.mkdtemp()
+
+    logger.debug(f"creating tmp files in {tmp_dir}")
 
     cluster_by_obs = np.zeros((adata.shape[0],))
     for cl_id, idxs in enumerate(clusters):
@@ -85,7 +86,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
     return new_adatas
 
 
-def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
+def manage_cluster_adata(adata, clusters, tmp_dir: Path):
     """
     Function for managing memory when iterating
     Will decide whether to load cluster into memory or write new AnnData file
@@ -160,9 +161,12 @@ def iter_clust(
     List of arrays of cell ids, one array per cluster
 
     """
+    tic = time.perf_counter()
     logger.info('----------Starting Onestep_clust----------')
     clusters = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
     logger.info('----------Finished Onestep_clust----------')
+    toc = time.perf_counter()
+    logger.info(f'Onestep Clustering Elapsed Time: {toc - tic}')
     logger.info(
         f'Split cluster of size {norm_adata.n_obs} into new clusters with sizes:\n{[len(cluster) for cluster in clusters]}'
     )
@@ -172,8 +176,11 @@ def iter_clust(
         return clusters
 
     # Generate new cluster_adata objects (slicing Anndata is questionable...)
-    logger.info('Managing cluster data')
-    cluster_adatas = manage_cluster_adata(norm_adata, clusters)
+    logger.info('----Managing cluster data----')
+    tic = time.perf_counter()
+    cluster_adatas = manage_cluster_adata(norm_adata, clusters, tmp_dir=tmp_dir)
+    toc = time.perf_counter()
+    logger.info(f'Managing Cluster Data Elapsed Time: {toc - tic}')
 
     # For each existing cluster, generate new clusters from it.
     new_clusters = []

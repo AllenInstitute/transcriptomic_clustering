@@ -56,6 +56,7 @@ def convert_FBM(
         out_ad_path: Optional[Path] = None,
         chunk_size: int = 5000,
         out_dtype: Literal["float", "double"] = None,
+        as_sparse: bool = False,
         normalize: bool = True,
         target_sum: Optional[float] = 1e6,
 ):
@@ -139,9 +140,11 @@ def convert_FBM(
                 chunk, counts_per_cell, after=target_sum
             )
             chunk = sc.pp.log1p(chunk)
+        if as_sparse:
+            chunk = sparse.csr_matrix(chunk)
 
         if first:
-            ad_writer = AnnDataIterWriter(out_ad_path, chunk, cell_df, gene_df)
+            ad_writer = AnnDataIterWriter(out_ad_path, chunk, cell_df, gene_df, dtype=out_dtype)
             first = False
         else:
             ad_writer.add_chunk(chunk)
@@ -171,13 +174,18 @@ def convert_FBM(
     type=click.Choice(["float", "double"], case_sensitive=False)
 )
 @click.option(
-    "-o" "--output_path", "out_ad_path",
+    "-o", "--output_path", "out_ad_path",
     type=click.Path(exists=False, path_type=Path),
 )
 @click.option(
     "-d", "--out_dtype", "out_dtype",
     help="precision of data to output: float: 4 bytes, double: 8 bytes",
     type=click.Choice(["float", "double"], case_sensitive=False)
+)
+@click.option(
+    "-s", "--sparse", "as_sparse",
+    help="Save as sparse matrix",
+    is_flag=True
 )
 @click.option(
     "-c", "--chunk_size", "chunk_size",
@@ -190,7 +198,7 @@ def convert_FBM(
     is_flag=True
 )
 @click.option(
-    "-s", "--target_sum", "target_sum",
+    "-t", "--target_sum", "target_sum",
     help="Normalize cells to target sum count",
     type=int
 )
