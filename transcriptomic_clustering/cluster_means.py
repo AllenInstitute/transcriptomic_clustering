@@ -5,7 +5,7 @@ import anndata as ad
 from anndata._core.anndata import AnnData
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, issparse
+from scipy.sparse import csr_matrix, csc_matrix, issparse
 from welford import Welford
 import transcriptomic_clustering as tc
 import warnings
@@ -162,7 +162,7 @@ def get_cluster_means_backed(
     cluster_welfords = [Welford() for i in range(n_clusters)]
     for chunk, start, end in adata.chunked_X(chunk_size):
         cluster_sums += one_hot_cl[:, start:end] @ chunk
-        present_cluster_sums += one_hot_cl[:, start:end] @ (chunk > low_th)
+        present_cluster_sums += one_hot_cl[:, start:end] @ (chunk > low_th).astype(int)
 
         chunk_clust_by_obs = cluster_by_obs[start:end]
         if issparse(chunk):
@@ -197,7 +197,7 @@ def get_cluster_means_backed(
 def get_one_hot_cluster_array(
         cluster_by_obs: np.ndarray,
         cluster_labels: List[Any]
-) -> np.ndarray:
+) -> csc_matrix:
     """
     Compute a one-hot array of clusters by cells
 
@@ -215,8 +215,15 @@ def get_one_hot_cluster_array(
     """
 
     n_clusters = len(cluster_labels)
-    cluster_idxs = np.array([cluster_labels.index(cl) for cl in cluster_by_obs])
+    n_obs = len(cluster_by_obs)
+    cluster_label_indexes = {cl: i for i, cl in enumerate(cluster_labels)}
 
-    b = np.zeros((cluster_by_obs.size, n_clusters))
-    b[np.arange(cluster_by_obs.size), cluster_idxs] = 1
-    return csr_matrix(b).toarray().T
+    ones = np.ones((n_obs,), dtype=bool)
+    row_idxs = [cluster_label_indexes[cl] for cl in cluster_by_obs]
+    col_idxs = np.arange(n_obs)
+    print(row_idxs)
+    print(col_idxs)
+    onehot = csc_matrix((ones, (row_idxs, col_idxs)), shape=(n_clusters, n_obs), dtype=bool)
+    print(onehot.toarray())
+
+    return onehot
