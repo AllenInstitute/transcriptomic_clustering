@@ -121,8 +121,6 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     assert np.allclose(obtained_cluster_means.to_numpy(), expected_cluster_means.to_numpy())
     assert obtained_present_cluster_means.index.equals(expected_present_cluster_means.index)
     assert obtained_present_cluster_means.columns.equals(expected_present_cluster_means.columns)
-    print(obtained_present_cluster_means.to_numpy())
-    print(expected_present_cluster_means.to_numpy())
     assert np.allclose(obtained_present_cluster_means.to_numpy(), expected_present_cluster_means.to_numpy())
     assert obtained_cluster_variances.index.equals(expected_cluster_variances.index)
     assert obtained_cluster_variances.columns.equals(expected_cluster_variances.columns)

@@ -221,9 +221,6 @@ def get_one_hot_cluster_array(
     ones = np.ones((n_obs,), dtype=bool)
     row_idxs = [cluster_label_indexes[cl] for cl in cluster_by_obs]
     col_idxs = np.arange(n_obs)
-    print(row_idxs)
-    print(col_idxs)
     onehot = csc_matrix((ones, (row_idxs, col_idxs)), shape=(n_clusters, n_obs), dtype=bool)
-    print(onehot.toarray())
 
     return onehot
