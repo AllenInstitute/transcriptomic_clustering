@@ -1,4 +1,5 @@
 from typing import Any, Tuple, Dict, List, Optional
+import time
 import anndata as ad
 import pandas as pd
 import numpy as np
@@ -66,16 +67,28 @@ def merge_clusters(
         return cluster_assignments.copy()
 
     # Calculate cluster means on reduced space
+    logger.info("Computing reduced cluster means")
+    tic = time.perf_counter()
     cl_means_reduced, _, _ = tc.get_cluster_means(adata_reduced,
                                                cluster_assignments,
                                                cluster_by_obs,
                                                chunk_size,
                                                low_th=thresholds['low_thresh'])
+    logger.info(f'Completed reduced cluster means')
+    toc = time.perf_counter()
+    logger.info(f'Reduced Cluster Means Elapsed Time: {toc - tic}')
+
 
     # Merge small clusters
     min_cluster_size = thresholds['cluster_size_thresh']
     cluster_assignments_merge = cluster_assignments.copy()
+    
+    logger.info("Merging small clusters")
+    tic = time.perf_counter()
     merge_small_clusters(cl_means_reduced, cluster_assignments_merge, min_cluster_size)
+    logger.info(f'Completed merging small clusters')
+    toc = time.perf_counter()
+    logger.info(f'Small Clusters Elapsed Time: {toc - tic}')
 
     # Create new cluster_by_obs based on updated cluster assignments
     cluster_by_obs = np.zeros((adata_norm.shape[0],))
@@ -83,13 +96,20 @@ def merge_clusters(
         cluster_by_obs[idxs] = cl_id
 
     # Calculate cluster means on normalized data
+    logger.info("Computing Cluster Means")
+    tic = time.perf_counter()
     cl_means, present_cl_means, cl_vars = tc.get_cluster_means(adata_norm,
                                                       cluster_assignments_merge,
                                                       cluster_by_obs,
                                                       chunk_size,
                                                       low_th=thresholds['low_thresh'])
+    logger.info(f'Completed Cluster Means')
+    toc = time.perf_counter()
+    logger.info(f'Cluster Means Elapsed Time: {toc - tic}')
 
     # Merge remaining clusters by differential expression
+    logger.info("Merging Clusters by DE")
+    tic = time.perf_counter()
     merge_clusters_by_de(cluster_assignments_merge,
                          cl_means,
                          cl_vars,
@@ -99,6 +119,9 @@ def merge_clusters(
                          k,
                          de_method,
                          )
+    logger.info(f'Completed Merging Clusters by DE')
+    toc = time.perf_counter()
+    logger.info(f'Merging DE Elapsed Time: {toc - tic}')
 
     return cluster_assignments_merge
 
