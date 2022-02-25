@@ -5,6 +5,7 @@ from numpy.typing import ArrayLike
 import warnings
 import logging
 import time
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
@@ -134,6 +135,76 @@ def get_linear_fit_vals(cl_vars: pd.DataFrame, cl_size: Dict[Any, int]):
     return sigma_sq.to_frame(), df, stdev_unscaled
 
 
+def _de_pair_ebayes(
+        cl_means_a: pd.DataFrame,
+        cl_means_b: pd.DataFrame,
+        cl_vars_a: pd.DataFrame,
+        cl_vars_b: pd.DataFrame,
+        cl_present_a: pd.DataFrame,
+        cl_present_b: pd.DataFrame,
+        cl_size_a: Dict[Any, int],
+        cl_size_b: Dict[Any, int],
+        stdev_unscaled_ab: pd.DataFrame,
+        sigma_sq_post: pd.DataFrame,
+        df_total: float,
+        de_thresholds: Dict[str, Any],
+):
+    """
+    Multiprocess compatible helper function to compute DE of two pairs of clusters
+    See de_pairs_ebayes() for arguments
+    """
+    means_diff = cl_means_a - cl_means_b
+    means_diff = means_diff.to_frame()
+    stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled_ab ** 2))[0]
+
+    t_vals = means_diff / np.sqrt(sigma_sq_post) / stdev_unscaled_comb
+
+    p_adj = np.ones((len(t_vals),))
+    p_vals = 2 * stats.t.sf(np.abs(t_vals[0]), df_total)
+    reject, p_adj, alphacSidak, alphacBonf= multipletests(p_vals, alpha=de_thresholds['padj_thresh'], method='holm')
+    lfc = means_diff
+
+    # Get DE score
+    de_pair_stats = pd.DataFrame(index=cl_means_a.index)
+    de_pair_stats['p_value'] = p_vals
+    de_pair_stats['p_adj'] = p_adj
+    de_pair_stats['lfc'] = lfc
+    de_pair_stats["meanA"] = cl_means_a
+    de_pair_stats["meanB"] = cl_means_b
+    de_pair_stats["q1"] = cl_present_a
+    de_pair_stats["q2"] = cl_present_b
+    de_pair_stats["qdiff"] = get_qdiff(cl_present_a, cl_present_b)
+
+    de_pair_up = filter_gene_stats(
+        de_stats=de_pair_stats,
+        gene_type='up-regulated',
+        cl1_size=cl_size_a,
+        cl2_size=cl_size_b,
+        **de_thresholds
+    )
+    up_score = calc_de_score(de_pair_up['p_adj'].values)
+
+    de_pair_down = filter_gene_stats(
+        de_stats=de_pair_stats,
+        gene_type='down-regulated',
+        cl1_size=cl_size_a,
+        cl2_size=cl_size_b,
+        **de_thresholds
+    )
+    down_score = calc_de_score(de_pair_down['p_adj'].values)
+
+    return {
+        'score': up_score + down_score,
+        'up_score': up_score,
+        'down_score': down_score,
+        'up_genes': de_pair_up.index.to_list(),
+        'down_genes': de_pair_down.index.to_list(),
+        'up_num': len(de_pair_up.index),
+        'down_num': len(de_pair_down.index),
+        'num': len(de_pair_up.index) + len(de_pair_down.index)
+    }
+
+
 def de_pairs_ebayes(
         pairs: List[Tuple[Any, Any]],
         cl_means: pd.DataFrame,
@@ -170,65 +241,36 @@ def de_pairs_ebayes(
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
     logger.info('Moderating Variances')
     sigma_sq_post, var_prior, df_prior = moderate_variances(sigma_sq, df)
+    df_total = df + df_prior
+    df_pooled = np.sum(df)
+    df_total = min(df_total, df_pooled)
 
     logger.info(f'Comparing {len(pairs)} pairs')
     de_pairs = {}
+
+    pool_args = []
     for (cluster_a, cluster_b) in pairs:
-        # t-test with ebayes adjusted variances
-        means_diff = cl_means.loc[cluster_a] - cl_means.loc[cluster_b]
-        means_diff = means_diff.to_frame()
-        stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))[0]
-        
-        df_total = df + df_prior
-        df_pooled = np.sum(df)
-        df_total = min(df_total, df_pooled)
-        
-        t_vals = means_diff / np.sqrt(sigma_sq_post) / stdev_unscaled_comb
-        
-        p_adj = np.ones((len(t_vals),))
-        p_vals = 2 * stats.t.sf(np.abs(t_vals[0]), df_total)
-        reject, p_adj, alphacSidak, alphacBonf= multipletests(p_vals, alpha=de_thresholds['padj_thresh'], method='holm')
-        lfc = means_diff
-
-        # Get DE score
-        de_pair_stats = pd.DataFrame(index=cl_means.columns)
-        de_pair_stats['p_value'] = p_vals
-        de_pair_stats['p_adj'] = p_adj
-        de_pair_stats['lfc'] = lfc
-        de_pair_stats["meanA"] = cl_means.loc[cluster_a]
-        de_pair_stats["meanB"] = cl_means.loc[cluster_b]
-        de_pair_stats["q1"] = cl_present.loc[cluster_a]
-        de_pair_stats["q2"] = cl_present.loc[cluster_b]
-        de_pair_stats["qdiff"] = get_qdiff(cl_present.loc[cluster_a], cl_present.loc[cluster_b])
-
-        de_pair_up = filter_gene_stats(
-            de_stats=de_pair_stats,
-            gene_type='up-regulated', 
-            cl1_size=cl_size[cluster_a],
-            cl2_size=cl_size[cluster_b],
-            **de_thresholds
+        de_pair_args = (
+            cl_means.loc[cluster_a],
+            cl_means.loc[cluster_b],
+            cl_vars.loc[cluster_a],
+            cl_vars.loc[cluster_b],
+            cl_present.loc[cluster_a],
+            cl_present.loc[cluster_b],
+            cl_size[cluster_a],
+            cl_size[cluster_b],
+            stdev_unscaled.loc[[cluster_a, cluster_b]],
+            sigma_sq_post,
+            df_total,
+            de_thresholds
         )
-        up_score = calc_de_score(de_pair_up['p_adj'].values)
+        pool_args.append(de_pair_args)
 
-        de_pair_down = filter_gene_stats(
-            de_stats=de_pair_stats,
-            gene_type='down-regulated',
-            cl1_size=cl_size[cluster_a],
-            cl2_size=cl_size[cluster_b],
-            **de_thresholds
-        )
-        down_score = calc_de_score(de_pair_down['p_adj'].values)
+    with Pool() as pool:
+        de_pairs_list = pool.starmap(_de_pair_ebayes, pool_args)
 
-        de_pairs[(cluster_a, cluster_b)] = {
-            'score': up_score + down_score,
-            'up_score': up_score,
-            'down_score': down_score,
-            'up_genes': de_pair_up.index.to_list(),
-            'down_genes': de_pair_down.index.to_list(),
-            'up_num': len(de_pair_up.index),
-            'down_num': len(de_pair_down.index),
-            'num': len(de_pair_up.index) + len(de_pair_down.index)
-        }
+    for i, (cluster_a, cluster_b) in enumerate(pairs):
+        de_pairs[(cluster_a, cluster_b)] = de_pairs_list[i]
 
     de_pairs = pd.DataFrame(de_pairs).T
     return de_pairs
