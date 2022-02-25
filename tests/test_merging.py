@@ -208,6 +208,19 @@ def test_get_k_nearest_clusters(clusters):
         assert n in knns
 
 
+def test_get_k_nearest_clusters_subset(clusters):
+
+    cluster_means, _, _, _ = clusters
+
+    expected_nns = [('11', 4), ('11', '32'), (2, '32'), (2, 4)]
+
+    knns = merging.get_k_nearest_clusters(cluster_means, cluster_labels={'11', 2}, k=2)
+
+    assert len(expected_nns) == len(knns)
+    for n in expected_nns:
+        assert n in knns
+
+
 def test_get_cluster_assignments(adata, clusters):
 
     _, _, _, cluster_assignments = clusters
