@@ -73,17 +73,17 @@ def get_cluster_means_inmemory(
     cluster_variances_lst = []
 
     for clust in cluster_assignments.values():
-        slice = adata.X[clust, :]
-        cluster_means_lst.append(np.asarray(np.mean(slice, axis=0)).ravel())
-        present_cluster_means_lst.append(np.asarray(np.mean((slice > low_th), axis=0)).ravel())
+        sliced_X = adata.X[clust, :]
+        cluster_means_lst.append(np.asarray(np.mean(sliced_X, axis=0)).ravel())
+        present_cluster_means_lst.append(np.asarray(np.mean((sliced_X > low_th), axis=0)).ravel())
 
-        if issparse(slice):
-            slice = slice.toarray()
-        slice = np.atleast_2d(slice)
-        if slice.shape[0] == 1:
-            cluster_variances = np.zeros(slice.shape)
+        if issparse(sliced_X):
+            sliced_X = sliced_X.toarray()
+        sliced_X = np.atleast_2d(sliced_X)
+        if sliced_X.shape[0] == 1:
+            cluster_variances = np.zeros(sliced_X.shape)
         else:
-            cluster_variances = np.var(slice, axis=0, ddof=1)
+            cluster_variances = np.var(sliced_X, axis=0, ddof=1)
         cluster_variances_lst.append(np.asarray(cluster_variances).ravel())
 
 
