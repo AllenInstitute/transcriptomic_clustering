@@ -250,7 +250,8 @@ def tasic_data_for_merge():
         'padj_thresh': 0.05,
         'lfc_thresh': 1.0,
         'score_thresh': 40,
-        'low_thresh': 1
+        'low_thresh': 1,
+        'min_genes': 5
     }
     return normalized_adata, reduced_dim_adata, thresholds
 
@@ -330,7 +331,8 @@ def test_merge_clusters_by_de():
         'padj_thresh': 0.5,
         'lfc_thresh': .4,
         'score_thresh': 40,
-        'low_thresh': 1
+        'low_thresh': 1,
+        'min_genes': 5
     }
 
     cluster_means = pd.DataFrame(

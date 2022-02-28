@@ -19,7 +19,8 @@ DEFAULT_THRESHOLDS = {
     'padj_thresh': 0.05,
     'lfc_thresh': 1.0,
     'score_thresh': 150,
-    'low_thresh': 1
+    'low_thresh': 1,
+    'min_genes': 5
 }
 
 
@@ -423,6 +424,7 @@ def merge_clusters_by_de(
 
     thresholds = thresholds.copy()
     score_th = thresholds.pop('score_thresh')
+    min_genes = thresholds.pop('min_genes')
     thresholds.pop('low_thresh')
 
     merged_cluster_dsts = None
@@ -474,7 +476,8 @@ def merge_clusters_by_de(
         for pair, row in scores.iterrows():
             score = row.score
 
-            if score >= score_th:
+            # Merge if score < th or number of de genes < min)
+            if score >= score_th and row.num > min_genes:
                 break
 
             dst_label, src_label = pair
