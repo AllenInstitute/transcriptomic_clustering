@@ -200,7 +200,8 @@ def convert_FBM(
 @click.option(
     "-t", "--target_sum", "target_sum",
     help="Normalize cells to target sum count",
-    type=int
+    type=int,
+    default=1e6
 )
 def convert_FBM_cmd(*args, **kwargs):
     out_ad_path = convert_FBM(*args, **kwargs)
