@@ -16,7 +16,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 @pytest.fixture
 def tasic():
-    print(DATA_DIR)
     normalized_data = sc.read_h5ad(os.path.join(DATA_DIR, "input", "input_normalize_result.h5"))
     selected_genes = pd.read_csv(os.path.join(DATA_DIR, "input", "input_select_genes.csv"))['x'].to_list()
     selected_cells = pd.read_csv(os.path.join(DATA_DIR, "input", "input_select_cells.csv"))['x'].to_list()

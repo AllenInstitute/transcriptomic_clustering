@@ -38,7 +38,6 @@ def test_convert_FBM(tmp_path, normalize):
         "-p": "double",
         "-c": "1000",
         "-d": "float",
-        "-s": "1000000"
     }
 
     cmd_args = []

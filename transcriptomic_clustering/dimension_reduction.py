@@ -131,9 +131,9 @@ def pca(
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
+    n_obs = n_cells
+    n_vars = adata.n_vars
     if not chunk_size:
-        n_obs = n_cells
-        n_vars = adata.n_vars
         if not adata.is_view:  # .X on view will try to load entire X into memory
             itemsize = adata.X.dtype.itemsize
         else:
@@ -146,7 +146,7 @@ def pca(
             process_memory=process_memory_estimate,
             output_memory=output_memory_estimate,
         )
-    logger.debug(f'Running PCA on n_obs {n_obs} and n_vars {n_vars}: {process_memory_estimate} GB')
+        logger.debug(f'Running PCA on n_obs {n_obs} and n_vars {n_vars}: {process_memory_estimate} GB')
     # Run PCA
     if chunk_size >= n_cells:
         _pca = PCA(n_components=n_comps, svd_solver=svd_solver, random_state=random_state)
@@ -155,13 +155,15 @@ def pca(
 
         x_start = 0
         for chunk, start, end in adata.chunked_X(10000):  # should also be estimate memory
+            print(f"chunk start,end: {start, end}")
             if scp.sparse.issparse(chunk):
                 chunk = chunk.toarray()
             chunk = chunk[oidx_bool[start:end], :]  # not sure why these indexing have to be separate...
             chunk = chunk[:, vidx_bool]
             if chunk.shape[0] > 0:
                 x_end = x_start + chunk.shape[0]
-                X[x_start:x_end] = chunk
+                X[x_start:x_end, :] = chunk[:,:]
+                print(f"X start,end: {x_start, x_end}")
                 x_start = x_end
 
         logger.debug(f'performing fit')
@@ -170,14 +172,20 @@ def pca(
         if svd_solver != 'auto':
             logger.warning('Ignoring svd_solver, using IncrementalPCA')
         _pca = IncrementalPCA(n_components=n_comps, batch_size=chunk_size)
-        if n_cells < adata.n_obs:
-            adata = adata[oidx, :]
 
-        for chunk, _, _ in adata.chunked_X(chunk_size):
+        saved_chunk = None
+        for chunk, start, end in adata.chunked_X(chunk_size):
             if scp.sparse.issparse(chunk):
                 chunk = chunk.toarray()
             chunk = chunk[oidx_bool[start:end], :]
             chunk = chunk[:, vidx_bool]
+            if saved_chunk is not None:
+                chunk = np.vstack((chunk, saved_chunk))
+                saved_chunk = None
+
+            if chunk.shape[0] < n_comps: # incremental can't process
+                saved_chunk = chunk
+                continue
             _pca.partial_fit(chunk)
 
     logging.debug(f'explained_variance_ratios: {_pca.explained_variance_ratio_}')

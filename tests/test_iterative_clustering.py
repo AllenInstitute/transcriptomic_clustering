@@ -57,7 +57,7 @@ def test_manage_cluster_adata_in_memory():
                 np.asarray([3,4,5,13,14,15],dtype=int),
                 np.asarray([6,7,8,16,17,18],dtype=int),
             ]
-    adatas = manage_cluster_adata(adata, clusters)
+    adatas = manage_cluster_adata(adata, clusters, tmp_dir=None)
     assert_allclose(adatas[0].X, adata[clusters[0],:].X)
     for adata in adatas:
         assert not adata.isbacked
