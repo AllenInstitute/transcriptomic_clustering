@@ -30,9 +30,6 @@ jobs:
       - restore_cache:
           keys:
             - v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
-            # fallback to using the latest cache if no exact match is found
-            - v1-linux_cache-
-
       - run: 
           name: create conda env
           command: |
@@ -74,8 +71,6 @@ jobs:
       - restore_cache:
           keys:
             - v1-mac-pip-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
-            # fallback to using the latest cache if no exact match is found
-            - v1-mac-pip-dependencies-
       - run:
           name: create pip env
           command: |
@@ -110,8 +105,6 @@ jobs:
       - restore_cache:
           keys:
             - v1-conda_windows_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
-            # fallback to using the latest cache if no exact match is found
-            - v1-conda_windows_cache-
 
       - create_conda_env:
           use_fenics: false
