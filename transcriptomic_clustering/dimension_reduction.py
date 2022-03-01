@@ -155,7 +155,6 @@ def pca(
 
         x_start = 0
         for chunk, start, end in adata.chunked_X(10000):  # should also be estimate memory
-            print(f"chunk start,end: {start, end}")
             if scp.sparse.issparse(chunk):
                 chunk = chunk.toarray()
             chunk = chunk[oidx_bool[start:end], :]  # not sure why these indexing have to be separate...
@@ -163,7 +162,6 @@ def pca(
             if chunk.shape[0] > 0:
                 x_end = x_start + chunk.shape[0]
                 X[x_start:x_end, :] = chunk[:,:]
-                print(f"X start,end: {x_start, x_end}")
                 x_start = x_end
 
         logger.debug(f'performing fit')
@@ -190,10 +188,10 @@ def pca(
 
     logging.debug(f'explained_variance_ratios: {_pca.explained_variance_ratio_}')
     return (
-        pd.DataFrame(_pca.components_.T, index=adata.var_names[vidx]),
+        pd.DataFrame(_pca.components_.T, index=adata.var_names[vidx_bool]),
         _pca.explained_variance_ratio_,
         _pca.explained_variance_,
-        pd.DataFrame(_pca.mean_, index=adata.var_names[vidx])
+        pd.DataFrame(_pca.mean_, index=adata.var_names[vidx_bool])
     )
 
 
