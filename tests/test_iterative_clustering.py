@@ -91,12 +91,15 @@ def test_iter_clust():
         clusters = [[] for i in range(n_clusts)]
         for i, cl_id in enumerate(cluster_map):
             clusters[cl_id].append(i)
-        return [np.asarray(cluster, dtype=int) for cluster in clusters]
+        return (
+            [np.asarray(cluster, dtype=int) for cluster in clusters],
+            set(rng.choice(norm_adata.var.index.tolist()))
+        )
 
     with patch("transcriptomic_clustering.iterative_clustering.onestep_clust", wraps=fake_onestep) as mock_bar:
         n_obs = 300
         norm_adata = ad.AnnData(np.random.rand(n_obs,3))
-        clusters = iter_clust(norm_adata, min_samples=4)
+        clusters, markers = iter_clust(norm_adata, min_samples=4)
 
         set_indxs = set()
         for samples in clusters:

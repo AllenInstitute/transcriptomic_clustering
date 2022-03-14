@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Dict, List, Optional, Set
+from typing import Any, Tuple, Dict, List, Optional, Set, Literal
 import time
 import anndata as ad
 import pandas as pd
@@ -8,6 +8,7 @@ import logging
 from collections import defaultdict
 import warnings
 import transcriptomic_clustering as tc
+from transcriptomic_clustering.markers import select_marker_genes
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,9 @@ def merge_clusters(
         thresholds: Dict[str, Any] = DEFAULT_THRESHOLDS,
         k: Optional[int] = 2,
         de_method: Optional[str] = 'ebayes',
+        n_markers: Optional[int] = 20,
         chunk_size: Optional[int] = None
-) -> Dict[Any, np.ndarray]:
+) -> Tuple[Dict[Any, np.ndarray], Set]:
     """
     Merge clusters based on size and differential gene expression score
 
@@ -56,6 +58,9 @@ def merge_clusters(
         number of cluster neighbors
     de_method:
         method used for de calculation
+    n_markers:
+        number of marker genes to select from up and down de genes
+        if 0 or None will skip
     chunk_size:
         number of observations to process in a single chunk
 
@@ -63,6 +68,8 @@ def merge_clusters(
     -------
     cluster_assignments:
         updated mapping of cluster assignments
+    markers:
+        if select_markers, set of genes that differentiate clusters, or empty set
     """
     if len(cluster_assignments.keys()) == 1:
         return cluster_assignments.copy()
@@ -124,7 +131,26 @@ def merge_clusters(
     toc = time.perf_counter()
     logger.info(f'Merging DE Elapsed Time: {toc - tic}')
 
-    return cluster_assignments_merge
+    # Select marker genes
+    if n_markers:
+        logger.info('Starting Marker Selection')
+        tic = time.perf_counter()
+        markers = select_marker_genes(
+            cluster_assignments=cluster_assignments_merge,
+            cluster_means=cl_means,
+            cluster_variances=cl_vars,
+            present_cluster_means=present_cl_means,
+            thresholds=thresholds,
+            n_markers=n_markers,
+            de_method=de_method,
+        )
+        logger.info('Completed Marker Selection')
+        toc = time.perf_counter()
+        logger.info(f'Marker Selection Elapsed Time: {toc - tic}')
+    else:
+        markers = None
+
+    return cluster_assignments_merge, markers
 
 
 def merge_two_clusters(
@@ -387,7 +413,7 @@ def merge_clusters_by_de(
     cluster_means_rd: pd.DataFrame,
     thresholds: Dict[str, Any],
     k: Optional[int] = 2,
-    de_method: Optional[str] = 'ebayes',
+    de_method: Optional[Literal['ebayes', 'chisq']] = 'ebayes',
 ):
     """
     Merge clusters by the calculated gene differential expression score

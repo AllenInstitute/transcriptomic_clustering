@@ -48,6 +48,7 @@ def onestep_clust(
     Returns
     -------
     List of arrays of cell ids, one array per cluster
+    Set of marker genes (if calculated)
 
     """
     logger.info('Starting onestep clustering')
@@ -159,7 +160,7 @@ def onestep_clust(
     logger.info('Starting Cluster Merging')
     tic = time.perf_counter()
 
-    cluster_assignments_after_merging = tc.merge_clusters(
+    cluster_assignments_after_merging, marker_genes = tc.merge_clusters(
         adata_norm=norm_adata,
         adata_reduced=projected_adata,
         cluster_assignments=obs_by_cluster,
@@ -172,4 +173,4 @@ def onestep_clust(
     logger.info(f'Merging Elapsed Time: {toc - tic}')
 
     logger.info('Completed One Step Clustering')
-    return list(cluster_assignments_after_merging.values())
+    return list(cluster_assignments_after_merging.values()), marker_genes

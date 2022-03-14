@@ -268,7 +268,7 @@ def test_merge_clusters_de_chisq(tasic_data_for_merge):
         tasic_norm_adata,
         cluster_label_obs="cluster_label_after_merging_chisq")
 
-    cluster_assignments_after_merging = tc.merge_clusters(
+    cluster_assignments_after_merging, markers = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
@@ -294,7 +294,7 @@ def test_merge_clusters_de_ebayes(tasic_data_for_merge):
         tasic_norm_adata,
         cluster_label_obs="cluster_label_after_merging_ebayes")
 
-    cluster_assignments_after_merging = tc.merge_clusters(
+    cluster_assignments_after_merging, markers = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,

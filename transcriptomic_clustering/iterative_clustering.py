@@ -163,7 +163,7 @@ def iter_clust(
     """
     tic = time.perf_counter()
     logger.info('----------Starting Onestep_clust----------')
-    clusters = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
+    clusters, markers = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
     logger.info('----------Finished Onestep_clust----------')
     toc = time.perf_counter()
     logger.info(f'Onestep Clustering Elapsed Time: {toc - tic}')
@@ -173,7 +173,7 @@ def iter_clust(
 
     # If only one cluster, return. Otherwise iterate.
     if len(clusters) == 1:
-        return clusters
+        return clusters, markers
 
     # Generate new cluster_adata objects (slicing Anndata is questionable...)
     logger.info('----Managing cluster data----')
@@ -188,7 +188,7 @@ def iter_clust(
         if len(cluster_cell_idxs) < min_samples:
             new_clusters.append(cluster_cell_idxs)
         else:
-            new_subclusters = iter_clust(
+            new_subclusters, new_markers = iter_clust(
                 cluster_adata,
                 min_samples,
                 onestep_kwargs=onestep_kwargs,
@@ -198,8 +198,10 @@ def iter_clust(
             # Map indices of cluster_adata to indices of norm_adata
             cluster_cell_idxs = np.asarray(cluster_cell_idxs)
             new_clusters.extend([cluster_cell_idxs[cell_idxs] for cell_idxs in new_subclusters])
+            # Combine markers
+            markers.update(new_markers)
 
-    return new_clusters
+    return new_clusters, markers
 
 
 def build_cluster_dict(clusters: List[Union[np.ndarray, Sequence]]) -> Dict[int, List]:
