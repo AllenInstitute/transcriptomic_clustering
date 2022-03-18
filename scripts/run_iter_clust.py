@@ -48,6 +48,7 @@ def run_iter_clust():
 
     # Setup tmpfile
     tmp_dir = tempfile.mkdtemp(dir=top_tmp_dir)
+    tmp_dir = Path(str(tmp_dir))
     logger.debug(f"tmp_dir: {str(tmp_dir)}")
 
     # Set memory params

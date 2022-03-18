@@ -128,8 +128,9 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Path):
     
     # remove old adata
     old_filename = adata.filename
-    # TODO: Hack
-    if str(old_filename)[-15:] != "normalized.h5ad":
+    
+    if old_filename is not None and (tmp_dir in Path(old_filename).resolve().parents):
+        # Safely delete
         del adata
         if old_filename:
             os.remove(old_filename)
@@ -140,10 +141,11 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Path):
 
 def iter_clust(
         norm_adata,
+        tmp_dir: Path,
         min_samples: int=4,
         onestep_kwargs: OnestepKwargs=OnestepKwargs(),
         random_seed: Optional[int]=None,
-        tmp_dir: Optional[str]=None) -> List[np.ndarray]:
+) -> List[np.ndarray]:
     """
     Function to call onestep_clustering, and recursively call iterclust on each generated cluster
     if the cluster has n cells > min_samples
@@ -190,7 +192,7 @@ def iter_clust(
         else:
             new_subclusters, new_markers = iter_clust(
                 cluster_adata,
-                min_samples,
+                min_samples=min_samples,
                 onestep_kwargs=onestep_kwargs,
                 random_seed=random_seed,
                 tmp_dir=tmp_dir
