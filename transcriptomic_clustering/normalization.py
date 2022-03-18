@@ -127,16 +127,17 @@ def normalize_backed(
         raise AttributeError(
             "Missing required `copy_to` argument for the file-backed processing"
         )
-    first = True
+    writer = None
     for chunk, start, end in tqdm( adata.chunked_X(chunk_size), desc="processing", total=nchunks ):
         sys.stdout.flush()
         counts_per_cell = chunk.sum(1)
         chunk = sc.pp._normalization._normalize_data(chunk, counts_per_cell, after=1e6)
         chunk = sc.pp.log1p(chunk)
-        if first:
+        if writer is None:
             writer = AnnDataIterWriter(copy_to, chunk, adata.obs, adata.var)
-            first = False
         else:
             writer.add_chunk(chunk)
 
+    if writer is None:
+        raise ValueError("Adata was empty!")
     return writer.adata

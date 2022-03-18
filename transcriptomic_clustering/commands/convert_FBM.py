@@ -128,7 +128,7 @@ def convert_FBM(
     # Write to AnnData
     tic = time.perf_counter()
     nchunks = int(nobs // chunk_size)
-    first = True
+    ad_writer = None
     for chunk, start, end in tqdm(
             chunked_fbm(fbm_mat, chunk_size=chunk_size), total=nchunks):
 
@@ -143,9 +143,8 @@ def convert_FBM(
         if as_sparse:
             chunk = sparse.csr_matrix(chunk)
 
-        if first:
+        if ad_writer is None:
             ad_writer = AnnDataIterWriter(out_ad_path, chunk, cell_df, gene_df, dtype=out_dtype)
-            first = False
         else:
             ad_writer.add_chunk(chunk)
 
