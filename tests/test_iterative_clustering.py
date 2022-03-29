@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import tempfile
-import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -13,44 +13,16 @@ from numpy.testing import assert_allclose
 
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.iterative_clustering import (
-    AnndataIterWriter, manage_cluster_adata, create_filebacked_clusters, iter_clust,
+    manage_cluster_adata, create_filebacked_clusters, iter_clust,
     summarize_final_clusters,
 )
-
-
-def test_anndata_iter_writer_sparse():
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        X = scp.sparse.csr_matrix(np.asarray([[1,2,3],[4,5,6],[7,8,9]]))
-        adata_writer = AnndataIterWriter(
-            os.path.join(tmp_dir, 'test_adata'),
-            X[0,:],
-            pd.DataFrame(index=['obs1', 'obs2', 'obs3']),
-            pd.DataFrame(index=['var1', 'var2', 'var3']),
-        )
-        adata_writer.add_chunk(X[1:3,:])
-        adata = adata_writer.adata.to_memory()
-        assert_allclose(X.todense(), adata.X.todense())
-
-
-def test_anndata_iter_writer_dense():
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        X = np.asarray([[1,2,3],[4,5,6],[7,8,9]])
-        adata_writer = AnndataIterWriter(
-            os.path.join(tmp_dir, 'test_adata'),
-            X[0,:],
-            pd.DataFrame(index=['obs1', 'obs2', 'obs3']),
-            pd.DataFrame(index=['var1', 'var2', 'var3']),
-        )
-        adata_writer.add_chunk(X[1,:])
-        adata_writer.add_chunk(X[2,:])
-        adata = adata_writer.adata.to_memory()
-        assert_allclose(X, adata.X)
 
 
 def test_create_filebacked_clusters_chunked():
     with patch("transcriptomic_clustering.memory.estimate_chunk_size", return_value=5) as mock_bar:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            norm_path = os.path.join(tmp_dir, 'norm.h5ad')
+            tmp_dir = Path(tmp_dir)
+            norm_path = tmp_dir /'norm.h5ad'
             ad.AnnData(np.random.rand(20,3)).write(norm_path)
             norm_adata = sc.read_h5ad(norm_path, backed='r')
 
@@ -59,14 +31,15 @@ def test_create_filebacked_clusters_chunked():
                 np.asarray([3,4,5,13,14,15],dtype=int),
                 np.asarray([6,7,8,16,17,18],dtype=int),
             ]
-            adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir = tmp_dir)
+            adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir=tmp_dir)
             assert_allclose(adatas[0].X, norm_adata[clusters[0],:].X)
 
 
 def test_create_filebacked_clusters_not_chunked():
     with patch("transcriptomic_clustering.memory.estimate_chunk_size", return_value=30) as mock_bar:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            norm_path = os.path.join(tmp_dir, 'norm.h5ad')
+            tmp_dir = Path(tmp_dir)
+            norm_path = tmp_dir / 'norm.h5ad'
             ad.AnnData(np.random.rand(20,3)).write(norm_path)
             norm_adata = sc.read_h5ad(norm_path, backed='r')
 
@@ -75,7 +48,7 @@ def test_create_filebacked_clusters_not_chunked():
                 np.asarray([3,4,5,13,14,15],dtype=int),
                 np.asarray([6,7,8,16,17,18],dtype=int),
             ]
-            adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir = tmp_dir)
+            adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir=tmp_dir)
             assert_allclose(adatas[0].X, norm_adata[clusters[0],:].X)
 
 
@@ -86,7 +59,9 @@ def test_manage_cluster_adata_in_memory():
                 np.asarray([3,4,5,13,14,15],dtype=int),
                 np.asarray([6,7,8,16,17,18],dtype=int),
             ]
-    adatas = manage_cluster_adata(adata, clusters)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_dir = Path(tmp_dir)
+        adatas = manage_cluster_adata(adata, clusters, tmp_dir=tmp_dir)
     assert_allclose(adatas[0].X, adata[clusters[0],:].X)
     for adata in adatas:
         assert not adata.isbacked
@@ -95,8 +70,9 @@ def test_manage_cluster_adata_in_memory():
 def test_manage_cluster_adata_to_memory():
     with patch("transcriptomic_clustering.memory.estimate_chunk_size", return_value=30) as mock_bar:
         with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir = Path(tmp_dir)
             x = np.random.rand(20,3)
-            norm_path = os.path.join(tmp_dir, 'norm.h5ad')
+            norm_path = tmp_dir / 'norm.h5ad'
             ad.AnnData(x).write(norm_path)
             norm_adata = sc.read_h5ad(norm_path, backed='r')
 
@@ -105,7 +81,7 @@ def test_manage_cluster_adata_to_memory():
                         np.asarray([3,4,5,13,14,15],dtype=int),
                         np.asarray([6,7,8,16,17,18],dtype=int),
                     ]
-            adatas = manage_cluster_adata(norm_adata, clusters, tmp_dir)
+            adatas = manage_cluster_adata(norm_adata, clusters, tmp_dir=tmp_dir)
             assert_allclose(adatas[0].X, x[clusters[0],:])
             for adata in adatas:
                 assert not adata.isbacked
@@ -120,12 +96,17 @@ def test_iter_clust():
         clusters = [[] for i in range(n_clusts)]
         for i, cl_id in enumerate(cluster_map):
             clusters[cl_id].append(i)
-        return [np.asarray(cluster, dtype=int) for cluster in clusters]
+        return (
+            [np.asarray(cluster, dtype=int) for cluster in clusters],
+            set(rng.choice(norm_adata.var.index.tolist()))
+        )
 
     with patch("transcriptomic_clustering.iterative_clustering.onestep_clust", wraps=fake_onestep) as mock_bar:
         n_obs = 300
         norm_adata = ad.AnnData(np.random.rand(n_obs,3))
-        clusters = iter_clust(norm_adata, min_samples=4)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir = Path(tmp_dir)
+            clusters, markers = iter_clust(norm_adata, tmp_dir=tmp_dir, min_samples=4)
 
         set_indxs = set()
         for samples in clusters:

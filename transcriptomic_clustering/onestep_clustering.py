@@ -1,6 +1,7 @@
 from typing import Dict, Optional, List, Any
 import logging
 from dataclasses import dataclass, field
+import time
 
 import math
 import numpy as np
@@ -47,17 +48,27 @@ def onestep_clust(
     Returns
     -------
     List of arrays of cell ids, one array per cluster
+    Set of marker genes (if calculated)
 
     """
     logger.info('Starting onestep clustering')
 
-    # Highly Variable
+    # Means and Variances
     logger.info('Computing Means and Variances of genes')
+    tic = time.perf_counter()
+
     means, variances, gene_mask = tc.get_means_vars_genes(
         adata=norm_adata,
         **onestep_kwargs.means_vars_kwargs
     )
+
+    toc = time.perf_counter()
+    logger.info(f'Means Vars Elapsed Time: {toc - tic}')
+
+    #Highly Variable
     logger.info('Computing Highly Variable Genes')
+    tic = time.perf_counter()
+
     highly_variable_mask = tc.highly_variable_genes(
         adata=norm_adata,
         means=means,
@@ -66,28 +77,43 @@ def onestep_clust(
         **onestep_kwargs.highly_variable_kwargs
     )
 
-    logger.info('Computing PCA')
+    toc = time.perf_counter()
+    logger.info(f'Highly Variable Elapsed Time: {toc - tic}')
+
     #PCA
+    logger.info('Computing PCA')
+    tic = time.perf_counter()
+
     (components, explained_variance_ratio, explained_variance, means) =  tc.pca(
         norm_adata,
         gene_mask=highly_variable_mask,
         random_state=random_seed,
         **onestep_kwargs.pca_kwargs
     )
+
     logger.info(f'Computed {components.shape[1]} principal components')
+    toc = time.perf_counter()
+    logger.info(f'PCA Elapsed Time: {toc - tic}')
 
     # Filter PCA
     logger.info('Filtering PCA Components')
+    tic = time.perf_counter()
+
     components = tc.dimension_reduction.filter_components(
         components,
         explained_variance,
         explained_variance_ratio,
         **onestep_kwargs.filter_pcs_kwargs
     )
+
     logger.info(f'Filtered to {components.shape[1]} principal components')
+    toc = time.perf_counter()
+    logger.info(f'Filter PCA Elapsed Time: {toc - tic}')
     
     #Projection
     logger.info("Projecting normalized adata into PCA space")
+    tic = time.perf_counter()
+
     projected_adata = tc.project(
         norm_adata,
         components, means,
@@ -95,16 +121,26 @@ def onestep_clust(
     )
     logger.info(f'Projected Adata Dimensions: {projected_adata.shape}')
 
+    toc = time.perf_counter()
+    logger.info(f'Projection Elapsed Time: {toc - tic}')
+
     #Filter Known Modes
     if onestep_kwargs.filter_known_modes_kwargs:
         logger.info('Filtering Known Modes')
+        tic = time.perf_counter()
+
         projected_adata = tc.filter_known_modes(projected_adata, **onestep_kwargs.filter_known_modes_kwargs)
+
         logger.info(f'Projected Adata Dimensions after Filtering Known Modes: {projected_adata.shape}')
+        toc = time.perf_counter()
+        logger.info(f'Filter Known Modes Elapsed Time: {toc - tic}')
     else:
         logger.info('No known modes, skipping Filter Known Modes')
 
     #Louvain Clustering
     logger.info('Starting Louvain Clustering')
+    tic = time.perf_counter()
+
     cluster_louvain_kwargs = onestep_kwargs.cluster_louvain_kwargs.copy()
     k = cluster_louvain_kwargs.pop('k', 15)
     k = min(k, math.floor(projected_adata.n_vars))
@@ -114,12 +150,17 @@ def onestep_clust(
         random_seed=random_seed,
         **cluster_louvain_kwargs
     )
+
     logger.info(f'Completed Louvain Clustering, found {len(obs_by_cluster.keys())} clusters')
+    toc = time.perf_counter()
+    logger.info(f'Clustering Elapsed Time: {toc - tic}')
 
     #Merging
     cluster_sizes_before_merging = {k: len(v) for k, v in obs_by_cluster.items()}
     logger.info('Starting Cluster Merging')
-    cluster_assignments_after_merging = tc.merge_clusters(
+    tic = time.perf_counter()
+
+    cluster_assignments_after_merging, marker_genes = tc.merge_clusters(
         adata_norm=norm_adata,
         adata_reduced=projected_adata,
         cluster_assignments=obs_by_cluster,
@@ -128,5 +169,8 @@ def onestep_clust(
     )
     
     logger.info('Completed Cluster Merging')
+    toc = time.perf_counter()
+    logger.info(f'Merging Elapsed Time: {toc - tic}')
+
     logger.info('Completed One Step Clustering')
-    return list(cluster_assignments_after_merging.values())
+    return list(cluster_assignments_after_merging.values()), marker_genes

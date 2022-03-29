@@ -5,7 +5,7 @@ import anndata as ad
 from anndata._core.anndata import AnnData
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, issparse
+from scipy.sparse import csr_matrix, csc_matrix, issparse
 from welford import Welford
 import transcriptomic_clustering as tc
 import warnings
@@ -73,17 +73,17 @@ def get_cluster_means_inmemory(
     cluster_variances_lst = []
 
     for clust in cluster_assignments.values():
-        slice = adata.X[clust, :]
-        cluster_means_lst.append(np.asarray(np.mean(slice, axis=0)).ravel())
-        present_cluster_means_lst.append(np.asarray(np.mean((slice > low_th), axis=0)).ravel())
+        sliced_X = adata.X[clust, :]
+        cluster_means_lst.append(np.asarray(np.mean(sliced_X, axis=0)).ravel())
+        present_cluster_means_lst.append(np.asarray(np.mean((sliced_X > low_th), axis=0)).ravel())
 
-        if issparse(slice):
-            slice = slice.toarray()
-        slice = np.atleast_2d(slice)
-        if slice.shape[0] == 1:
-            cluster_variances = np.zeros(slice.shape)
+        if issparse(sliced_X):
+            sliced_X = sliced_X.toarray()
+        sliced_X = np.atleast_2d(sliced_X)
+        if sliced_X.shape[0] == 1:
+            cluster_variances = np.zeros(sliced_X.shape)
         else:
-            cluster_variances = np.var(slice, axis=0, ddof=1)
+            cluster_variances = np.var(sliced_X, axis=0, ddof=1)
         cluster_variances_lst.append(np.asarray(cluster_variances).ravel())
 
 
@@ -122,7 +122,10 @@ def get_cluster_means_backed(
     n_genes = adata.n_vars
     n_clusters = len(cluster_assignments.keys())
 
-    itemsize = adata.X.dtype.itemsize
+    if not adata.is_view:  # .X on view will try to load entire X into memory
+        itemsize = adata.X.dtype.itemsize
+    else:
+        itemsize = np.dtype(np.float64).itemsize
     process_memory_estimate = 2 * (n_cells * n_genes) * itemsize / (1024 ** 3)
     output_memory_estimate = 2 * (n_clusters * n_genes) * itemsize / (1024 ** 3)
     
@@ -159,7 +162,7 @@ def get_cluster_means_backed(
     cluster_welfords = [Welford() for i in range(n_clusters)]
     for chunk, start, end in adata.chunked_X(chunk_size):
         cluster_sums += one_hot_cl[:, start:end] @ chunk
-        present_cluster_sums += one_hot_cl[:, start:end] @ (chunk > low_th)
+        present_cluster_sums += one_hot_cl[:, start:end] @ (chunk > low_th).astype(int)
 
         chunk_clust_by_obs = cluster_by_obs[start:end]
         if issparse(chunk):
@@ -194,7 +197,7 @@ def get_cluster_means_backed(
 def get_one_hot_cluster_array(
         cluster_by_obs: np.ndarray,
         cluster_labels: List[Any]
-) -> np.ndarray:
+) -> csc_matrix:
     """
     Compute a one-hot array of clusters by cells
 
@@ -212,8 +215,12 @@ def get_one_hot_cluster_array(
     """
 
     n_clusters = len(cluster_labels)
-    cluster_idxs = np.array([cluster_labels.index(cl) for cl in cluster_by_obs])
+    n_obs = len(cluster_by_obs)
+    cluster_label_indexes = {cl: i for i, cl in enumerate(cluster_labels)}
 
-    b = np.zeros((cluster_by_obs.size, n_clusters))
-    b[np.arange(cluster_by_obs.size), cluster_idxs] = 1
-    return csr_matrix(b).toarray().T
+    ones = np.ones((n_obs,), dtype=bool)
+    row_idxs = [cluster_label_indexes[cl] for cl in cluster_by_obs]
+    col_idxs = np.arange(n_obs)
+    onehot = csc_matrix((ones, (row_idxs, col_idxs)), shape=(n_clusters, n_obs), dtype=bool)
+
+    return onehot

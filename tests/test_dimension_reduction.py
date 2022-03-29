@@ -13,12 +13,14 @@ from transcriptomic_clustering.dimension_reduction import (
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
+
 @pytest.fixture
 def tasic():
     normalized_data = sc.read_h5ad(os.path.join(DATA_DIR, "input", "input_normalize_result.h5"))
     selected_genes = pd.read_csv(os.path.join(DATA_DIR, "input", "input_select_genes.csv"))['x'].to_list()
     selected_cells = pd.read_csv(os.path.join(DATA_DIR, "input", "input_select_cells.csv"))['x'].to_list()
-    pcs_r = pd.read_csv(os.path.join(DATA_DIR, "output", "pca_rot.csv")).iloc[:, 1:].to_numpy()
+    pcs_r = pd.read_csv(os.path.join(DATA_DIR, "output", "pca_rot.csv"))
+    pcs_r = pcs_r.set_index("Unnamed: 0")
     return {
         'adata': normalized_data,
         'selected_genes': selected_genes,
@@ -34,7 +36,7 @@ def test_pca_tasic(tasic):
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, svd_solver='arpack'
-    )[0].to_numpy().T
+    )[0].T
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
@@ -48,7 +50,7 @@ def test_pca_auto(tasic):
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, random_state=1,
-    )[0].to_numpy().T
+    )[0].T
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)
@@ -64,7 +66,7 @@ def test_pca_chunked(tasic):
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],
         n_comps=5, chunk_size=50,
-    )[0].to_numpy().T
+    )[0].T
 
     cos_siml = pcs_tc_T @ tasic['pcs']
     cos_siml = np.abs(cos_siml)

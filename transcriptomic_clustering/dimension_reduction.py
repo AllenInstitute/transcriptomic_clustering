@@ -89,18 +89,24 @@ def pca(
     random_state = check_random_state(random_state)
 
     # Generate cell_mask if needed
+    logger.debug("Selecting Cell Mask")
     if isinstance(cell_select, int):
         # random sample
         if cell_select > adata.n_obs:
             cell_select = adata.n_obs
         cell_mask = random_state.choice(adata.n_obs, cell_select, replace=False)
         cell_mask.sort()
-    else:
+    elif cell_select is not None:
         cell_mask = cell_select
-    if cell_mask is not None:
-        adata = adata[cell_mask, :]
+    elif cell_select is None:
+        cell_mask = slice(None)
+    oidx, _ = adata._normalize_indices((cell_mask, slice(None))) # handle cell mask like anndata would
+    oidx_bool = np.zeros((adata.n_obs,), dtype=bool)
+    oidx_bool[oidx] = True
+    n_cells = len(oidx)
     
     # Mask adata
+    logger.debug("Selecting Gene Mask")
     if (gene_mask is not None) and use_highly_variable:
         raise ValueError('Cannot use gene_mask and use_highly_variable together')
     elif use_highly_variable:
@@ -108,25 +114,30 @@ def pca(
     elif gene_mask is None:
         gene_mask = slice(None)
     _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
+    vidx_bool = np.zeros((adata.n_vars,), dtype=bool)
+    vidx_bool[vidx] = True
     n_genes = len(vidx)
     
     # select n_comps
-    max_comps = min(adata.n_obs, n_genes) - 1
+    max_comps = min(n_cells, n_genes) - 1
     if not n_comps:
         n_comps = min(max_comps, DEFAULT_NCOMPS)
     elif n_comps > max_comps:
         logger.debug(
-            f'n_comps {n_comps} > min(n_obs={adata.n_obs}, n_genes={n_genes}) -1\n'
-            'Setting n_comps to {max_comps}'
+            f'n_comps {n_comps} > min(n_obs={n_cells}, n_genes={n_genes}) -1\n'
+            f'Setting n_comps to {max_comps}'
         )
         n_comps = max_comps
 
     # Estimate memory
     # TODO: create method in adata subclass for estimating memory size of .X, 
+    n_obs = n_cells
+    n_vars = adata.n_vars
     if not chunk_size:
-        n_obs = adata.n_obs
-        n_vars = adata.n_vars
-        itemsize = adata.X.dtype.itemsize
+        if not adata.is_view:  # .X on view will try to load entire X into memory
+            itemsize = adata.X.dtype.itemsize
+        else:
+            itemsize = np.dtype(np.float64).itemsize
         process_memory_estimate = (n_obs * n_vars) * itemsize / (1024 ** 3)
         output_memory_estimate = ((n_obs * n_comps) + (n_vars * n_comps) + (n_comps * 2)) * itemsize / (1024 ** 3)
         
@@ -135,31 +146,52 @@ def pca(
             process_memory=process_memory_estimate,
             output_memory=output_memory_estimate,
         )
-
+        logger.debug(f'Running PCA on n_obs {n_obs} and n_vars {n_vars}: {process_memory_estimate} GB')
     # Run PCA
-    if chunk_size >= adata.n_obs:
+    if chunk_size >= n_cells:
         _pca = PCA(n_components=n_comps, svd_solver=svd_solver, random_state=random_state)
-        X = adata.X[:,:]
-        if scp.sparse.issparse(X):
-            X = X.toarray()
-        X = X[:, vidx]
+        logger.debug(f'loading into memory')
+        X = np.zeros((n_cells, n_genes))
+
+        x_start = 0
+        for chunk, start, end in adata.chunked_X(10000):  # should also be estimate memory
+            if scp.sparse.issparse(chunk):
+                chunk = chunk.toarray()
+            chunk = chunk[oidx_bool[start:end], :]  # not sure why these indexing have to be separate...
+            chunk = chunk[:, vidx_bool]
+            if chunk.shape[0] > 0:
+                x_end = x_start + chunk.shape[0]
+                X[x_start:x_end, :] = chunk[:,:]
+                x_start = x_end
+
+        logger.debug(f'performing fit')
         _pca.fit(X)
     else:
         if svd_solver != 'auto':
-            logging.warning('Ignoring svd_solver, using IncrementalPCA')
+            logger.warning('Ignoring svd_solver, using IncrementalPCA')
         _pca = IncrementalPCA(n_components=n_comps, batch_size=chunk_size)
 
-        for chunk, _, _ in adata.chunked_X(chunk_size):
+        saved_chunk = None
+        for chunk, start, end in adata.chunked_X(chunk_size):
             if scp.sparse.issparse(chunk):
                 chunk = chunk.toarray()
-            chunk = chunk[:, vidx]
+            chunk = chunk[oidx_bool[start:end], :]
+            chunk = chunk[:, vidx_bool]
+            if saved_chunk is not None:
+                chunk = np.vstack((chunk, saved_chunk))
+                saved_chunk = None
+
+            if chunk.shape[0] < n_comps: # incremental can't process
+                saved_chunk = chunk
+                continue
             _pca.partial_fit(chunk)
 
+    logging.debug(f'explained_variance_ratios: {_pca.explained_variance_ratio_}')
     return (
-        pd.DataFrame(_pca.components_.T, index=adata.var_names[vidx]),
+        pd.DataFrame(_pca.components_.T, index=adata.var_names[vidx_bool]),
         _pca.explained_variance_ratio_,
         _pca.explained_variance_,
-        pd.DataFrame(_pca.mean_, index=adata.var_names[vidx])
+        pd.DataFrame(_pca.mean_, index=adata.var_names[vidx_bool])
     )
 
 
@@ -223,6 +255,7 @@ def filter_ev_ratios_zscore(explained_variance_ratios, threshold=2):
 
     """
     z_scores = scp.stats.zscore(explained_variance_ratios)
+    logging.debug(f'zscores: {z_scores}')
     return z_scores > threshold
 
 

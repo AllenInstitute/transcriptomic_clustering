@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike
 
 import warnings
 import logging
+import time
 
 import numpy as np
 import pandas as pd
@@ -165,9 +166,12 @@ def de_pairs_ebayes(
     -------
     Dict with key: cluster_pair, value: dict of de values
     """
+    logger.info('Fitting Variances')
     sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
+    logger.info('Moderating Variances')
     sigma_sq_post, var_prior, df_prior = moderate_variances(sigma_sq, df)
 
+    logger.info(f'Comparing {len(pairs)} pairs')
     de_pairs = {}
     for (cluster_a, cluster_b) in pairs:
         # t-test with ebayes adjusted variances

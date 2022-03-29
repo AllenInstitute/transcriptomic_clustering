@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 from dataclasses import dataclass, field
+import time
 
 import math
 import numpy as np
@@ -13,47 +14,13 @@ import anndata as ad
 import h5py
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.onestep_clustering import onestep_clust, OnestepKwargs
+from transcriptomic_clustering.iter_writer import AnnDataIterWriter
 
 
 logger = logging.getLogger(__name__)
 
 
-class AnndataIterWriter():
-    """
-    Class to handle iteratively writing filebacked AnnData Objects
-    """
-    def __init__(self, filename, initial_chunk, obs, var):
-        self.issparse = scp.sparse.issparse(initial_chunk)
-        self.initialize_file(filename, initial_chunk, obs, var)
-        self.adata = sc.read_h5ad(filename, backed='r+')
-
-
-    def initialize_file(self, filename, initial_chunk, obs, var):
-        """Uses initial chunk to determine grouptype"""
-        with h5py.File(filename, "w") as f:
-            if self.issparse:
-                ad._io.h5ad.write_attribute(f, "X", initial_chunk)
-            else:
-                initial_chunk = np.atleast_2d(initial_chunk)
-                ad._io.h5ad.write_array(f, "X", initial_chunk, {'maxshape': (None, initial_chunk.shape[1])})
-            ad._io.h5ad.write_attribute(f, "obs", obs)
-            ad._io.h5ad.write_attribute(f, "var", var)
-
-
-    def add_chunk(self, chunk):
-        if self.issparse:
-            self.adata.X.append(chunk)
-        else:
-            chunk = np.atleast_2d(chunk)
-            chunk_nrows = chunk.shape[0]
-            self.adata.X.resize(
-                (self.adata.X.shape[0] + chunk_nrows),
-                axis = 0
-            )
-            self.adata.X[-chunk_nrows:] = chunk
-
-
-def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
+def create_filebacked_clusters(adata, clusters, tmp_dir: Path):
     """
     Handles creating a new AnnData filebacked object for each cluster
 
@@ -69,14 +36,18 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
     List of new filebacked adata objects for each cluster
 
     """
-    if tmp_dir is None:
-        tmp_dir = tempfile.mkdtemp()
+
+    logger.debug(f"creating tmp files in {tmp_dir}")
 
     cluster_by_obs = np.zeros((adata.shape[0],))
     for cl_id, idxs in enumerate(clusters):
         cluster_by_obs[idxs] = cl_id
 
-    adata_size_GB = (adata.n_obs * adata.n_vars) * adata.X.dtype.itemsize / (1024 ** 3)
+    if not adata.is_view:  # .X on view will try to load entire X into memory
+        itemsize = adata.X.dtype.itemsize
+    else:
+        itemsize = np.dtype(np.float64).itemsize
+    adata_size_GB = (adata.n_obs * adata.n_vars) * itemsize / (1024 ** 3)
     chunk_size = tc.memory.estimate_chunk_size(
         adata,
         process_memory=adata_size_GB*2,
@@ -84,36 +55,38 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Optional[str]=None):
         process_name='create_filebacked_clusters'
     )
 
-    old_filename = Path(adata.filename).with_suffix('')
-    if chunk_size > adata.n_obs:
-        writers = {}
-        first = [True] * len(clusters)
-        for chunk, start, end in adata.chunked_X(chunk_size):
-            for cl_id, cell_ids in enumerate(clusters):
-                sliced_chunk = chunk[np.where(cluster_by_obs[start:end] == cl_id)]
-
+    old_filename = Path(adata.filename).stem
+    # TODO: Hack
+    chunk_size = 10000
+    # if chunk_size < adata.n_obs:
+    writers = {}
+    first = [True] * len(clusters)
+    for chunk, start, end in adata.chunked_X(chunk_size):
+        for cl_id, cell_ids in enumerate(clusters):
+            sliced_chunk = chunk[np.where(cluster_by_obs[start:end] == cl_id)]
+            if sliced_chunk.shape[0] > 0:
                 if first[cl_id]:
-                    filename = f'{old_filename}_{cl_id}.h5ad'
-                    obs = adata[cell_ids, :].obs
-                    var = adata[cell_ids, :].var
-                    writers[cl_id] = AnndataIterWriter(filename, sliced_chunk, obs, var)
+                    filename = Path(tmp_dir) / f'{old_filename}_{cl_id}.h5ad'
+                    obs = adata.obs.iloc[cell_ids]
+                    var = adata.var
+                    writers[cl_id] = AnnDataIterWriter(filename, sliced_chunk, obs, var)
                     first[cl_id] = False
                 else:
                     writers[cl_id].add_chunk(sliced_chunk)
 
-        new_adatas = [writers[cl_id].adata for cl_id, _ in enumerate(clusters)]
+    new_adatas = [writers[cl_id].adata for cl_id, _ in enumerate(clusters)]
 
-    else:
-        new_adatas = []
-        for i, cell_ids in enumerate(clusters):
-            filename = f'{old_filename}_{i}.h5ad'
-            logger.debug(f'Created filebacked AnnData {filename}')
-            new_adatas.append(adata[cell_ids, :].copy(filename=filename))
+    # else:
+    #     new_adatas = []
+    #     for i, cell_ids in enumerate(clusters):
+    #         filename = Path(tmp_dir) / f'{old_filename}_{i}.h5ad'
+    #         logger.debug(f'Created filebacked AnnData {filename}')
+    #         new_adatas.append(adata[cell_ids, :].copy(filename=filename))
 
     return new_adatas
 
 
-def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
+def manage_cluster_adata(adata, clusters, tmp_dir: Path):
     """
     Function for managing memory when iterating
     Will decide whether to load cluster into memory or write new AnnData file
@@ -132,7 +105,11 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
 
     # Estimate memory
     if adata.isbacked:
-        adata_size_GB = (adata.n_obs * adata.n_vars) * adata.X.dtype.itemsize / (1024 ** 3)
+        if not adata.is_view:  # .X on view will try to load entire X into memory
+            itemsize = adata.X.dtype.itemsize
+        else:
+            itemsize = np.dtype(np.float64).itemsize
+        adata_size_GB = (adata.n_obs * adata.n_vars) * itemsize / (1024 ** 3)
         necessary_memory_estimate_GB =  adata_size_GB * 6 # arbritrary factor of 6 to handle whole pipeline in memory
         memory_available_GB = tc.memory.get_available_memory_GB()
         filebacked_clusters = (memory_available_GB < necessary_memory_estimate_GB)
@@ -151,20 +128,24 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Optional[str]=None):
     
     # remove old adata
     old_filename = adata.filename
-    del adata
-    if old_filename:
-        os.remove(old_filename)
-        logger.debug('Deleted filebacked AnnData {old_filename}')
+    
+    if old_filename is not None and (tmp_dir in Path(old_filename).resolve().parents):
+        # Safely delete
+        del adata
+        if old_filename:
+            os.remove(old_filename)
+            logger.debug(f'Deleted filebacked AnnData {old_filename}')
 
     return new_adatas
 
 
 def iter_clust(
         norm_adata,
+        tmp_dir: Path,
         min_samples: int=4,
         onestep_kwargs: OnestepKwargs=OnestepKwargs(),
         random_seed: Optional[int]=None,
-        tmp_dir: Optional[str]=None) -> List[np.ndarray]:
+) -> List[np.ndarray]:
     """
     Function to call onestep_clustering, and recursively call iterclust on each generated cluster
     if the cluster has n cells > min_samples
@@ -182,20 +163,26 @@ def iter_clust(
     List of arrays of cell ids, one array per cluster
 
     """
+    tic = time.perf_counter()
     logger.info('----------Starting Onestep_clust----------')
-    clusters = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
+    clusters, markers = onestep_clust(norm_adata, onestep_kwargs=onestep_kwargs, random_seed=random_seed)
     logger.info('----------Finished Onestep_clust----------')
+    toc = time.perf_counter()
+    logger.info(f'Onestep Clustering Elapsed Time: {toc - tic}')
     logger.info(
         f'Split cluster of size {norm_adata.n_obs} into new clusters with sizes:\n{[len(cluster) for cluster in clusters]}'
     )
 
     # If only one cluster, return. Otherwise iterate.
     if len(clusters) == 1:
-        return clusters
+        return clusters, markers
 
     # Generate new cluster_adata objects (slicing Anndata is questionable...)
-    logger.info('Managing cluster data')
-    cluster_adatas = manage_cluster_adata(norm_adata, clusters)
+    logger.info('----Managing cluster data----')
+    tic = time.perf_counter()
+    cluster_adatas = manage_cluster_adata(norm_adata, clusters, tmp_dir=tmp_dir)
+    toc = time.perf_counter()
+    logger.info(f'Managing Cluster Data Elapsed Time: {toc - tic}')
 
     # For each existing cluster, generate new clusters from it.
     new_clusters = []
@@ -203,9 +190,9 @@ def iter_clust(
         if len(cluster_cell_idxs) < min_samples:
             new_clusters.append(cluster_cell_idxs)
         else:
-            new_subclusters = iter_clust(
+            new_subclusters, new_markers = iter_clust(
                 cluster_adata,
-                min_samples,
+                min_samples=min_samples,
                 onestep_kwargs=onestep_kwargs,
                 random_seed=random_seed,
                 tmp_dir=tmp_dir
@@ -213,8 +200,10 @@ def iter_clust(
             # Map indices of cluster_adata to indices of norm_adata
             cluster_cell_idxs = np.asarray(cluster_cell_idxs)
             new_clusters.extend([cluster_cell_idxs[cell_idxs] for cell_idxs in new_subclusters])
+            # Combine markers
+            markers.update(new_markers)
 
-    return new_clusters
+    return new_clusters, markers
 
 
 def build_cluster_dict(clusters: List[Union[np.ndarray, Sequence]]) -> Dict[int, List]:

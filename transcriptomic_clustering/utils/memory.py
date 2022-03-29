@@ -2,9 +2,13 @@ import os
 from typing import Optional
 from dataclasses import dataclass
 import math
+import logging
 
 import psutil
 import scanpy as sc
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -104,6 +108,13 @@ class Memory:
             nchunks = -1
         else:
             nchunks = math.ceil(process_memory / available_memory)
+
+        logger.debug((
+            f"Estimated {nchunks} chunks for {process_name}\n"
+            f"process_memory: {process_memory}\n"
+            f"output_memory: {output_memory}\n"
+            f"available_memory: {available_memory}\n"
+        ))
 
         if nchunks == 1:
             # always fine, no errors

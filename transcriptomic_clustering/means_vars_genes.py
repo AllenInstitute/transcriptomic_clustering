@@ -76,7 +76,11 @@ def get_means_vars_genes_backed(
 ):
     # Estimate chunk size
     if not chunk_size:
-        process_memory_est = adata.n_obs * adata.n_vars * (adata.X.dtype.itemsize / 1024 ** 3)
+        if not adata.is_view:  # .X on view will try to load entire X into memory
+            itemsize = adata.X.dtype.itemsize
+        else:
+            itemsize = np.dtype(np.float64).itemsize
+        process_memory_est = adata.n_obs * adata.n_vars * (itemsize / 1024 ** 3)
         chunk_size = tc.memory.estimate_chunk_size(
             adata=adata,
             process_memory=process_memory_est,
@@ -93,12 +97,11 @@ def get_means_vars_genes_backed(
         num_cells_above_thresh += np.squeeze(np.asarray(num_cells_above_thresh_chunk))
 
         if issparse(chunk):
-            if isinstance(chunk, csr_matrix):
-                w_mat.add_all(np.expm1(chunk).toarray())
-            else:
-                raise ValueError("Unsupported format for cell_expression matrix. Must be in CSR or dense format")
+            chunk_em1 = chunk.expm1().toarray()
         else:
-            w_mat.add_all(np.expm1(chunk))
+            chunk_em1 = np.expm1(chunk)
+
+        w_mat.add_all(chunk_em1)
 
     matrix_gene_mask = num_cells_above_thresh >= min_cells
     gene_mask = matrix_gene_mask.tolist()

@@ -208,6 +208,19 @@ def test_get_k_nearest_clusters(clusters):
         assert n in knns
 
 
+def test_get_k_nearest_clusters_subset(clusters):
+
+    cluster_means, _, _, _ = clusters
+
+    expected_nns = [('11', 4), ('11', '32'), (2, '32'), (2, 4)]
+
+    knns = merging.get_k_nearest_clusters(cluster_means, cluster_labels={'11', 2}, k=2)
+
+    assert len(expected_nns) == len(knns)
+    for n in expected_nns:
+        assert n in knns
+
+
 def test_get_cluster_assignments(adata, clusters):
 
     _, _, _, cluster_assignments = clusters
@@ -237,7 +250,8 @@ def tasic_data_for_merge():
         'padj_thresh': 0.05,
         'lfc_thresh': 1.0,
         'score_thresh': 40,
-        'low_thresh': 1
+        'low_thresh': 1,
+        'min_genes': 5
     }
     return normalized_adata, reduced_dim_adata, thresholds
 
@@ -254,7 +268,7 @@ def test_merge_clusters_de_chisq(tasic_data_for_merge):
         tasic_norm_adata,
         cluster_label_obs="cluster_label_after_merging_chisq")
 
-    cluster_assignments_after_merging = tc.merge_clusters(
+    cluster_assignments_after_merging, markers = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
@@ -280,7 +294,7 @@ def test_merge_clusters_de_ebayes(tasic_data_for_merge):
         tasic_norm_adata,
         cluster_label_obs="cluster_label_after_merging_ebayes")
 
-    cluster_assignments_after_merging = tc.merge_clusters(
+    cluster_assignments_after_merging, markers = tc.merge_clusters(
         adata_norm=tasic_norm_adata,
         adata_reduced=tasic_reduced_dim_adata,
         cluster_assignments=cluster_assignments_before_merging,
@@ -317,7 +331,8 @@ def test_merge_clusters_by_de():
         'padj_thresh': 0.5,
         'lfc_thresh': .4,
         'score_thresh': 40,
-        'low_thresh': 1
+        'low_thresh': 1,
+        'min_genes': 5
     }
 
     cluster_means = pd.DataFrame(
