@@ -19,11 +19,14 @@ class AnnDataIterWriter():
 
     def initialize_file(self, filename, initial_chunk, obs, var, dtype=None):
         """Uses initial chunk to determine grouptype"""
-        
+
         with h5py.File(filename, "w") as f:
             if self.issparse:
                 if dtype is not None:
                     logger.warning("Ignoring dtype for sparse matrix")
+                # TODO: change indextype based on nobs, nvars.
+                initial_chunk.indptr = initial_chunk.indptr.astype(np.int64)
+                initial_chunk.indices = initial_chunk.indices.astype(np.int64)
                 ad._io.h5ad.write_csr(f, "X", initial_chunk)
             else:
                 if dtype is None:
