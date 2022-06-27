@@ -135,7 +135,7 @@ def convert_FBM(
         if cast:
             chunk = chunk.astype(out_dtype, casting="same_kind", copy=False)
         if normalize:
-            counts_per_cell = chunk.sum(1)
+            counts_per_cell = np.ravel(chunk.sum(1))
             chunk = sc.pp._normalization._normalize_data(
                 chunk, counts_per_cell, after=target_sum
             )
