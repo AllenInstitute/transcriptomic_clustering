@@ -79,7 +79,7 @@ def normalize_inmemory(
     """
     adata = adata.copy() if not inplace else adata
 
-    counts_per_cell = adata.X.sum(1)
+    counts_per_cell = np.ravel(adata.X.sum(1))
     adata.X = sc.pp._normalization._normalize_data(adata.X, counts_per_cell, after=1e6)
     adata.X = sc.pp.log1p(adata.X)
 
@@ -130,7 +130,7 @@ def normalize_backed(
     writer = None
     for chunk, start, end in tqdm( adata.chunked_X(chunk_size), desc="processing", total=nchunks ):
         sys.stdout.flush()
-        counts_per_cell = chunk.sum(1)
+        counts_per_cell = np.ravel(chunk.sum(1))
         chunk = sc.pp._normalization._normalize_data(chunk, counts_per_cell, after=1e6)
         chunk = sc.pp.log1p(chunk)
         if writer is None:
