@@ -23,9 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 DTYPE_DICT = {
-    'double': np.float64,
-    'float': np.float32
+    'double64': np.float64,
+    'float32': np.float32,
+    'int32': np.int32,
+    'int16': np.int16,
 }
+DTYPE_NAMES = ["double64", "float32", "int32", "int16"]
+DTYPE_NAMES_TYPE = Literal["double64", "float32", "int32", "int16"]
 
 
 def chunked_fbm(fbm: np.memmap, chunk_size: int = 1000):
@@ -52,10 +56,10 @@ def convert_FBM(
         fbm_path: Path,
         gene_csv_path: Path,
         cell_csv_path: Path,
-        fbm_dtype: Literal["float", "double"] = "double",
+        fbm_dtype: DTYPE_NAMES_TYPE = "double64",
         out_ad_path: Optional[Path] = None,
         chunk_size: int = 5000,
-        out_dtype: Literal["float", "double"] = None,
+        out_dtype: DTYPE_NAMES_TYPE = None,
         as_sparse: bool = False,
         normalize: bool = True,
         target_sum: Optional[float] = 1e6,
@@ -79,7 +83,7 @@ def convert_FBM(
     chunk_size:
         number of rows to process at a time
     out_dtype:
-        precision to save AnnData X matrix as (float: 4 bytes, double: 8 bytes)
+        precision to save AnnData X matrix as (float32: 4 bytes, double: 8 bytes)
     normalize:
         if true, will normalize counts to <target_sum> or median cell count, and then
         calculate log1p of data
@@ -169,8 +173,8 @@ def convert_FBM(
 )
 @click.option(
     "-p", "--fbm_dtype", "fbm_dtype",
-    help="precision of data in FBM matrix: float: 4 bytes, double: 8 bytes",
-    type=click.Choice(["float", "double"], case_sensitive=False)
+    help="precision of data in FBM matrix: int32: 4 bytes, float32: 4 bytes, double64: 8 bytes",
+    type=click.Choice(DTYPE_NAMES, case_sensitive=False)
 )
 @click.option(
     "-o", "--output_path", "out_ad_path",
@@ -178,8 +182,8 @@ def convert_FBM(
 )
 @click.option(
     "-d", "--out_dtype", "out_dtype",
-    help="precision of data to output: float: 4 bytes, double: 8 bytes",
-    type=click.Choice(["float", "double"], case_sensitive=False)
+    help="precision of data to output: int32: 4 bytes, float32: 4 bytes, double64: 8 bytes",
+    type=click.Choice(DTYPE_NAMES, case_sensitive=False)
 )
 @click.option(
     "-s", "--sparse", "as_sparse",

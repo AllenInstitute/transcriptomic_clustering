@@ -6,15 +6,27 @@ from click.testing import CliRunner
 import numpy as np
 import anndata as ad
 
-from transcriptomic_clustering.commands.convert_FBM import convert_FBM_cmd
+from transcriptomic_clustering.commands.convert_FBM import convert_FBM_cmd, DTYPE_DICT
 
-@pytest.mark.parametrize("normalize", [True, False])
-def test_convert_FBM(tmp_path, normalize):
+@pytest.mark.parametrize("normalize,in_dtype,out_dtype",
+    [
+        (False, "double64", "double64"),
+        (False, "float32", "float32"),
+        (False, "int32", "int32"),
+        (False, "int16", "int16"),
+        (False, "double64", "float32"),
+        (False, "int32", "float32"),
+        (False, "int16", "int32"),
+        (True, "double64", "float32"),
+        (True, "int16", "float32")
+    ]
+)
+def test_convert_FBM(tmp_path, normalize, in_dtype, out_dtype):
     nobs = 10000
     nvar = 3000
     ndata = nobs * nvar
 
-    test_data = np.linspace(0, ndata, ndata, endpoint=False, dtype=np.float64)
+    test_data = np.linspace(0, ndata, ndata, endpoint=False, dtype=DTYPE_DICT[in_dtype])
     test_data = test_data.reshape(nobs, nvar)
     test_data_R = test_data.T
 
@@ -35,9 +47,9 @@ def test_convert_FBM(tmp_path, normalize):
         f.write('x\n' + '\n'.join(cells))
     
     cmd_kwargs = {
-        "-p": "double",
+        "-p": in_dtype,
         "-c": "1000",
-        "-d": "float",
+        "-d": out_dtype,
     }
 
     cmd_args = []
@@ -65,7 +77,7 @@ def test_convert_FBM(tmp_path, normalize):
     obt_ad = ad.read_h5ad(out_path)
     assert obt_ad.n_obs == nobs
     assert obt_ad.n_vars == nvar
-    assert obt_ad.X.dtype == np.float32
+    assert obt_ad.X.dtype == DTYPE_DICT[out_dtype]
     if normalize:
         np.testing.assert_allclose(np.expm1(obt_ad.X[0,:]).sum(), 1e6)
     else:
