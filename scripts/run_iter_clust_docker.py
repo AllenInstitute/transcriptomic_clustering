@@ -25,7 +25,7 @@ def setup_filelogger(logfile: Path):
     fhandler = logging.FileHandler(filename=logfile, mode='a')
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     fhandler.setFormatter(formatter)
-    fhandler.setLevel(logging.DEBUG)
+    fhandler.setLevel(logging.INFO)
 
     root_logger = logging.getLogger()
     root_logger.addHandler(fhandler)
@@ -36,17 +36,20 @@ def run_iter_clust():
     
     """
     # Paths
+    run_datetime = datetime.datetime.now().isoformat()
     tc_data_path = Path('/mnt/adata/')
     tmp_path = Path('/mnt/tmp')
     top_tmp_dir = tmp_path
-    log_file_path = tmp_path / f"{datetime.datetime.now().isoformat()}_clustering.log"
+    output_path = Path('/mnt/output') / f"{run_datetime}"
+    output_path.mkdir(parents=True, exist_ok=True)
+    log_file_path = output_path / "clustering.log"
 
     rm_eigen_path = tc_data_path / "macosko" / "rm.eigen.csv"
     normalized_adata_path = tc_data_path / "macosko" / 'Macosko_BICCN.fbm.1004.fixed.selgene_normalized.h5ad'
 
     # Outputs
-    clusters_path = tc_data_path / "macosko" / "Macosko_BICCN.fbm.1004.fixed.selgene_clusters.csv"
-    markers_path = tc_data_path / "macosko" / "Macosko_BICCN.fbm.1004.fixed.selgene_markers.csv"
+    clusters_path = output_path / "Macosko_BICCN.fbm.1004.fixed.selgene_clusters.csv"
+    markers_path = output_path / "Macosko_BICCN.fbm.1004.fixed.selgene_markers.csv"
     
     # Setup logging
     setup_filelogger(log_file_path)
@@ -65,6 +68,7 @@ def run_iter_clust():
     logger.info(f"normalized_adata: {normalized_adata_path}")
     logger.info(f"rm eigen: {rm_eigen_path}")
     logger.info(f"temporary directory: {tmp_dir}")
+    logger.info(f"output directory: {output_path}")
 
     # Load normalized adata
     normalized_adata = sc.read(normalized_adata_path, backed='r')
@@ -113,7 +117,7 @@ def run_iter_clust():
         'k': 15, # number of nn
         'nn_measure': 'euclidean',
         'knn_method': 'annoy',
-        'louvain_method': 'vtraag',
+        'louvain_method': 'taynaud',
         'weighting_method': 'jaccard',
         'n_jobs': 8, # cpus
         'resolution': 1., # resolution of louvain for taynaud method
@@ -161,6 +165,7 @@ def run_iter_clust():
     cl_sizes = [len(cluster) for cluster in clusters]
     logger.info(f'final cluster sizes: {cl_sizes}')
     logger.info(f'max cluster size: {np.max(cl_sizes)}')
+    logger.info(f'clusters: {clusters}, \nmarkers: {markers}')
 
     # Save clusters to csv
     cluster_dict = build_cluster_dict(clusters)

@@ -17,6 +17,7 @@ RUN . tc_env/bin/activate
 RUN mkdir -p /mnt/tmp/
 RUN mkdir -p /mnt/scripts/
 RUN mkdir -p /mnt/adata/
+RUN mkdir -p /mnt/output/
 
 RUN pip install numpy
 RUN pip install -r requirements.txt && pip install -e .
