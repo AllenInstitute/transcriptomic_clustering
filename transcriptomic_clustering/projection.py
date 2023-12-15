@@ -87,3 +87,27 @@ def project(
             X_proj[start:end,:] = chunk @ principal_comps
 
     return ad.AnnData(X_proj, obs=adata.obs, var=pd.DataFrame(index=pc_names))
+
+def latent_project(adata: ad.AnnData,
+                    latent_component: Optional[str]=None) -> ad.AnnData:
+    """
+    Extracts pre-existing data projection
+
+    Parameters
+    ----------
+    adata:
+        adata containing the projection.
+
+    Returns
+    -------
+    Adata object in latent space
+    """
+
+    if not latent_component in adata.obsm.keys():
+        raise ValueError('Latent space ' + latent_component + " does not exist in obsm")
+
+    ## Extract latent space and define names
+    latent_data = adata.obsm[latent_component]
+    latent_names = ["latent-"+str(i) for i in range(latent_data.shape[1])]
+
+    return ad.AnnData(X=latent_data, obs=adata.obs, var=pd.DataFrame(index=latent_names))
