@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.cluster.hierarchy import linkage
 
-@usage_decorator
+
 def hclust(cluster_means: pd.DataFrame):
     """
     Performs UPGMA hierarchical clustering

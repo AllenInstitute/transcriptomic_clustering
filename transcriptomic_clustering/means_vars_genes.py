@@ -9,7 +9,7 @@ import warnings
 
 import transcriptomic_clustering as tc
 
-@usage_decorator
+
 def get_means_vars_genes(adata: sc.AnnData,
                     low_thresh: Optional[int] = 1,
                     min_cells: Optional[int] = 4,
@@ -44,7 +44,7 @@ def get_means_vars_genes(adata: sc.AnnData,
 
         return get_means_vars_genes_inmemory(adata, low_thresh, min_cells)
 
-@usage_decorator
+
 def get_means_vars_genes_inmemory(
         adata: sc.AnnData,
         low_thresh: Optional[int] = 1,
@@ -67,7 +67,7 @@ def get_means_vars_genes_inmemory(
 
     return means[gene_mask], variances[gene_mask], gene_mask
 
-@usage_decorator
+
 def get_means_vars_genes_backed(
         adata: sc.AnnData,
         low_thresh: Optional[int] = 1,

@@ -34,7 +34,6 @@ by recognizing
 
 """
 
-@usage_decorator
 def trigamma_inverse(x, tol=1e-08, iter_limit=50):
     """Newton's method to solve trigamma inverse"""
     y = 0.5 + 1 / x
@@ -50,7 +49,7 @@ def trigamma_inverse(x, tol=1e-08, iter_limit=50):
         )
     return y
 
-@usage_decorator
+
 def fit_f_dist(x: ArrayLike, df1: ArrayLike):
     """
     Method of moments to fit f-distribution
@@ -81,7 +80,7 @@ def fit_f_dist(x: ArrayLike, df1: ArrayLike):
 
     return df2, scale
 
-@usage_decorator
+
 def moderate_variances(
         variances: pd.DataFrame,
         df: int,
@@ -121,7 +120,7 @@ def moderate_variances(
 
     return var_post, var_prior, df_prior
 
-@usage_decorator
+
 def get_linear_fit_vals(cl_vars: pd.DataFrame, cl_size: Dict[Any, int]):
     """
     Directly computes sigma squared, degrees of freedom, and stdev_unscaled
@@ -134,7 +133,7 @@ def get_linear_fit_vals(cl_vars: pd.DataFrame, cl_size: Dict[Any, int]):
     stdev_unscaled = pd.DataFrame(1 / np.sqrt(cl_size_v), index=cl_vars.index)
     return sigma_sq.to_frame(), df, stdev_unscaled
 
-@usage_decorator
+
 def de_pairs_ebayes(
         pairs: List[Tuple[Any, Any]],
         cl_means: pd.DataFrame,

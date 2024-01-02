@@ -11,7 +11,6 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-@usage_decorator
 def vec_chisq_test(pair: tuple,
                   cl_present: pd.DataFrame,
                   cl_size: Dict[Any, int]):
@@ -55,7 +54,7 @@ def vec_chisq_test(pair: tuple,
             logger.debug(f"chi2 exception for cluster pair: {pair}, p value will be assigned to 1")
     return p_vals
 
-@usage_decorator
+
 def de_pair_chisq(pair: tuple, 
                   cl_present: Union[pd.DataFrame, pd.Series],
                   cl_means: Union[pd.DataFrame, pd.Series],
@@ -128,7 +127,7 @@ def de_pair_chisq(pair: tuple,
 
     return de_statistics_chisq
 
-@usage_decorator
+
 def filter_gene_stats(
     de_stats: pd.DataFrame,
     gene_type: str,
@@ -202,7 +201,7 @@ def filter_gene_stats(
 
     return de_stats.loc[mask]
 
-@usage_decorator
+
 def get_qdiff(q1, q2) -> np.array:
     """
     Calculate normalized difference between q1 and q2 proportions
@@ -225,7 +224,7 @@ def get_qdiff(q1, q2) -> np.array:
 
     return q_diff
 
-@usage_decorator
+
 def calc_de_score(
     padj: np.ndarray
 ) -> float:
@@ -246,7 +245,6 @@ def calc_de_score(
 
     return de_score
 
-@usage_decorator
 def de_pairs_chisq(
         pairs: List[Tuple[Any, Any]],
         cl_means: pd.DataFrame,

@@ -17,7 +17,7 @@ import transcriptomic_clustering as tc
 from transcriptomic_clustering.iter_writer import AnnDataIterWriter
 from tqdm import tqdm
 
-@usage_decorator
+
 def normalize(
     adata:AnnData,
     inplace: bool = False,
@@ -67,7 +67,7 @@ def normalize(
 
     return adata_output
 
-@usage_decorator
+
 def normalize_inmemory(
     adata: AnnData,
     inplace: bool = True
@@ -85,7 +85,7 @@ def normalize_inmemory(
 
     return adata
 
-@usage_decorator
+
 def normalize_backed(
     adata: AnnData,
     chunk_size: int = None,

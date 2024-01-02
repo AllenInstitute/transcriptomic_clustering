@@ -24,7 +24,7 @@ DEFAULT_THRESHOLDS = {
     'min_genes': 5
 }
 
-@usage_decorator
+
 def merge_clusters(
         adata_norm: ad.AnnData,
         adata_reduced: ad.AnnData,
@@ -152,7 +152,7 @@ def merge_clusters(
 
     return cluster_assignments_merge, markers
 
-@usage_decorator
+
 def merge_two_clusters(
         cluster_assignments: Dict[Any, List],
         label_source: Any,
@@ -195,7 +195,7 @@ def merge_two_clusters(
     cluster_assignments[label_dest].extend(cluster_assignments[label_source])
     cluster_assignments.pop(label_source)
 
-@usage_decorator
+
 def merge_cluster_means_vars(
         cluster_assignments: Dict[Any, List],
         label_source: Any,
@@ -250,7 +250,7 @@ def merge_cluster_means_vars(
         cluster_variances.loc[label_dest] = var_comb
         cluster_variances.drop(label_source, inplace=True)
 
-@usage_decorator
+
 def cdist_normalized(
         X: np.ndarray,
         Y: np.ndarray,
@@ -274,7 +274,7 @@ def cdist_normalized(
 
     return similarity
 
-@usage_decorator
+
 def calculate_similarity(
         cluster_means: pd.DataFrame,
         group_rows: List[Any],
@@ -321,7 +321,7 @@ def calculate_similarity(
 
     return similarity_df
 
-@usage_decorator
+
 def find_most_similar(
         similarity_df: pd.DataFrame,
 ) -> Tuple[Any, Any, float]:
@@ -345,7 +345,7 @@ def find_most_similar(
 
     return source_label, dest_label, max_similarity
 
-@usage_decorator
+
 def find_small_clusters(
         cluster_assignments: Dict[Any, List],
         min_size: int
@@ -353,7 +353,7 @@ def find_small_clusters(
 
     return [k for (k, v) in cluster_assignments.items() if len(v) < min_size]
 
-@usage_decorator
+
 def merge_small_clusters(
         cluster_means: pd.DataFrame,
         cluster_assignments: Dict[Any, List],
@@ -404,7 +404,7 @@ def merge_small_clusters(
         all_cluster_labels = list(cluster_assignments.keys())
 
 
-@usage_decorator
+
 def merge_clusters_by_de(
     cluster_assignments: Dict[Any, List],
     cluster_means: pd.DataFrame,
@@ -527,7 +527,7 @@ def merge_clusters_by_de(
             cl_size.pop(src_label)
 
 
-@usage_decorator
+
 def get_k_nearest_clusters(
         cluster_means: pd.DataFrame,
         cluster_labels: Optional[Set[Any]] = None,
@@ -584,7 +584,7 @@ def get_k_nearest_clusters(
 
     return list(nearest_neighbors)
 
-@usage_decorator
+
 def order_pairs(
         neighbor_pairs: List[Tuple[int, int]]
 ) -> List[Tuple[int, int]]:
@@ -612,7 +612,7 @@ def order_pairs(
 
     return ordered_pairs
 
-@usage_decorator
+
 def get_cluster_assignments(
         adata: ad.AnnData,
         cluster_label_obs: str = "pheno_louvain"

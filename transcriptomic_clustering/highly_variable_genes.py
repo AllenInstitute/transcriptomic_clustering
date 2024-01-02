@@ -9,7 +9,7 @@ from scipy.stats import norm
 
 from statsmodels.stats.multitest import fdrcorrection
 
-@usage_decorator
+
 def compute_z_scores(dispersion: np.ndarray):
     """
         Compute dispersion z-scores for each gene in a gene x sample matrix
@@ -30,7 +30,6 @@ def compute_z_scores(dispersion: np.ndarray):
     
     return (dispersion  - m_iqr) / delta
 
-@usage_decorator
 def highly_variable_genes(adata: sc.AnnData,
             means: np.array,
             variances: np.array,

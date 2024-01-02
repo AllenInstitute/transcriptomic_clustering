@@ -11,7 +11,7 @@ import transcriptomic_clustering as tc
 
 logger = logging.getLogger(__name__)
 
-@usage_decorator
+
 def select_marker_genes(
         cluster_assignments: Dict[Any, List],
         cluster_means: pd.DataFrame,
