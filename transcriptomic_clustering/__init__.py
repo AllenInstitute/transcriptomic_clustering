@@ -17,6 +17,7 @@ fileConfig(os.path.join(
 )
 
 # paths
+from .utils.usage_logger import usage_decorator
 from .utils.memory import memory
 from .normalization import normalize
 from .highly_variable_genes import highly_variable_genes

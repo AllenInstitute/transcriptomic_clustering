@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Decorator function to measure the execution time of a function
-def timing_decorator(func):
+def usage_decorator(func):
     def wrapper(*args, **kwargs):
         start_time = time.time()
         result = func(*args, **kwargs)
