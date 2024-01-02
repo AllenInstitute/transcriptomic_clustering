@@ -26,7 +26,7 @@ class OnestepKwargs:
     cluster_louvain_kwargs: Dict = field(default_factory = lambda: ({}))
     merge_clusters_kwargs: Dict = field(default_factory = lambda: ({}))
 
-
+@usage_decorator
 def onestep_clust(
         norm_adata: sc.AnnData,
         onestep_kwargs: OnestepKwargs=OnestepKwargs(),

@@ -17,7 +17,7 @@ import tempfile
 from typing import List
 import igraph as ig
 
-
+@usage_decorator
 def cluster_louvain_phenograph(
     adata: AnnData,
     k: int=15,
@@ -69,6 +69,7 @@ def cluster_louvain_phenograph(
 
     return cluster_by_obs, obs_by_cluster, graph, q
 
+@usage_decorator
 def _cluster_obs_list_to_dict(cluster_by_obs: List[int]):
     """
     Converts observation clusters in a list to a dict
@@ -91,6 +92,7 @@ def _cluster_obs_list_to_dict(cluster_by_obs: List[int]):
 
     return obs_by_cluster
 
+@usage_decorator
 def cluster_louvain(
     adata: AnnData,
     k: int=15,
@@ -174,6 +176,7 @@ def cluster_louvain(
 
     return cluster_by_obs, obs_by_cluster, nn_adata.X, q
 
+@usage_decorator
 def _uniform_csr_from_nn_dict(nn_dict):
     """
     Converts a dictionary mapping indices to lists of their nearest neighbor indices
@@ -200,6 +203,7 @@ def _uniform_csr_from_nn_dict(nn_dict):
 
     return csr_matrix((csr_weights, csr_indices, csr_indptr), shape=(n, n), dtype=float)
 
+@usage_decorator
 def _calc_jaccard(idx, max_union, nn_set_dict):
     """
     Given a dictionary mapping indices to sets of their nearest neighbor indices,
@@ -221,6 +225,7 @@ def _calc_jaccard(idx, max_union, nn_set_dict):
     shared_neighbors = [float(len(nn_set_dict[idx] & nn_set_dict[j])) for j in nn_set_dict[idx]]
     return idx, [x / (max_union - x) for x in shared_neighbors]
 
+@usage_decorator
 def _jaccard_csr_from_nn_dict(nn_dict, n_jobs = 1):
     """
     Converts a dictionary mapping indices to lists of their nearest neighbor indices
@@ -258,6 +263,7 @@ def _jaccard_csr_from_nn_dict(nn_dict, n_jobs = 1):
     csr_indptr = [i * k for i in range(n)] + [n * k]
     return csr_matrix((csr_weights, csr_indices, csr_indptr), shape=(n, n), dtype=float)
 
+@usage_decorator
 def _search_nn_chunk(idx, k, vec_len, nn_measure, annoy_index_filename):
     """
     Given an observation index, loads the annoy index at annoy_index_filename
@@ -280,6 +286,7 @@ def _search_nn_chunk(idx, k, vec_len, nn_measure, annoy_index_filename):
     ai.load(annoy_index_filename)
     return idx, ai.get_nns_by_item(idx, k)
 
+@usage_decorator
 def _annoy_build_csr_nn_graph(
     data_matrix: np.array,
     annoy_index_filename: str,
@@ -324,6 +331,7 @@ def _annoy_build_csr_nn_graph(
     else:
         raise ValueError(f"{weighting_method} is not a valid weighting option! Must use jaccard or uniform")
 
+@usage_decorator
 def get_annoy_knn(
     adata: AnnData,
     k: int,
@@ -386,6 +394,7 @@ def get_annoy_knn(
         graph_adata.write(graph_filename)
     return graph_adata
 
+@usage_decorator
 def get_taynaud_louvain(
     nn_adata: AnnData,
     resolution: float = 1.,
@@ -417,6 +426,7 @@ def get_taynaud_louvain(
 
     return cluster_by_obs, q
 
+@usage_decorator
 def get_vtraag_leiden(
     nn_adata: AnnData,
     random_seed: int = None

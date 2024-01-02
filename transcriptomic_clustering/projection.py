@@ -9,6 +9,7 @@ import transcriptomic_clustering as tc
 
 Mask = Union[Sequence[int], slice, np.ndarray]
 
+@usage_decorator
 def project(
         adata: ad.AnnData,
         principal_comps: pd.DataFrame,
@@ -88,6 +89,7 @@ def project(
 
     return ad.AnnData(X_proj, obs=adata.obs, var=pd.DataFrame(index=pc_names))
 
+@usage_decorator
 def latent_project(adata: ad.AnnData,
                     latent_component: Optional[str]=None) -> ad.AnnData:
     """

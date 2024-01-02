@@ -10,7 +10,7 @@ from welford import Welford
 import transcriptomic_clustering as tc
 import warnings
 
-
+@usage_decorator
 def get_cluster_means(
         adata: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
@@ -57,7 +57,7 @@ def get_cluster_means(
 
     return (cluster_means, present_cluster_means, cluster_variances)
 
-
+@usage_decorator
 def get_cluster_means_inmemory(
         adata: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
@@ -105,7 +105,7 @@ def get_cluster_means_inmemory(
 
     return (cluster_means, present_cluster_means, cluster_variances)
 
-
+@usage_decorator
 def get_cluster_means_backed(
         adata: ad.AnnData,
         cluster_assignments: Dict[Any, np.ndarray],
@@ -193,7 +193,7 @@ def get_cluster_means_backed(
 
     return (cluster_means, present_cluster_means, cluster_variances)
 
-
+@usage_decorator
 def get_one_hot_cluster_array(
         cluster_by_obs: np.ndarray,
         cluster_labels: List[Any]

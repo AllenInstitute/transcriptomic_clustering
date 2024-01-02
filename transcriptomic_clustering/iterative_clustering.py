@@ -19,7 +19,7 @@ from transcriptomic_clustering.iter_writer import AnnDataIterWriter
 
 logger = logging.getLogger(__name__)
 
-
+@usage_decorator
 def create_filebacked_clusters(adata, clusters, tmp_dir: Path):
     """
     Handles creating a new AnnData filebacked object for each cluster
@@ -85,7 +85,7 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Path):
 
     return new_adatas
 
-
+@usage_decorator
 def manage_cluster_adata(adata, clusters, tmp_dir: Path):
     """
     Function for managing memory when iterating
@@ -138,7 +138,7 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Path):
 
     return new_adatas
 
-
+@usage_decorator
 def iter_clust(
         norm_adata,
         tmp_dir: Path,
@@ -205,7 +205,7 @@ def iter_clust(
 
     return new_clusters, markers
 
-
+@usage_decorator
 def build_cluster_dict(clusters: List[Union[np.ndarray, Sequence]]) -> Dict[int, List]:
     """
     Builds a dictionary from a list of lists of samples in each cluster
@@ -224,7 +224,7 @@ def build_cluster_dict(clusters: List[Union[np.ndarray, Sequence]]) -> Dict[int,
         output[i + 1] = np.asarray(clusters[i]).tolist()
     return output
 
-
+@usage_decorator
 def summarize_final_clusters(
         norm_adata: ad.AnnData,
         clusters: List[np.ndarray],

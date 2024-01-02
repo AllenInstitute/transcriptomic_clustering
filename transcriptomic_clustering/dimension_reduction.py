@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 Mask = Union[Sequence[int], slice, np.ndarray]
 DEFAULT_NCOMPS = 50
 
+@usage_decorator
 def pca(
         adata: sc.AnnData,
         cell_select: Optional[Union[int, Mask]]=None,
@@ -194,7 +195,7 @@ def pca(
         pd.DataFrame(_pca.mean_, index=adata.var_names[vidx_bool])
     )
 
-
+@usage_decorator
 def filter_known_components(
         principal_components: Union[pd.DataFrame, pd.Series],
         known_components: Union[pd.DataFrame, pd.Series],
@@ -240,7 +241,7 @@ def filter_known_components(
 
     return ~rm_pcs_mask
 
-
+@usage_decorator
 def filter_ev_ratios_zscore(explained_variance_ratios, threshold=2):
     """
     Filters principal components based on the z-scores of their explained variance ratios
@@ -258,7 +259,7 @@ def filter_ev_ratios_zscore(explained_variance_ratios, threshold=2):
     logging.debug(f'zscores: {z_scores}')
     return z_scores > threshold
 
-
+@usage_decorator
 def filter_explained_variances_elbow(explained_variances):
     """
     Filters out principal components by removing those whose explained variance
@@ -307,8 +308,7 @@ def filter_explained_variances_elbow(explained_variances):
     
     return ~remove_comps
 
-
-
+@usage_decorator
 def filter_components(
         pcs: pd.DataFrame,
         explained_vars: np.ndarray,

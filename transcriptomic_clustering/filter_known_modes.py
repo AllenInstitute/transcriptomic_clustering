@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+@usage_decorator
 def filter_known_modes(
         projected_adata: ad.AnnData,
         known_modes: Union[pd.DataFrame, pd.Series],

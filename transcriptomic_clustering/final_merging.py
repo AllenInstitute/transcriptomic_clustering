@@ -26,7 +26,7 @@ class FinalMergeKwargs:
     project_kwargs: Dict = field(default_factory = lambda: ({}))
     merge_clusters_kwargs: Dict = field(default_factory = lambda: ({}))
 
-
+@usage_decorator
 def sample_clusters(
         adata: ad.AnnData,
         cluster_dict: Dict[Any, List],
@@ -61,7 +61,7 @@ def sample_clusters(
     cell_mask[cell_samples] = True
     return cell_mask
 
-
+@usage_decorator
 def final_merge(
         adata: ad.AnnData,
         cluster_assignments: pd.Series,
