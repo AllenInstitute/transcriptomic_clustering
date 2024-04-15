@@ -2,7 +2,7 @@ pandas
 numpy
 scipy>=1.7.0
 six
-anndata==0.8.0
+anndata
 scanpy
 scikit-misc
 psutil
