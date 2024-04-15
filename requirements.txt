@@ -10,6 +10,6 @@ Welford
 Phenograph
 annoy
 networkx
-leidenalg==0.8.4
+leidenalg
 python-louvain
 click
