@@ -10,6 +10,10 @@ Installing
 ----------
 For usage and installation instructions, see the [install guide](docs/install.rst).
 
+Examples
+--------
+You can find example usage of this package in the examples directory.
+
 Contributing
 ------------
 We welcome contributions! Please see our [contribution guide](CONTRIBUTING.md) for more information. Thank you!
