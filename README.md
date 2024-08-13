@@ -2,6 +2,10 @@ transcriptomic_clustering
 =========================
 Clustering tools for transcriptomic data
 
+Docker
+----------
+`singularity shell --cleanenv docker://njjai/tclust:0.1`
+
 Installing
 ----------
 For usage and installation instructions, see the [install guide](docs/install.rst).
