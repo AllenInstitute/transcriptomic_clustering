@@ -12,9 +12,12 @@ We recommend installing `transcriptomic_clustering` into a managed Python enviro
 
 Two popular tools for managing Python environments are `anaconda <https://anaconda.org/anaconda/anaconda-project>`_ and `venv <https://docs.python.org/3/library/venv.html>`_. The rest of this document assumes that you have created and activated an environment using one of these tools. Using anaconda, this looks like:
 
+You only need to include gcc_linux-64 and gxx_linux if you see a compiler error related to annoy.
+Likewise nb_conda and matplotlib are optional, used for in the notebooks.
+
 .. code-block:: bash
 
-    conda create -y --name environment-name python=3.8
+    conda create -y --name environment-name python=3.8 gcc_linux-64 gxx_linux-64 nb_conda matplotlib
     conda activate environment-name
 
 and using venv:
