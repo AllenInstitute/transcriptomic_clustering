@@ -96,7 +96,7 @@ def final_merge(
         n_jobs: Optional[int] = 1,
         return_markers_df: Optional[bool] = False,
         final_merge_kwargs: FinalMergeKwargs = FinalMergeKwargs(),
-) -> pd.DataFrame:
+) -> Tuple[List[List[int]], Union[pd.DataFrame, set]]:
     """
     Runs a final merging step on cluster assignment results
     Step1: Using a pre-defined latent space or compute PCA as below:
