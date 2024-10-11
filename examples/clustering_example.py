@@ -1,7 +1,11 @@
 import scanpy as sc
 import pandas as pd
 import numpy as np
-import transcriptomic_clustering
+import pickle
+
+# Skip this line if transcriptomic_clustering is installed
+sys.path.insert(1, '/allen/programs/celltypes/workgroups/rnaseqanalysis/dyuan/tool/transcriptomic_clustering/')
+
 from transcriptomic_clustering.iterative_clustering import (
     build_cluster_dict, iter_clust, OnestepKwargs
 )
@@ -9,7 +13,7 @@ from transcriptomic_clustering.iterative_clustering import (
 # Load the data that contains the raw counts in the 'X' slot. If using normalized data, skip the normalization step.
 adata = sc.read('path/to/your/data.h5ad')
 
-# Normalize the data. Skip if adata.X is already normalized.
+# Normalize the data. Skip if adata.X is already normalized. This is the same as using sc.normalize_total(adata, target_sum=1e6) and sc.pp.log1p(adata)
 adata=transcriptomic_clustering.normalize(adata)
 
 # Add scVI latent space to the adata object. Skip if adata.obsm['X_scVI'] is already present.
@@ -91,6 +95,14 @@ clusters, markers = iter_clust(
     tmp_dir="/path/to/your/tmp"
 )
 
+# save the results in .pkl format, which will be used for final merging
+with open('clustering_results.pkl', 'wb') as f:
+    pickle.dump(clusters, f)
+
+with open('markers.pkl', 'wb') as f:
+    pickle.dump(markers, f)
+
+# (Optional) save the clustering results in a data frame.
 cluster_dict = build_cluster_dict(clusters)
 
 adata.obs["scrattch_py_cluster"] = ""
@@ -99,6 +111,5 @@ for cluster in cluster_dict.keys():
 
 adata.obs.scrattch_py_cluster = adata.obs.scrattch_py_cluster.astype('category')
 
-# save the clustering results
 res = pd.DataFrame({'sample_id':adata.obs_names, 'cl': adata.obs.scrattch_py_cluster})
 res.to_csv('/path/to/your/clustering_results.csv')
