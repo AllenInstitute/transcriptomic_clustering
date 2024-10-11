@@ -34,7 +34,9 @@ def merge_clusters(
         k: Optional[int] = 2,
         de_method: Optional[str] = 'ebayes',
         n_markers: Optional[int] = 20,
-        chunk_size: Optional[int] = None
+        chunk_size: Optional[int] = None,
+        return_markers_df: Optional[bool] = False,
+        n_jobs: Optional[int] = 1
 ) -> Tuple[Dict[Any, np.ndarray], Set]:
     """
     Merge clusters based on size and differential gene expression score
@@ -63,6 +65,10 @@ def merge_clusters(
         if 0 or None will skip
     chunk_size:
         number of observations to process in a single chunk
+    return_markers_df:
+        return markers as a dataframe
+    n_jobs:
+        number of jobs to run in parallel
 
     Returns
     -------
@@ -132,7 +138,9 @@ def merge_clusters(
     logger.info(f'Merging DE Elapsed Time: {toc - tic}')
 
     # Select marker genes
-    if n_markers:
+    if return_markers_df is False and n_markers is None:
+        markers = None
+    else:
         logger.info('Starting Marker Selection')
         tic = time.perf_counter()
         markers = select_marker_genes(
@@ -143,12 +151,13 @@ def merge_clusters(
             thresholds=thresholds,
             n_markers=n_markers,
             de_method=de_method,
+            return_markers_df=return_markers_df,
+            n_jobs=n_jobs
         )
         logger.info('Completed Marker Selection')
         toc = time.perf_counter()
         logger.info(f'Marker Selection Elapsed Time: {toc - tic}')
-    else:
-        markers = None
+
 
     return cluster_assignments_merge, markers
 
