@@ -1,4 +1,4 @@
-from typing import Dict, List, Set, Literal, Any, Optional
+from typing import Dict, List, Set, Literal, Any, Optional, Union
 import logging
 from itertools import combinations
 
@@ -20,7 +20,9 @@ def select_marker_genes(
         thresholds: Dict[str, Any],
         n_markers: int = 20,
         de_method: Optional[Literal['ebayes', 'chisq']] = 'ebayes',
-) -> Set:
+        return_markers_df: Optional[bool] = False,
+        n_jobs: Optional[int] = 1
+) -> Union[pd.DataFrame, set]:
     """
     Selects n up genes and n down genes from the differentially expressed genes
     between each pair of clusters, and saves the combined set for all cluster pairs.
@@ -58,13 +60,14 @@ def select_marker_genes(
     thresholds.pop('score_thresh', None)
     neighbor_pairs = list(combinations(cl_names, 2))
     if de_method == 'ebayes':
-        de_df = tc.de_pairs_ebayes(
+        de_df = tc.de_pairs_ebayes_parallel(
             neighbor_pairs,
             cluster_means,
             cluster_variances,
             present_cluster_means,
             cl_size,
             thresholds,
+            n_jobs = n_jobs
         )
     elif de_method == 'chisq':
         de_df = tc.de_pairs_chisq(
@@ -76,6 +79,9 @@ def select_marker_genes(
         )
     else:
         raise ValueError(f'Unknown de_method {de_method}, must be one of [chisq, ebayes]')
+    
+    if return_markers_df:
+        return de_df
     
     markers = set()
     for pair, row in de_df.iterrows():
