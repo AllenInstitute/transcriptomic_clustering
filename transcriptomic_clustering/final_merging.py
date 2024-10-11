@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Set, List, Any
+from typing import Optional, Dict, Set, List, Any, Tuple, Union
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -9,9 +9,6 @@ from numpy.random import default_rng
 import anndata as ad
 
 import transcriptomic_clustering as tc
-from transcriptomic_clustering.iterative_clustering import (
-    build_cluster_dict, summarize_final_clusters
-)
 
 import logging
 import time
@@ -90,7 +87,7 @@ def _cluster_obs_dict_to_list(obs_by_cluster: Dict[int, List[int]]) -> List[int]
 def final_merge(
         adata: ad.AnnData,
         cluster_assignments: List,
-        marker_genes: Set,
+        marker_genes: Optional[set] = None,
         n_samples_per_clust: int = 20,
         random_seed: Optional[int]=None,
         n_jobs: Optional[int] = 1,
@@ -122,6 +119,9 @@ def final_merge(
     cluster_by_obs = _cluster_obs_dict_to_list(obs_by_cluster)
 
     if final_merge_kwargs.latent_kwargs.get("latent_component") is None:
+
+        if marker_genes is None:
+            raise ValueError("Need marker genes to run PCA")
 
         cell_mask = sample_clusters(
             adata=adata,
@@ -215,5 +215,7 @@ def final_merge(
     logger.info(f'Completed Merging')
     toc = time.perf_counter()
     logger.info(f'Merging Elapsed Time: {toc - tic}')
+
+    cluster_assignments_after_merging = list(cluster_assignments_after_merging.values())
 
     return cluster_assignments_after_merging, markers
