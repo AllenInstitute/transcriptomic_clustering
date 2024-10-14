@@ -31,6 +31,7 @@ cl_pth = "/path/to/clustering_results"
 with open(os.path.join(cl_pth, 'clustering_results.pkl'), 'rb') as f:
     clusters = pickle.load(f)
 
+# marker genes are only needed for computing PCA
 with open(os.path.join(cl_pth, 'markers.pkl'), 'rb') as f:
     markers = pickle.load(f)
 
@@ -86,7 +87,7 @@ merge_kwargs = setup_merging()
 clusters_after_merging, markers = final_merge(
     adata, 
     clusters, 
-    markers, 
+    markers, # required for PCA, but optional if using a pre-computed latent space
     n_samples_per_clust=20, 
     random_seed=2024, 
     final_merge_kwargs=merge_kwargs,
