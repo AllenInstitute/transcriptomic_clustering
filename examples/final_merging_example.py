@@ -12,7 +12,6 @@ import math
 # Skip this line if transcriptomic_clustering is installed
 sys.path.insert(1, '/allen/programs/celltypes/workgroups/rnaseqanalysis/dyuan/tool/transcriptomic_clustering/')
 
-import transcriptomic_clustering as tc
 from transcriptomic_clustering.final_merging import final_merge, FinalMergeKwargs
 
 # Load the data that contains the raw counts in the 'X' slot. If adata.X is normalized, skip the next normalization step.
