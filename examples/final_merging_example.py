@@ -34,7 +34,7 @@ with open(os.path.join(cl_pth, 'clustering_results.pkl'), 'rb') as f:
 with open(os.path.join(cl_pth, 'markers.pkl'), 'rb') as f:
     markers = pickle.load(f)
 
-# The first 4 are for PCA. modify latent_kwargs if using a pre-computed latent space
+# The first 4 are for PCA only. modify latent_kwargs if using a pre-computed latent space
 def setup_merging(): 
     pca_kwargs ={
         # 'cell_select': 30000, # should not use set this for final merging, as we need to sample from each cluster if computing PCA
@@ -48,7 +48,7 @@ def setup_merging():
         'zth': 2,
         'max_pcs': None}
     filter_known_modes_kwargs = {
-        'known_modes': None,
+        'known_modes': 'log2ngene', 
         'similarity_threshold': 0.7}
     project_kwargs = {}
     merge_clusters_kwargs = {
@@ -64,10 +64,11 @@ def setup_merging():
             'min_genes': 5
         },
         'k': 4,
-        'de_method': 'ebayes'
+        'de_method': 'ebayes',
+        # 'n_markers': None, # if set to None, will bypass the marker calculation step, which is the time-consuming step
     }
-    latent_kwargs = { # if None: default is running pca, else use the latent_component in adata.obsm
-        'latent_component': "scVI"
+    latent_kwargs = { 
+        'latent_component': "scVI" # None or a obsm in adata. if None: default is running pca, else use the latent_component in adata.obsm
     }
     
     merge_kwargs = FinalMergeKwargs(
@@ -89,7 +90,30 @@ clusters_after_merging, markers = final_merge(
     markers, # required for PCA, but optional if using a pre-computed latent space
     n_samples_per_clust=20, 
     random_seed=2024, 
-    final_merge_kwargs=merge_kwargs,
     n_jobs = 30, # modify this to the number of cores you want to use
-    return_markers_df = True # return the pair-wise DE results for each cluster pair. If False (default), only return a set of markers (top 20 of up and down regulated genes in each pair comparison)
+    return_markers_df = False, # return the pair-wise DE results for each cluster pair. If False (default), only return a set of markers (top 20 of up and down regulated genes in each pair comparison)
+    final_merge_kwargs=merge_kwargs
 )
+
+out_dir = "/path/to/output"
+
+with open(os.path.join(out_dir, "clustering_results_after_merging.pkl"), 'wb') as f:
+        pickle.dump(clusters_after_merging, f)
+
+# determine datatype for markers_after_merging and save
+if markers_after_merging is None:
+    print("Skipped calculating markers. Did not save markers.")
+elif isinstance(markers_after_merging, pd.DataFrame):
+    markers_after_merging.to_csv(os.path.join(out_dir,'markers_after_merging.csv'))
+else:
+    with open(os.path.join(out_dir,'markers_after_merging.pkl'), 'wb') as f:
+        pickle.dump(markers_after_merging, f)
+
+# convert the clustering results to a .csv file
+n_cells = sum(len(i) for i in clusters_after_merging)
+cl = ['unknown']*n_cells
+for i in range(len(clusters_after_merging)):
+    for j in clusters_after_merging[i]:
+        cl[j] = i+1
+res = pd.DataFrame({'cl': cl}, index=adata.obs_names)
+res.to_csv(os.path.join(out_dir,'clustering_results_after_merging.csv'))
