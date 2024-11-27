@@ -116,7 +116,7 @@ def pca(
     _, vidx = adata._normalize_indices((slice(None), gene_mask)) # handle gene mask like anndata would
     vidx_bool = np.zeros((adata.n_vars,), dtype=bool)
     vidx_bool[vidx] = True
-    n_genes = len(vidx)
+    n_genes = sum(vidx)
     
     # select n_comps
     max_comps = min(n_cells, n_genes) - 1

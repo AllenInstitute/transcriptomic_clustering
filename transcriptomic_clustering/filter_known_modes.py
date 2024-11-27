@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def filter_known_modes(
         projected_adata: ad.AnnData,
-        known_modes: Union[pd.DataFrame, pd.Series],
+        known_modes: Optional[str] = None,
         similarity_threshold: Optional[float] = 0.7):
     """
         Filters out principal components which correlate strongly with the known modes
@@ -27,6 +27,12 @@ def filter_known_modes(
         projected_adata: after filtering out correlated principal components
 
     """
+    # determine if know_modes is in adata.obs
+    if known_modes in projected_adata.obs.columns:
+        known_modes = projected_adata.obs[known_modes]
+    else:
+        raise ValueError(f'{known_modes} not found in adata.obs')
+    
     if isinstance(known_modes, pd.Series):
         known_modes = known_modes.to_frame()
 
