@@ -15,7 +15,7 @@ sys.path.insert(1, '/allen/programs/celltypes/workgroups/rnaseqanalysis/dyuan/to
 from transcriptomic_clustering.final_merging import final_merge, FinalMergeKwargs
 
 # Load the data that contains the raw counts in the 'X' slot. If adata.X is normalized, skip the next normalization step.
-adata = sc.read('path/to/your/data.h5ad')
+adata = sc.read('path/to/your/adata.h5ad')
 
 # Normalize the data. Skip if adata.X is already normalized.
 sc.pp.normalize_total(adata, target_sum=1e6)
@@ -25,7 +25,7 @@ sc.pp.log1p(adata)
 scvi = pd.read_csv('path/to/scvi_latent_space.csv', index_col=0)
 adata.obsm['scVI'] = np.asarray(scvi)
 
-# loading clustering results
+# Loading clustering results
 cl_pth = "/path/to/clustering_results"
 with open(os.path.join(cl_pth, 'clustering_results.pkl'), 'rb') as f:
     clusters = pickle.load(f)
@@ -65,7 +65,7 @@ def setup_merging():
         },
         'k': 4,
         'de_method': 'ebayes',
-        # 'n_markers': None, # if set to None, will bypass the marker calculation step, which is the time-consuming step
+        'n_markers': None, # if set to None, will bypass the marker calculation step, which is the time-consuming step
     }
     latent_kwargs = { 
         'latent_component': "scVI" # None or a obsm in adata. if None: default is running pca, else use the latent_component in adata.obsm
@@ -84,7 +84,7 @@ def setup_merging():
 merge_kwargs = setup_merging()
 
 # Run the final merging
-clusters_after_merging, markers = final_merge(
+clusters_after_merging, markers_after_merging = final_merge(
     adata, 
     clusters, 
     markers, # required for PCA, but optional if using a pre-computed latent space
