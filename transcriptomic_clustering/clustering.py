@@ -17,7 +17,6 @@ import tempfile
 from typing import List
 import igraph as ig
 
-
 def cluster_louvain_phenograph(
     adata: AnnData,
     k: int=15,
@@ -351,7 +350,6 @@ def get_annoy_knn(
     annoy_trees: Number of trees to use in annoy random forest index. More trees gives higher
                  precision but is more computationally expensive.
     n_jobs: Number of processes to use in any parallelizable steps.
-            Note that AnnoyIndex builds differently on different n_jobs values
     annoy_index_filename: File to store annoy index in, defaults to temp file
     graph_filename: File to store KNN graph AnnData in, if unset does not save graph
     random_seed: int to use as random seed 
@@ -361,23 +359,38 @@ def get_annoy_knn(
     nn_adata: An AnnData object with a weighted nearest neighbor graph of the observations
     """
     data_matrix = adata.X
+    n_obs = data_matrix.shape[0]
+    need_build = True
+
     ai = AnnoyIndex(data_matrix.shape[1], nn_measure)
     if annoy_index_filename and os.path.isfile(annoy_index_filename):
-        ai.load(annoy_index_filename)
-    else:
+        try:
+            ai.load(annoy_index_filename)
+            if ai.get_n_items() == n_obs:
+                need_build = False
+            else:
+                ai.unload()
+                os.remove(annoy_index_filename)
+                ai = AnnoyIndex(data_matrix.shape[1], nn_measure)
+        except Exception:
+            if os.path.isfile(annoy_index_filename):
+                os.remove(annoy_index_filename)
+            ai = AnnoyIndex(data_matrix.shape[1], nn_measure)
+
+    if need_build:
         if not annoy_index_filename:
             annoy_index_filename = os.path.join(tempfile.gettempdir(), f"annoy_index_{datetime.now().strftime('%Y%m%d%H%M%S')}")
         ai.on_disk_build(annoy_index_filename)
         if random_seed:
             ai.set_seed(random_seed)
 
-        for i in range(data_matrix.shape[0]):
+        for i in range(n_obs):
             ai.add_item(i, data_matrix[i])
 
         if not annoy_trees:
-            annoy_trees = max(1, int(log(data_matrix.shape[0], 2)))
+            annoy_trees = max(1, int(log(n_obs, 2)))
 
-        ai.build(annoy_trees, n_jobs=n_jobs)
+        ai.build(annoy_trees)
 
     csr_graph = _annoy_build_csr_nn_graph(data_matrix, annoy_index_filename, k, n_jobs, nn_measure, weighting_method)
 
