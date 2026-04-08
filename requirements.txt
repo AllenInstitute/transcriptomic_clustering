@@ -2,7 +2,7 @@ pandas
 numpy
 scipy>=1.7.0
 six
-anndata==0.8.0
+anndata>=0.12.0
 scanpy
 scikit-misc
 psutil
@@ -10,6 +10,6 @@ Welford
 Phenograph
 annoy
 networkx
-leidenalg==0.8.4
+leidenalg>=0.11.0
 python-louvain
 click
