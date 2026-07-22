@@ -15,6 +15,9 @@ from statsmodels.stats.multitest import multipletests
 
 from .diff_expression import get_qdiff, filter_gene_stats, calc_de_score
 
+import multiprocessing as mp
+from functools import partial
+
 logger = logging.getLogger(__name__)
 
 """
@@ -230,5 +233,92 @@ def de_pairs_ebayes(
             'num': len(de_pair_up.index) + len(de_pair_down.index)
         }
 
+    de_pairs = pd.DataFrame(de_pairs).T
+    return de_pairs
+
+def process_pair(cl_means, cl_present, cl_size, stdev_unscaled, df, df_prior, sigma_sq_post, de_thresholds, pair):
+    cluster_a, cluster_b = pair
+    # t-test with ebayes adjusted variances
+    means_diff = cl_means.loc[cluster_a] - cl_means.loc[cluster_b]
+    means_diff = means_diff.to_frame()
+    stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))[0]
+    
+    df_total = df + df_prior
+    df_pooled = np.sum(df)
+    df_total = min(df_total, df_pooled)
+    
+    t_vals = means_diff / np.sqrt(sigma_sq_post) / stdev_unscaled_comb
+    
+    p_adj = np.ones((len(t_vals),))
+    p_vals = 2 * stats.t.sf(np.abs(t_vals[0]), df_total)
+    reject, p_adj, alphacSidak, alphacBonf= multipletests(p_vals, alpha=de_thresholds['padj_thresh'], method='holm')
+    lfc = means_diff
+
+    # Get DE score
+    de_pair_stats = pd.DataFrame(index=cl_means.columns)
+    de_pair_stats['p_value'] = p_vals
+    de_pair_stats['p_adj'] = p_adj
+    de_pair_stats['lfc'] = lfc
+    de_pair_stats["meanA"] = cl_means.loc[cluster_a]
+    de_pair_stats["meanB"] = cl_means.loc[cluster_b]
+    de_pair_stats["q1"] = cl_present.loc[cluster_a]
+    de_pair_stats["q2"] = cl_present.loc[cluster_b]
+    de_pair_stats["qdiff"] = get_qdiff(cl_present.loc[cluster_a], cl_present.loc[cluster_b])
+
+    de_pair_up = filter_gene_stats(
+        de_stats=de_pair_stats,
+        gene_type='up-regulated', 
+        cl1_size=cl_size[cluster_a],
+        cl2_size=cl_size[cluster_b],
+        **de_thresholds
+    )
+    up_score = calc_de_score(de_pair_up['p_adj'].values)
+
+    de_pair_down = filter_gene_stats(
+        de_stats=de_pair_stats,
+        gene_type='down-regulated',
+        cl1_size=cl_size[cluster_a],
+        cl2_size=cl_size[cluster_b],
+        **de_thresholds
+    )
+    down_score = calc_de_score(de_pair_down['p_adj'].values)
+
+    return (pair, {
+        'score': up_score + down_score,
+        'up_score': up_score,
+        'down_score': down_score,
+        'up_genes': de_pair_up.index.to_list(),
+        'down_genes': de_pair_down.index.to_list(),
+        'up_num': len(de_pair_up.index),
+        'down_num': len(de_pair_down.index),
+        'num': len(de_pair_up.index) + len(de_pair_down.index)
+    })
+
+def de_pairs_ebayes_parallel(
+        pairs: List[Tuple[Any, Any]],
+        cl_means: pd.DataFrame,
+        cl_vars: pd.DataFrame,
+        cl_present: pd.DataFrame,
+        cl_size: Dict[Any, int],
+        de_thresholds: Dict[str, Any],
+        n_jobs: int = 1
+    ) -> pd.DataFrame:
+
+    logger.info('Fitting Variances')
+    sigma_sq, df, stdev_unscaled = get_linear_fit_vals(cl_vars, cl_size)
+    logger.info('Moderating Variances')
+    sigma_sq_post, var_prior, df_prior = moderate_variances(sigma_sq, df)
+
+    logger.info(f'Comparing {len(pairs)} pairs')
+
+    # de_pairs = {}
+
+    partial_process = partial(process_pair, cl_means, cl_present, cl_size, stdev_unscaled, df, df_prior, sigma_sq_post, de_thresholds)
+    
+    # Use multiprocessing to parallelize the process
+    with mp.Pool(processes=n_jobs) as pool:
+        results = pool.map(partial_process, pairs)
+
+    de_pairs = {pair: result for pair, result in results}
     de_pairs = pd.DataFrame(de_pairs).T
     return de_pairs
