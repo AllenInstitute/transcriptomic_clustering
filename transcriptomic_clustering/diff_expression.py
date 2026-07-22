@@ -220,7 +220,7 @@ def get_qdiff(q1, q2) -> np.array:
     qmax = np.maximum(q1, q2)
     qmax[qmax == 0] = np.nan
     q_diff = abs(q1 - q2) / qmax
-    np.nan_to_num(q_diff, nan=0.0, copy=False)
+    q_diff = np.nan_to_num(q_diff, nan=0.0)
 
     return q_diff
 

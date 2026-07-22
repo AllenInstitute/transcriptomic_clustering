@@ -1,0 +1,44 @@
+name: Close issues on merge to dev
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev]
+jobs:
+  close_linked_issue:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            // Read the merged PR body straight from the event payload. (Native
+            // auto-close only fires for the default branch; a push-triggered
+            // commit->PR lookup races with GitHub's indexing right after merge.)
+            const pr = context.payload.pull_request;
+            if (!pr.body) { console.log('Merged PR has no body'); return; }
+
+            const KW = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
+            const numbers = new Set();
+
+            // Short form: "Closes #1", "Fixes #1, #2 and #3".
+            const shortRe = new RegExp(`${KW}\\s*:?\\s+((?:#\\d+(?:\\s*(?:,|and)\\s*#\\d+)*)+)`, 'gi');
+            for (const m of pr.body.matchAll(shortRe))
+              for (const x of m[1].matchAll(/#(\d+)/g)) numbers.add(parseInt(x[1], 10));
+
+            // Full issue URL, restricted to THIS repo (or its former name, so an
+            // old enhancer-designer/issues/N URL still resolves after the rename).
+            const REPO_ALIASES = new Set([repo.toLowerCase(), 'enhancer-designer']);
+            const urlRe = new RegExp(`${KW}\\s*:?\\s+https?://github\\.com/([^\\s/]+)/([^\\s/]+)/issues/(\\d+)`, 'gi');
+            for (const m of pr.body.matchAll(urlRe))
+              if (m[1].toLowerCase() === owner.toLowerCase() && REPO_ALIASES.has(m[2].toLowerCase()))
+                numbers.add(parseInt(m[3], 10));
+
+            for (const n of numbers) {
+              const issue = await github.rest.issues.get({ owner, repo, issue_number: n });
+              if (issue.data.pull_request) { console.log(`Skipping PR #${n}`); continue; }
+              console.log(`Closing issue #${n}`);
+              await github.rest.issues.update({ owner, repo, issue_number: n, state: 'closed', state_reason: 'completed' });
+            }

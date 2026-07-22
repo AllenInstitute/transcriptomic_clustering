@@ -1,0 +1,77 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR branch).
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+
+    - name: Install dependencies
+      run: |
+        uv sync --group dev --group s3
+
+    - name: Run tests
+      run: |
+        # Quick suite on every PR/branch; full suite (slow + integration) only
+        # when landing on main (PR targeting main, or push to main itself).
+        PYTEST_ARGS=(tests/)
+
+        if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.base_ref }}" == "main" ]]; then
+          echo "Landing on main: running full suite including slow and integration tests."
+        else
+          # Quick suite is a subset, so don't enforce the global coverage floor here.
+          echo "Running quick suite (excluding slow and integration tests)."
+          PYTEST_ARGS+=(-m "not slow and not integration" --cov-fail-under=0)
+        fi
+
+        uv run pytest "${PYTEST_ARGS[@]}"
+
+    - name: Publish coverage badge to gist
+      # Runs on push to main (full suite), where coverage reflects the whole
+      # test set. Writes a shields.io endpoint JSON to a public gist so the
+      # README badge works despite this being an internal repo.
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      continue-on-error: true  # badge publishing is best-effort; never fail the push
+      env:
+        GH_TOKEN: ${{ secrets.GIST_TOKEN }}
+        GIST_ID: ${{ secrets.COVERAGE_GIST_ID }}
+      run: |
+        uv run coverage json -q -o .coverage.json
+        pct=$(python3 -c "import json; print(round(json.load(open('.coverage.json'))['totals']['percent_covered']))")
+        if   [ "$pct" -ge 90 ]; then color=brightgreen
+        elif [ "$pct" -ge 80 ]; then color=green
+        elif [ "$pct" -ge 70 ]; then color=yellowgreen
+        elif [ "$pct" -ge 60 ]; then color=yellow
+        elif [ "$pct" -ge 50 ]; then color=orange
+        else color=red; fi
+        echo "Coverage ${pct}% (${color})"
+        python3 - "$pct" "$color" <<'PY' | gh api --method PATCH "/gists/$GIST_ID" --input -
+        import json, sys
+        pct, color = sys.argv[1], sys.argv[2]
+        badge = json.dumps({"schemaVersion": 1, "label": "coverage", "message": f"{pct}%", "color": color})
+        print(json.dumps({"files": {"coverage.json": {"content": badge}}}))
+        PY
