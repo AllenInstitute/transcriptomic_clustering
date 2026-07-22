@@ -33,8 +33,7 @@ for i, cell_ids in enumerate(clusters):
     obs_by_cluster[i] = cell_ids
 
 # subset the adata to include only the first two clusters for testing
-adata = adata[obs_by_cluster[0] + obs_by_cluster[1], :].copy()
-
+adata = adata[list(obs_by_cluster[0]) + list(obs_by_cluster[1]), :].copy()
 # create the new obs_by_cluster of cluster id to the cell indices in the subsetted adata
 obs_by_cluster_subset = {}
 obs_by_cluster_subset[0] = [i for i in range(len(obs_by_cluster[0]))]
