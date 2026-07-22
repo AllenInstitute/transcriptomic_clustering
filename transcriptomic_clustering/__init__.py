@@ -30,5 +30,4 @@ from .cluster_means import get_cluster_means
 from .merging import merge_clusters
 from .diff_expression import de_pairs_chisq, vec_chisq_test
 from .de_ebayes import de_pairs_ebayes, de_pairs_ebayes_parallel
-from .merging import merge_clusters
 from .final_merging import final_merge
