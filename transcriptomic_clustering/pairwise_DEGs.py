@@ -45,9 +45,7 @@ def pairwise_degs(
         The size of chunks to process at a time. If None, the entire dataset is processed
     thresholds : Dict[str, Any]
     n_markers : int
-        The number of up-regulated and downregulated markers to return for all pairs of clusters
-    """
-    cluster_by_obs = _cluster_obs_dict_to_list(obs_by_cluster)
+    cluster_by_obs = np.asarray(_cluster_obs_dict_to_list(obs_by_cluster))
     logger.info("Computing Cluster Means")
     tic = time.perf_counter()
     cl_means, present_cl_means, cl_vars = tc.get_cluster_means(adata_norm,
