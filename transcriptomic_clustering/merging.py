@@ -37,7 +37,7 @@ def merge_clusters(
         chunk_size: Optional[int] = None,
         return_markers_df: Optional[bool] = False,
         n_jobs: Optional[int] = 1
-) -> Tuple[Dict[Any, np.ndarray], Set]:
+) -> Tuple[Dict[Any, np.ndarray], Any]:
     """
     Merge clusters based on size and differential gene expression score
 
