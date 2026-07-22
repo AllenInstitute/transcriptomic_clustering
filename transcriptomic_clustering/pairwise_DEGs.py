@@ -1,11 +1,10 @@
 import anndata as ad
-import scanpy as sc
 import time
 from typing import Dict, List, Any, Optional
+import numpy as np
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.markers import select_marker_genes
 import logging
-
 logger = logging.getLogger(__name__)
 
 def _cluster_obs_dict_to_list(obs_by_cluster: Dict[int, List[int]]) -> List[int]:
