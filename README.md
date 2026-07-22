@@ -81,27 +81,6 @@ Functions are available from the modules shown below.
 Refer to the function docstrings and
 [example notebooks](docs/notebooks/) for inputs, outputs, and workflow context.
 
-## Containers
-
-The existing `njjai/tclust:0.1` image can be used to open an isolated
-environment without installing the package locally.
-
-With Singularity:
-
-```bash
-singularity shell --cleanenv docker://njjai/tclust:0.1
-```
-
-With Docker:
-
-```bash
-docker pull njjai/tclust:0.1
-docker run --rm -it njjai/tclust:0.1 /bin/bash
-```
-
-Pin the image tag in scripts and analysis records to help make container-based
-workflows reproducible.
-
 ## Development and testing
 
 After completing the [quick start](#quick-start), install the test dependencies
