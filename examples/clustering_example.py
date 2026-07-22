@@ -1,3 +1,4 @@
+import sys
 import scanpy as sc
 import pandas as pd
 import numpy as np
@@ -5,6 +6,8 @@ import pickle
 
 # Skip this line if transcriptomic_clustering is installed
 sys.path.insert(1, '/allen/programs/celltypes/workgroups/rnaseqanalysis/dyuan/tool/transcriptomic_clustering/')
+
+import transcriptomic_clustering as tc
 
 from transcriptomic_clustering.iterative_clustering import (
     build_cluster_dict, iter_clust, OnestepKwargs
