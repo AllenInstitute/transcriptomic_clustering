@@ -1,0 +1,72 @@
+name: Label PRs based on size
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  add_pr_size_label:
+    runs-on: ubuntu-latest
+    name: Check PR size
+
+    steps:
+      - name: Label PR based on added lines
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const number = context.payload.pull_request.number;
+
+            // Size = added non-test lines. Generated/binary files and test files
+            // are excluded so lockfile churn, notebook JSON, assets, and thorough
+            // test suites don't inflate the label; additions only, so removals are
+            // rewarded, not penalized.
+            const IGNORED_NAMES = new Set([
+              'uv.lock', 'poetry.lock', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
+            ]);
+            const IGNORED_EXTS = new Set([
+              'ipynb', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'pdf', 'lock',
+            ]);
+            const isIgnored = (path) => {
+              const name = path.split('/').pop();
+              const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+              return IGNORED_NAMES.has(name) || IGNORED_EXTS.has(ext);
+            };
+            const isTest = (path) => {
+              const name = path.split('/').pop();
+              return /(^|\/)tests?\//.test(path) || /^test_.*\.py$/.test(name) || name === 'conftest.py';
+            };
+
+            // Buckets on added non-test lines. Ordered small -> large.
+            const BUCKETS = [
+              { max: 150, label: '😇 Small' },
+              { max: 500, label: '🙂 Medium' },
+              { max: 1500, label: '😵 Huge' },
+              { max: Infinity, label: '🤯 Insane' },
+            ];
+            const ALL_LABELS = BUCKETS.map(b => b.label);
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: number, per_page: 100,
+            });
+            const additions = files
+              .filter(f => !isIgnored(f.filename) && !isTest(f.filename))
+              .reduce((sum, f) => sum + f.additions, 0);
+
+            const target = BUCKETS.find(b => additions <= b.max).label;
+            console.log(`Counted ${additions} added non-test lines (generated/binary/test files excluded) -> ${target}`);
+
+            const current = (await github.rest.issues.listLabelsOnIssue({
+              owner, repo, issue_number: number,
+            })).data.map(l => l.name);
+
+            for (const stale of current.filter(l => ALL_LABELS.includes(l) && l !== target)) {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: number, name: stale });
+            }
+            if (!current.includes(target)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [target] });
+            }
