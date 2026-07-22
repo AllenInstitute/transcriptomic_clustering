@@ -180,7 +180,7 @@ def de_pairs_ebayes(
         # t-test with ebayes adjusted variances
         means_diff = cl_means.loc[cluster_a] - cl_means.loc[cluster_b]
         means_diff = means_diff.to_frame()
-        stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))[0]
+        stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))
         
         df_total = df + df_prior
         df_pooled = np.sum(df)
@@ -241,7 +241,7 @@ def process_pair(cl_means, cl_present, cl_size, stdev_unscaled, df, df_prior, si
     # t-test with ebayes adjusted variances
     means_diff = cl_means.loc[cluster_a] - cl_means.loc[cluster_b]
     means_diff = means_diff.to_frame()
-    stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))[0]
+    stdev_unscaled_comb = np.sqrt(np.sum(stdev_unscaled.loc[[cluster_a, cluster_b]] ** 2))
     
     df_total = df + df_prior
     df_pooled = np.sum(df)
