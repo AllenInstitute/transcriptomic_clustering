@@ -35,16 +35,24 @@ def pairwise_degs(
         ):
     """
     Perform pairwise differential expression analysis on clusters in an AnnData object.
+
     Parameters
     ----------
     adata_norm : AnnData
         The normalized AnnData object containing the data.
-    cluster_assignments : Dict[Any, List]
+    obs_by_cluster : Dict[Any, List]
         A dictionary where keys are cluster names and values are lists of cell names belonging to those clusters
     chunk_size : Optional[int]
         The size of chunks to process at a time. If None, the entire dataset is processed
     thresholds : Dict[str, Any]
+        Dictionary of thresholds for marker gene selection.
     n_markers : int
+        Number of markers selected from each direction.
+    de_method : str
+        Differential expression method to use. Default is 'ebayes'.
+    n_jobs : int
+        Number of parallel jobs to use. Default is 30.
+    """
     cluster_by_obs = np.asarray(_cluster_obs_dict_to_list(obs_by_cluster))
     logger.info("Computing Cluster Means")
     tic = time.perf_counter()
