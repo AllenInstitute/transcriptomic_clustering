@@ -216,7 +216,7 @@ def merge_cluster_means_vars(
     Merge source cluster into a destination cluster by:
     1. computing the updated cluster centroid (mean gene expression)
         of the destination cluster
-    2. compute updated variance
+    2. compute updated sample variance (ddof=1)
     3. deleting source cluster after merged
 
     Parameters
@@ -244,20 +244,21 @@ def merge_cluster_means_vars(
 
     mean_comb = (mean1 * n1 + mean2 * n2) / (n1 + n2)
 
-    cluster_means.loc[label_dest] = mean_comb
-    cluster_means.drop(label_source, inplace=True)
-
     if cluster_variances is not None:
         var1 = cluster_variances.loc[label_source]
         var2 = cluster_variances.loc[label_dest]
         
         var_comb = 1 / (n1 + n2 - 1) * (
             (n1 - 1) * var1 + n1 * (mean1 - mean_comb) ** 2 +
-            (n2 - 1) * var2 + n1 * (mean2 - mean_comb) ** 2
+            (n2 - 1) * var2 + n2 * (mean2 - mean_comb) ** 2
         )
 
         cluster_variances.loc[label_dest] = var_comb
         cluster_variances.drop(label_source, inplace=True)
+
+    # Preserve the original means above: pandas rows can be views.
+    cluster_means.loc[label_dest] = mean_comb
+    cluster_means.drop(label_source, inplace=True)
 
 
 def cdist_normalized(
