@@ -16,6 +16,33 @@ from transcriptomic_clustering.iterative_clustering import (
     manage_cluster_adata, create_filebacked_clusters, iter_clust,
     summarize_final_clusters,
 )
+from transcriptomic_clustering.onestep_clustering import OnestepKwargs, onestep_clust
+
+
+@pytest.mark.parametrize("clustering", [onestep_clust, iter_clust])
+@pytest.mark.parametrize("marker_kwargs, expected_markers", [
+    ({}, set()),
+    ({"n_markers": None}, None),
+])
+def test_single_cluster_leaf(clustering, marker_kwargs, expected_markers):
+    norm_adata = ad.AnnData(np.ones((8, 3), dtype=np.float32))
+    norm_adata.obsm["latent"] = np.zeros((8, 2), dtype=np.float32)
+    cell_indices = list(range(norm_adata.n_obs))
+    onestep_kwargs = OnestepKwargs(
+        latent_kwargs={"latent_component": "latent"},
+        merge_clusters_kwargs=marker_kwargs,
+    )
+    kwargs = {"tmp_dir": Path(".")} if clustering is iter_clust else {}
+
+    with patch.object(tc, "cluster_louvain", return_value=(
+        np.zeros(norm_adata.n_obs), {0: cell_indices}, None, None
+    )):
+        clusters, markers = clustering(
+            norm_adata, onestep_kwargs=onestep_kwargs, **kwargs
+        )
+
+    assert clusters == [cell_indices]
+    assert markers == expected_markers
 
 
 def test_create_filebacked_clusters_chunked():

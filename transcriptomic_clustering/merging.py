@@ -75,10 +75,18 @@ def merge_clusters(
     cluster_assignments:
         updated mapping of cluster assignments
     markers:
-        if select_markers, set of genes that differentiate clusters, or empty set
+        set of genes that differentiate clusters, or a dataframe if
+        return_markers_df is True. Empty for a single cluster; None if
+        n_markers is None and return_markers_df is False.
     """
     if len(cluster_assignments.keys()) == 1:
-        return cluster_assignments.copy()
+        if return_markers_df is False and n_markers is None:
+            markers = None
+        elif return_markers_df:
+            markers = pd.DataFrame()
+        else:
+            markers = set()
+        return cluster_assignments.copy(), markers
 
     # Calculate cluster means on reduced space
     logger.info("Computing reduced cluster means")
