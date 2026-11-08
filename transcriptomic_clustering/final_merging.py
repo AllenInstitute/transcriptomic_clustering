@@ -44,7 +44,7 @@ def sample_clusters(
 
     Returns
     -------
-    pd.Series that is True for cells selected for sampling
+    pd.Series that is True for cells selected for sampling and False otherwise
     """
 
     rng = default_rng(random_seed)
@@ -59,6 +59,7 @@ def sample_clusters(
     cell_samples = adata.obs_names[cell_samples_ids]
 
     cell_mask = pd.Series(
+        False,
         index=adata.obs.index,
         dtype=bool,
     )
@@ -130,6 +131,7 @@ def final_merge(
             random_seed=random_seed
         )
         gene_mask = pd.Series(
+            False,
             index=adata.var.index,
             dtype=bool
         )
