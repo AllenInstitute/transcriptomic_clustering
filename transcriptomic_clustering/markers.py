@@ -40,6 +40,8 @@ def select_marker_genes(
     
     Returns
     -------
+    Gene names as a set, or pairwise statistics with gene-name lists when
+    return_markers_df is True, for either differential-expression method.
     """
     cl_size = {k: len(v) for k, v in cluster_assignments.items()}
 
@@ -77,6 +79,13 @@ def select_marker_genes(
             cl_size,
             thresholds,
         )
+        # Chi-square summaries use positions in sorted gene columns.
+        gene_names = cluster_means.columns.sort_values()
+        for column in ("up_genes", "down_genes"):
+            if column in de_df:
+                de_df[column] = de_df[column].map(
+                    lambda positions: gene_names.take(positions).tolist()
+                )
     else:
         raise ValueError(f'Unknown de_method {de_method}, must be one of [chisq, ebayes]')
     

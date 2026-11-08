@@ -125,6 +125,31 @@ def test_get_annoy_knn_new_index(pca_data, sample_graph, sample_index_file):
     graph_adata = tc.clustering.get_annoy_knn(pca_data, TEST_K, random_seed=TEST_RANDOM_SEED)
     assert np.array_equal(sample_graph.X.toarray(), graph_adata.X.toarray())
 
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_annoy_owned_indexes_are_cleaned(tmp_path, monkeypatch, fail):
+    monkeypatch.setattr(tc.clustering.tempfile, "tempdir", str(tmp_path))
+    data = sc.AnnData(np.arange(24, dtype=np.float32).reshape(8, 3))
+    if fail:
+        with pytest.raises(ValueError, match="valid weighting"):
+            tc.clustering.get_annoy_knn(
+                data, 3, weighting_method="invalid", random_seed=0
+            )
+    else:
+        first = tc.clustering.get_annoy_knn(data, 3, random_seed=0)
+        second = tc.clustering.get_annoy_knn(data, 3, random_seed=0)
+        np.testing.assert_array_equal(first.X.toarray(), second.X.toarray())
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_annoy_caller_index_is_retained(tmp_path):
+    data = sc.AnnData(np.arange(24, dtype=np.float32).reshape(8, 3))
+    path = str(tmp_path / "caller.ann")
+    first = tc.clustering.get_annoy_knn(data, 3, annoy_index_filename=path, random_seed=0)
+    assert os.path.isfile(path)
+    second = tc.clustering.get_annoy_knn(data, 3, annoy_index_filename=path)
+    np.testing.assert_array_equal(first.X.toarray(), second.X.toarray())
+
 def test_get_annoy_knn_reproducibility(pca_data, sample_graph, sample_index_file):
     graph_adata = tc.clustering.get_annoy_knn(pca_data, TEST_K, random_seed=TEST_RANDOM_SEED, annoy_index_filename=sample_index_file)
     assert np.array_equal(sample_graph.X.toarray(), graph_adata.X.toarray())

@@ -56,9 +56,6 @@ def create_filebacked_clusters(adata, clusters, tmp_dir: Path):
     )
 
     old_filename = Path(adata.filename).stem
-    # TODO: Hack
-    chunk_size = 10000
-    # if chunk_size < adata.n_obs:
     writers = {}
     first = [True] * len(clusters)
     for chunk, start, end in adata.chunked_X(chunk_size):
@@ -131,7 +128,7 @@ def manage_cluster_adata(adata, clusters, tmp_dir: Path):
     
     if old_filename is not None and (tmp_dir in Path(old_filename).resolve().parents):
         # Safely delete
-        del adata
+        adata.file.close()
         if old_filename:
             os.remove(old_filename)
             logger.debug(f'Deleted filebacked AnnData {old_filename}')
@@ -201,7 +198,10 @@ def iter_clust(
             cluster_cell_idxs = np.asarray(cluster_cell_idxs)
             new_clusters.extend([cluster_cell_idxs[cell_idxs] for cell_idxs in new_subclusters])
             # Combine markers
-            markers.update(new_markers)
+            if new_markers is not None:
+                if markers is None:
+                    markers = set()
+                markers.update(new_markers)
 
     return new_clusters, markers
 

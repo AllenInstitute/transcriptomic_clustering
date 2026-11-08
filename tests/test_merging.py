@@ -342,7 +342,9 @@ def test_merge_clusters_de_chisq(tasic_data_for_merge):
 
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
     for k, v in cluster_assignments_after_merging.items():
-        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+        assert set(v) == set(expected_cluster_assignments_after_merging[k])
+    assert markers
+    assert markers <= set(tasic_norm_adata.var_names)
 
 
 def test_merge_clusters_de_ebayes(tasic_data_for_merge):
@@ -368,7 +370,9 @@ def test_merge_clusters_de_ebayes(tasic_data_for_merge):
 
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
     for k, v in cluster_assignments_after_merging.items():
-        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+        assert set(v) == set(expected_cluster_assignments_after_merging[k])
+    assert markers
+    assert markers <= set(tasic_norm_adata.var_names)
 
 
 def test_order_pairs():

@@ -8,6 +8,7 @@ from pandas.testing import assert_series_equal
 
 import transcriptomic_clustering as tc
 from transcriptomic_clustering.final_merging import sample_clusters
+from transcriptomic_clustering.final_merging import FinalMergeKwargs
 
 
 @pytest.fixture
@@ -51,6 +52,7 @@ def test_sample_clusters_selects_only_sampled_cells(
     "marker_genes",
     [
         ["gene_3", "gene_1"],
+        {"gene_3", "gene_1"},
         ["gene_2"],
         [],
         ["gene_0", "gene_1", "gene_2", "gene_3"],
@@ -89,3 +91,27 @@ def test_final_merge_passes_only_sampled_cells_and_marker_genes_to_pca(
     assert set(gene_mask.index[gene_mask]) == set(marker_genes)
     assert cell_mask.sum() == len(expected_cells)
     assert gene_mask.sum() == len(marker_genes)
+
+
+@pytest.mark.parametrize("latent", [False, True])
+def test_final_merge_real_marker_set(separated_expression, latent):
+    data = separated_expression
+    data.obsm["latent"] = np.column_stack(
+        [np.repeat([0., 100.], 30), np.tile(np.arange(30), 2) / 100]
+    )
+    clusters, markers = tc.final_merge(
+        data, [list(range(15)), list(range(15, 30)), list(range(30, 60))],
+        marker_genes={f"gene_{i}" for i in range(20)},
+        random_seed=42,
+        final_merge_kwargs=FinalMergeKwargs(
+            pca_kwargs={"n_comps": 3},
+            filter_pcs_kwargs={"method": "elbow", "max_pcs": 2},
+            latent_kwargs={"latent_component": "latent"} if latent else {},
+            merge_clusters_kwargs={"n_markers": 5},
+        ),
+    )
+    assert {frozenset(c) for c in clusters} == {
+        frozenset(range(30)), frozenset(range(30, 60))
+    }
+    assert markers
+    assert markers <= {f"gene_{i}" for i in range(20)}

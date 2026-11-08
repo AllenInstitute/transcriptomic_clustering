@@ -110,6 +110,8 @@ def final_merge(
         AnnData object
     cluster_assignments
         List of arrays of cell ids, one array per cluster. This is the result returned by onestep_clust/iter_clust
+    marker_genes
+        Set or sequence of gene names. PCA uses their order in adata.var_names.
     
     """
 
@@ -135,7 +137,7 @@ def final_merge(
             index=adata.var.index,
             dtype=bool
         )
-        gene_mask[marker_genes] = True
+        gene_mask.loc[list(marker_genes)] = True
 
         # Do PCA on cell samples and marker genes
         logger.info('Computing PCA on cell samples and marker genes')
