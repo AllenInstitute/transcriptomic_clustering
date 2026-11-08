@@ -256,6 +256,36 @@ def tasic_data_for_merge():
     return normalized_adata, reduced_dim_adata, thresholds
 
 
+@pytest.mark.parametrize("marker_kwargs, expected_markers", [
+    ({}, set()),
+    ({"n_markers": None}, None),
+    ({"n_markers": 0}, set()),
+    ({"return_markers_df": True}, pd.DataFrame()),
+    ({"return_markers_df": True, "n_markers": None}, pd.DataFrame()),
+])
+def test_merge_clusters_single_cluster(adata, marker_kwargs, expected_markers):
+    cluster_assignments = {0: list(range(adata.n_obs))}
+
+    result = tc.merge_clusters(
+        adata_norm=adata,
+        adata_reduced=adata,
+        cluster_assignments=cluster_assignments,
+        cluster_by_obs=np.zeros(adata.n_obs),
+        **marker_kwargs
+    )
+
+    assert isinstance(result, tuple)
+    assignments, markers = result
+    assert assignments == cluster_assignments
+    assert assignments is not cluster_assignments
+    assignments.pop(0)
+    assert cluster_assignments == {0: list(range(adata.n_obs))}
+    if isinstance(expected_markers, pd.DataFrame):
+        assert_frame_equal(markers, expected_markers)
+    else:
+        assert markers == expected_markers
+
+
 def test_merge_clusters_de_chisq(tasic_data_for_merge):
 
     tasic_norm_adata, tasic_reduced_dim_adata, thresholds = tasic_data_for_merge
@@ -366,4 +396,3 @@ def test_merge_clusters_by_de():
     assert set(cluster_assignments.keys()) == set(expected_cluster_assignments_after_merging.keys())
     for k, v in cluster_assignments.items():
         assert set(cluster_assignments[k]) == set(expected_cluster_assignments_after_merging[k])
-
