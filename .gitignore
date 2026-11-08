@@ -46,6 +46,8 @@ coverage.xml
 .hypothesis/
 htmlcov/
 .pytest_cache
+.test-work/
+test-reports/
 
 
 # Byte-compiled / optimized / DLL files
