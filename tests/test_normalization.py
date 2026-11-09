@@ -46,7 +46,7 @@ def test_normalize_in_memory(X, normalized_X):
     np.testing.assert_almost_equal(csr_matrix.toarray(obtained), expected, decimal=6)
 
 
-def test_normalize_backed(X, normalized_X, tmpdir_factory):
+def test_normalize_backed(X, normalized_X, tmpdir_factory, request):
 
     expected_X = normalized_X
 
@@ -57,6 +57,7 @@ def test_normalize_backed(X, normalized_X, tmpdir_factory):
     ad.AnnData(csr_matrix(X)).write(input_file_name) # make tmp input file
 
     adata = sc.read_h5ad(input_file_name, backed='r')
+    request.addfinalizer(adata.file.close)
     adata_normalized = normalize_backed(adata, copy_to=output_file_name, chunk_size=2)
     adata_normalized.file.close()
 
@@ -79,4 +80,3 @@ def test_normalize_inplace(X):
     # return same object
     adata_normalized = normalize(adata, inplace=True)
     assert adata_normalized is adata
-

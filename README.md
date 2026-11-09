@@ -34,7 +34,12 @@ The notebooks include a general
 
 ## Quick start
 
-The supported environment is Python 3.8 on Linux. Clone the repository, create
+The tested environments are Python 3.8 and 3.11 on Linux. Python 3.11 is
+recommended for new environments; 3.8 remains compatible but is upstream EOL.
+Install a C/C++ compiler and CMake 3.x first (for example,
+`sudo apt-get install build-essential cmake pkg-config libxml2-dev` on Ubuntu).
+The pinned native graph libraries build from source on Python 3.11.
+Clone the repository, create
 an isolated environment, install the requirements, and install the package in
 editable mode:
 
@@ -42,11 +47,10 @@ editable mode:
 git clone https://github.com/AllenInstitute/transcriptomic_clustering.git
 cd transcriptomic_clustering
 
-python3.8 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install "pip<25.1" "setuptools<76" wheel
 python -m pip install -e .
 ```
 
@@ -88,8 +92,20 @@ and run the existing test suite:
 
 ```bash
 python -m pip install -r test_requirements.txt
-pytest tests
+git lfs install
+git lfs pull --include="tests/data/**"
+mkdir -p .test-work
+export TMPDIR="$PWD/.test-work"
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1
+python scripts/check_native_graph.py
+python -m pytest --basetemp=.test-work/pytest
 ```
+
+The default suite includes the real chi-square and empirical-Bayes merging
+integrations and large Git LFS fixtures. Allow a few minutes and several GB of
+free disk space. See [CONTRIBUTING.md](CONTRIBUTING.md) for matrix, coverage and
+build instructions. Do not upgrade igraph independently of leidenalg: the
+0.9.11/0.8.4 pairing avoids a native ABI crash.
 
 Please add tests and documentation for new behavior, and follow the workflow in
 [CONTRIBUTING.md](CONTRIBUTING.md).

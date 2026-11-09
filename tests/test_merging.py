@@ -116,7 +116,7 @@ def test_merge_two_clusters(adata, clusters):
     )
     expected_cluster_variances = pd.DataFrame(
         np.asarray([[5, 2.25, 7.5],
-                    [10.131944, 8.333333, 5.131944],
+                    [10.694444, 9.333333, 6.694444],
                     [1.0, 0.25, 9.0]]),
         index = ['11', 2, '32'],
         columns=adata.var_names
@@ -129,6 +129,39 @@ def test_merge_two_clusters(adata, clusters):
     assert_frame_equal(cluster_means, expected_cluster_means)
     assert_frame_equal(cluster_variances,expected_cluster_variances)
     assert_frame_equal(present_cluster_means, expected_present_cluster_means)
+
+
+@pytest.mark.parametrize("sizes", [(10, 100), (10, 10)])
+@pytest.mark.parametrize("label_source,label_dest", [(0, 1), (1, 0)])
+def test_merge_two_clusters_sample_variance(sizes, label_source, label_dest):
+    """Merged sample variance matches raw data in either merge direction."""
+    rng = np.random.default_rng(150)
+    groups = [
+        rng.normal(loc=0, scale=1, size=(sizes[0], 3)),
+        rng.normal(loc=5, scale=2, size=(sizes[1], 3)),
+    ]
+    cluster_assignments = {
+        0: list(range(sizes[0])),
+        1: list(range(sizes[0], sum(sizes))),
+    }
+    cluster_means = pd.DataFrame([group.mean(axis=0) for group in groups])
+    cluster_variances = pd.DataFrame([
+        group.var(axis=0, ddof=1) for group in groups
+    ])
+
+    merging.merge_two_clusters(
+        cluster_assignments,
+        label_source=label_source,
+        label_dest=label_dest,
+        cluster_means=cluster_means,
+        cluster_variances=cluster_variances,
+    )
+
+    combined = np.concatenate(groups)
+    expected_variances = pd.DataFrame(
+        [combined.var(axis=0, ddof=1)], index=[label_dest]
+    )
+    assert_frame_equal(cluster_variances, expected_variances)
 
 
 def test_cdist_normalized():
@@ -309,7 +342,9 @@ def test_merge_clusters_de_chisq(tasic_data_for_merge):
 
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
     for k, v in cluster_assignments_after_merging.items():
-        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+        assert set(v) == set(expected_cluster_assignments_after_merging[k])
+    assert markers
+    assert markers <= set(tasic_norm_adata.var_names)
 
 
 def test_merge_clusters_de_ebayes(tasic_data_for_merge):
@@ -335,7 +370,9 @@ def test_merge_clusters_de_ebayes(tasic_data_for_merge):
 
     assert set(cluster_assignments_after_merging.keys()) == set(expected_cluster_assignments_after_merging.keys())
     for k, v in cluster_assignments_after_merging.items():
-        assert set(cluster_assignments_after_merging[k]) == set(cluster_assignments_after_merging[k])
+        assert set(v) == set(expected_cluster_assignments_after_merging[k])
+    assert markers
+    assert markers <= set(tasic_norm_adata.var_names)
 
 
 def test_order_pairs():

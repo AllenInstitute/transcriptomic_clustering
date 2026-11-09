@@ -21,31 +21,30 @@ jobs:
       - run:
           name: install git-lfs
           command: |
-            apt-get update && apt-get install -y curl
+            apt-get update && apt-get install -y curl build-essential cmake pkg-config libxml2-dev
             curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
             apt-get install -y git-lfs
             git lfs install
       - checkout
+      - run: git lfs pull --include="tests/data/**" && git -c lfs.fetchexclude="docs/notebooks/data/**" lfs fsck
       - run: echo ". /opt/conda/etc/profile.d/conda.sh" >> ${BASH_ENV}
       - restore_cache:
           keys:
-            - v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
-            # fallback to using the latest cache if no exact match is found
-            - v1-linux_cache-
+            - v2-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
 
       - run: 
           name: create conda env
           command: |
             if [ ! -d ~/.conda_envs/build_env_tx_clustering ]; then
-              conda create -c conda-forge python=3.8 \
+              conda create -y -c conda-forge python=3.8 \
               -p ~/.conda_envs/build_env_tx_clustering/
             fi
             conda activate ~/.conda_envs/build_env_tx_clustering
             conda install -y gcc_linux-64
             conda install -y gxx_linux-64
-            pip install -r requirements.txt -U
-            pip install -r test_requirements.txt -U
-            pip install .
+            python -m pip install "pip<25.1" "setuptools<76" wheel
+            python -m pip install -e . -r test_requirements.txt
+            python -m pip check
             conda list
 
       - run: 
@@ -53,8 +52,14 @@ jobs:
           command: |
             conda activate ~/.conda_envs/build_env_tx_clustering
             set -e
-            pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=transcriptomic_clustering
-            codecov -t ${codecov_key}
+            export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1
+            mkdir -p .test-work test-reports
+            export TMPDIR="$PWD/.test-work"
+            python scripts/check_native_graph.py
+            python -m pip freeze > test-reports/environment.txt
+            python -m pytest --basetemp=.test-work/pytest --junitxml=test-reports/junit.xml --cov-config=.coveragerc --cov=transcriptomic_clustering --cov-report=term --cov-report=xml:test-reports/coverage.xml
+      - store_test_results:
+          path: test-reports
       - store_artifacts:
           path: test-reports
           destination: test-reports
@@ -62,7 +67,7 @@ jobs:
       - save_cache:
           paths:
             - ~/.conda_envs/
-          key: v1-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
+          key: v2-linux_cache-{{ checksum ".circleci/config.yml" }}-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt"}}
 
   test_mac:
     executor: mac
@@ -90,7 +95,6 @@ jobs:
           command: |
             . venv/bin/activate
             pytest tests/ --junitxml=test-reports/coverage_report.xml --cov-config=.coveragerc --cov=transcriptomic_clustering
-            codecov -t ${codecov_key}
       - store_artifacts:
           path: test-reports
           destination: test-reports 

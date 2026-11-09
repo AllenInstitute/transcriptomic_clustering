@@ -41,7 +41,7 @@ def pca(
                 Will use `cell_select` cells for pca
     gene_mask:
         :term:`mask` (a list, tuple, slice, ndarray, etc)
-            Will use 'gene_mask' cells for pca.
+            Will use 'gene_mask' genes for pca.
     use_highly_variable:
         Will only use highly variable genes 
         (cannot be used with gene_mask)
@@ -103,7 +103,7 @@ def pca(
     oidx, _ = adata._normalize_indices((cell_mask, slice(None))) # handle cell mask like anndata would
     oidx_bool = np.zeros((adata.n_obs,), dtype=bool)
     oidx_bool[oidx] = True
-    n_cells = len(oidx)
+    n_cells = np.count_nonzero(oidx_bool)
     
     # Mask adata
     logger.debug("Selecting Gene Mask")

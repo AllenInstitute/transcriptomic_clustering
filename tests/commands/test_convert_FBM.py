@@ -22,8 +22,14 @@ from transcriptomic_clustering.commands.convert_FBM import convert_FBM_cmd, DTYP
     ]
 )
 def test_convert_FBM(tmp_path, normalize, in_dtype, out_dtype):
-    nobs = 10000
-    nvar = 3000
+    _check_convert_FBM(tmp_path, normalize, in_dtype, out_dtype, 7, 5, 3)
+
+
+def test_convert_FBM_large(tmp_path):
+    _check_convert_FBM(tmp_path, False, "double64", "float32", 10000, 3000, 1000)
+
+
+def _check_convert_FBM(tmp_path, normalize, in_dtype, out_dtype, nobs, nvar, chunk_size):
     ndata = nobs * nvar
 
     test_data = np.linspace(0, ndata, ndata, endpoint=False, dtype=DTYPE_DICT[in_dtype])
@@ -35,6 +41,8 @@ def test_convert_FBM(tmp_path, normalize, in_dtype, out_dtype):
         fbm_path, dtype=test_data.dtype, mode='w+', shape=(nvar, nobs), order="F"
     )
     fbm[:] = test_data_R[:]
+    fbm.flush()
+    del fbm
 
     genes = [f"Gene_{i}" for i in range(nvar)]
     cells = [f"Cell_{i}" for i in range(nobs)]
@@ -48,7 +56,7 @@ def test_convert_FBM(tmp_path, normalize, in_dtype, out_dtype):
     
     cmd_kwargs = {
         "-p": in_dtype,
-        "-c": "1000",
+        "-c": str(chunk_size),
         "-d": out_dtype,
     }
 
@@ -64,21 +72,23 @@ def test_convert_FBM(tmp_path, normalize, in_dtype, out_dtype):
 
     runner = CliRunner()
     result = runner.invoke(convert_FBM_cmd, cmd_args)
-    assert result.exit_code == 0
-    result_lines = result.output.split("\n")
-    out_path = result_lines[-2]
+    assert result.exit_code == 0, (result.output, repr(result.exception))
 
     if normalize:
         expected_out_path = str(tmp_path / 'fbm_normalized.h5ad')
     else:
         expected_out_path = str(tmp_path / 'fbm.h5ad')
-    assert out_path == expected_out_path
+    assert result.stdout.splitlines().count(expected_out_path) == 1
 
-    obt_ad = ad.read_h5ad(out_path)
+    obt_ad = ad.read_h5ad(expected_out_path)
     assert obt_ad.n_obs == nobs
     assert obt_ad.n_vars == nvar
     assert obt_ad.X.dtype == DTYPE_DICT[out_dtype]
+    assert obt_ad.obs_names.tolist() == cells
+    assert obt_ad.var_names.tolist() == genes
     if normalize:
-        np.testing.assert_allclose(np.expm1(obt_ad.X[0,:]).sum(), 1e6)
+        expected = test_data.astype(np.float64)
+        expected = np.log1p(expected / expected.sum(axis=1, keepdims=True) * 1e6)
+        np.testing.assert_allclose(obt_ad.X, expected)
     else:
         np.testing.assert_allclose(obt_ad.X, test_data)

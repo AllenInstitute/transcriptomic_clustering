@@ -3,7 +3,15 @@ Install
 
 requirements
 ------------
-We support Python 3.8 on Linux Similar Python versions will probably work, but we don't regularly test using those versions. 
+We test Python 3.8 and 3.11 on Linux. Prefer 3.11 for new environments;
+3.8 remains compatible for existing analyses but is upstream EOL.
+Other versions and operating systems are not in the CI matrix.
+
+Install a C/C++ compiler, CMake 3.x, pkg-config and libxml2 development headers.
+On Ubuntu, use ``sudo apt-get install build-essential cmake pkg-config libxml2-dev``.
+The native igraph/leidenalg pair builds from source on Python 3.11.
+Do not upgrade igraph independently: leidenalg 0.8.4 requires our pinned
+igraph/python-igraph 0.9.11 pairing to avoid a native crash.
 
 managing your Python environment
 --------------------------------
@@ -14,7 +22,7 @@ Two popular tools for managing Python environments are `anaconda <https://anacon
 
 .. code-block:: bash
 
-    conda create -y --name environment-name python=3.8
+    conda create -y --name environment-name python=3.11
     conda activate environment-name
 
 and using venv:
@@ -45,10 +53,13 @@ If you want to work on `transcriptomic_clustering`, you should first clone the r
     git clone https://github.com/alleninstitute/transcriptomic_clustering
     cd transcriptomic_clustering
 
-    pip install -r requirements.txt -U
-    pip install -r test_requirements.txt -U
+    python -m pip install "pip<25.1" "setuptools<76" wheel
+    python -m pip install -e . -r test_requirements.txt
+    python -m pip check
+    python scripts/check_native_graph.py
 
-    pip install -e .
+The repository's CONTRIBUTING.md documents Git LFS fixture acquisition,
+numerical thread limits and the full test/coverage commands for both interpreters.
 
 
 
