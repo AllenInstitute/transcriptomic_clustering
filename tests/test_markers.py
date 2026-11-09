@@ -80,8 +80,14 @@ def test_select_marker_genes():
 
 @pytest.mark.parametrize("method", ["chisq", "ebayes"])
 @pytest.mark.parametrize("return_frame", [False, True])
-def test_marker_names_for_unsorted_gene_columns(method, return_frame):
+@pytest.mark.parametrize("column_index", ["plain", "categorical", "ordered"])
+def test_marker_names_for_unsorted_gene_columns(method, return_frame, column_index):
     columns = ["up", "same", "down"]
+    if column_index != "plain":
+        columns = pd.CategoricalIndex(
+            columns, categories=["same", "up", "down"],
+            ordered=column_index == "ordered",
+        )
     means = pd.DataFrame([[10., 5., 0.], [0., 5., 10.]], columns=columns)
     present = pd.DataFrame([[0.9, 0.5, 0.1], [0.1, 0.5, 0.9]], columns=columns)
     result = select_marker_genes(

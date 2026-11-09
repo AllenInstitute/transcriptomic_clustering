@@ -121,7 +121,10 @@ def final_merge(
     
     cluster_by_obs = _cluster_obs_dict_to_list(obs_by_cluster)
 
-    if final_merge_kwargs.latent_kwargs.get("latent_component") is None:
+    if len(obs_by_cluster) == 1:
+        # merge_clusters handles leaf results without accessing reduced data.
+        projected_adata = adata
+    elif final_merge_kwargs.latent_kwargs.get("latent_component") is None:
 
         if marker_genes is None:
             raise ValueError("Need marker genes to run PCA")

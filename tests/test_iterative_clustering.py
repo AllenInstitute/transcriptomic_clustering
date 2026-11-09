@@ -12,6 +12,7 @@ from pandas.testing import assert_frame_equal
 from numpy.testing import assert_allclose
 
 import transcriptomic_clustering as tc
+from transcriptomic_clustering.final_merging import FinalMergeKwargs
 from transcriptomic_clustering.iterative_clustering import (
     manage_cluster_adata, create_filebacked_clusters, iter_clust,
     summarize_final_clusters,
@@ -20,11 +21,12 @@ from transcriptomic_clustering.onestep_clustering import OnestepKwargs, onestep_
 
 
 @pytest.mark.parametrize("clustering", [onestep_clust, iter_clust])
+@pytest.mark.parametrize("return_markers_df", [False, True])
 @pytest.mark.parametrize("marker_kwargs, expected_markers", [
     ({}, set()),
     ({"n_markers": None}, None),
 ])
-def test_single_cluster_leaf(clustering, marker_kwargs, expected_markers):
+def test_single_cluster_leaf(clustering, marker_kwargs, expected_markers, return_markers_df):
     norm_adata = ad.AnnData(np.ones((8, 3), dtype=np.float32))
     norm_adata.obsm["latent"] = np.zeros((8, 2), dtype=np.float32)
     cell_indices = list(range(norm_adata.n_obs))
@@ -43,6 +45,18 @@ def test_single_cluster_leaf(clustering, marker_kwargs, expected_markers):
 
     assert clusters == [cell_indices]
     assert markers == expected_markers
+
+    merged_clusters, merged_markers = tc.final_merge(
+        norm_adata, clusters, marker_genes=markers,
+        return_markers_df=return_markers_df,
+        final_merge_kwargs=FinalMergeKwargs(merge_clusters_kwargs=marker_kwargs),
+    )
+    assert merged_clusters == clusters
+    if return_markers_df:
+        assert isinstance(merged_markers, pd.DataFrame)
+        assert merged_markers.empty
+    else:
+        assert merged_markers == expected_markers
 
 
 def test_create_filebacked_clusters_chunked():

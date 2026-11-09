@@ -80,7 +80,7 @@ def select_marker_genes(
             thresholds,
         )
         # Chi-square summaries use positions in sorted gene columns.
-        gene_names = cluster_means.columns.sort_values()
+        gene_names = pd.Index(sorted(cluster_means.columns))
         for column in ("up_genes", "down_genes"):
             if column in de_df:
                 de_df[column] = de_df[column].map(
