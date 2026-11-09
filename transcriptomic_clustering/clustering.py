@@ -1,6 +1,6 @@
 import os
 import functools
-from datetime import datetime
+from contextlib import ExitStack
 import annoy
 import community as community_louvain
 import networkx as nx
@@ -278,7 +278,10 @@ def _search_nn_chunk(idx, k, vec_len, nn_measure, annoy_index_filename):
     """
     ai = AnnoyIndex(vec_len, nn_measure)
     ai.load(annoy_index_filename)
-    return idx, ai.get_nns_by_item(idx, k)
+    try:
+        return idx, ai.get_nns_by_item(idx, k)
+    finally:
+        ai.unload()
 
 def _annoy_build_csr_nn_graph(
     data_matrix: np.array,
@@ -308,14 +311,12 @@ def _annoy_build_csr_nn_graph(
     nn_csr: csr_matrix of weighted neaerest neighbors
     """
     n, vec_len = data_matrix.shape
-    pool = Pool(processes=n_jobs)
     graph_map = {}
     chunk_size = min(max(1, int(n / n_jobs)), 10000)
     picklable_search = functools.partial(_search_nn_chunk, k=k, vec_len=vec_len, nn_measure=nn_measure, annoy_index_filename=annoy_index_filename)
-    for chunk_result in tqdm(pool.imap_unordered(picklable_search, range(n), chunksize=chunk_size), total=n):
-        graph_map[chunk_result[0]] = chunk_result[1]
-
-    pool.close()
+    with Pool(processes=n_jobs) as pool:
+        for chunk_result in tqdm(pool.imap_unordered(picklable_search, range(n), chunksize=chunk_size), total=n):
+            graph_map[chunk_result[0]] = chunk_result[1]
 
     if weighting_method == 'jaccard':
         return _jaccard_csr_from_nn_dict(graph_map, n_jobs)
@@ -362,24 +363,28 @@ def get_annoy_knn(
     """
     data_matrix = adata.X
     ai = AnnoyIndex(data_matrix.shape[1], nn_measure)
-    if annoy_index_filename and os.path.isfile(annoy_index_filename):
-        ai.load(annoy_index_filename)
-    else:
+    with ExitStack() as resources:
         if not annoy_index_filename:
-            annoy_index_filename = os.path.join(tempfile.gettempdir(), f"annoy_index_{datetime.now().strftime('%Y%m%d%H%M%S')}")
-        ai.on_disk_build(annoy_index_filename)
-        if random_seed:
-            ai.set_seed(random_seed)
+            directory = resources.enter_context(tempfile.TemporaryDirectory(prefix="annoy-"))
+            annoy_index_filename = os.path.join(directory, "index.ann")
+        # Unmap before removing our directory; caller-supplied indexes are retained.
+        resources.callback(ai.unload)
+        if os.path.isfile(annoy_index_filename):
+            ai.load(annoy_index_filename)
+        else:
+            ai.on_disk_build(annoy_index_filename)
+            if random_seed is not None:
+                ai.set_seed(random_seed)
 
-        for i in range(data_matrix.shape[0]):
-            ai.add_item(i, data_matrix[i])
+            for i in range(data_matrix.shape[0]):
+                ai.add_item(i, data_matrix[i])
 
-        if not annoy_trees:
-            annoy_trees = max(1, int(log(data_matrix.shape[0], 2)))
+            if not annoy_trees:
+                annoy_trees = max(1, int(log(data_matrix.shape[0], 2)))
 
-        ai.build(annoy_trees, n_jobs=n_jobs)
+            ai.build(annoy_trees, n_jobs=n_jobs)
 
-    csr_graph = _annoy_build_csr_nn_graph(data_matrix, annoy_index_filename, k, n_jobs, nn_measure, weighting_method)
+        csr_graph = _annoy_build_csr_nn_graph(data_matrix, annoy_index_filename, k, n_jobs, nn_measure, weighting_method)
 
     graph_adata = AnnData(csr_graph, obs=adata.obs, var=adata.obs)
     if graph_filename:

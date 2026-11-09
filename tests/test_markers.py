@@ -1,6 +1,7 @@
 
 import pandas as pd
 import numpy as np
+import pytest
 from transcriptomic_clustering.markers import select_marker_genes
 
 
@@ -75,3 +76,31 @@ def test_select_marker_genes():
     )
     expected = {"Gene_0", "Gene_1", "Gene_3", "Gene_4"}
     assert markers == expected
+
+
+@pytest.mark.parametrize("method", ["chisq", "ebayes"])
+@pytest.mark.parametrize("return_frame", [False, True])
+@pytest.mark.parametrize("column_index", ["plain", "categorical", "ordered"])
+def test_marker_names_for_unsorted_gene_columns(method, return_frame, column_index):
+    columns = ["up", "same", "down"]
+    if column_index != "plain":
+        columns = pd.CategoricalIndex(
+            columns, categories=["same", "up", "down"],
+            ordered=column_index == "ordered",
+        )
+    means = pd.DataFrame([[10., 5., 0.], [0., 5., 10.]], columns=columns)
+    present = pd.DataFrame([[0.9, 0.5, 0.1], [0.1, 0.5, 0.9]], columns=columns)
+    result = select_marker_genes(
+        {0: list(range(100)), 1: list(range(100, 200))},
+        means, pd.DataFrame([[3., 5., 1.], [3., 5., 1.]], columns=columns), present,
+        thresholds={
+            "q1_thresh": 0.5, "qdiff_thresh": 0.7,
+            "cluster_size_thresh": 6, "padj_thresh": 0.05, "lfc_thresh": 1,
+        },
+        n_markers=1, de_method=method, return_markers_df=return_frame,
+    )
+    if return_frame:
+        assert result.loc[(0, 1), "up_genes"] == ["up"]
+        assert result.loc[(0, 1), "down_genes"] == ["down"]
+    else:
+        assert result == {"up", "down"}

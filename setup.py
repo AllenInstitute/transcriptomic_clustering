@@ -59,6 +59,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=requirements,
+    python_requires=">=3.8",
     description="clustering pipeline for transcriptomic data",
     long_description=readme,
     long_description_content_type='text/markdown',
@@ -76,6 +77,7 @@ setup(
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering :: Bio-Informatics"
     ], 
     cmdclass={'check_version': CheckVersionCommand}

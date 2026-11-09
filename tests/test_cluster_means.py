@@ -99,7 +99,7 @@ def test_get_cluster_means_inmemory(adata, clusters):
     assert np.allclose(obtained_cluster_variances.to_numpy(), expected_cluster_variances.to_numpy())
 
 
-def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
+def test_get_cluster_means_backed(adata, clusters, tmpdir_factory, request):
 
     (expected_cluster_means,
      expected_present_cluster_means,
@@ -113,6 +113,7 @@ def test_get_cluster_means_backed(adata, clusters, tmpdir_factory):
     ad.AnnData(csr_matrix(adata.X), obs=adata.obs, var=adata.var).write(input_file_name) # make tmp input file
 
     adata = sc.read_h5ad(input_file_name, backed='r')
+    request.addfinalizer(adata.file.close)
     obtained_cluster_means, obtained_present_cluster_means, obtained_cluster_variances = \
         cm.get_cluster_means(adata, cluster_assignments, cluster_by_obs, low_th=2)
 

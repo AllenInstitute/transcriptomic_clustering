@@ -196,7 +196,7 @@ def test_get_gene_means_variances_dense(test_adata_dense):
         atol=1e-06,
     )
 
-def test_gene_mask(test_adata_sparse):
+def test_gene_mask_sparse(test_adata_sparse):
     """
         test gene mask with sparse matrix in AnnData
     """
@@ -212,7 +212,7 @@ def test_gene_mask(test_adata_sparse):
         expected_gene_mask,
     )
 
-def test_gene_mask(test_adata_dense):
+def test_gene_mask_dense(test_adata_dense):
     """
         test gene mask with dense matrix in AnnData
     """
@@ -263,4 +263,3 @@ def test_highly_variable_genes_dense(test_adata_dense):
         np.sort(adata.var_names[adata.var['highly_variable']]),
         np.sort(expected_hvg),
     )
-

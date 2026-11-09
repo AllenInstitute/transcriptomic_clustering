@@ -30,7 +30,7 @@ def get_means_vars_genes(adata: sc.AnnData,
         Returns
         -------
         means: numpy array of mean expression for genes that pass threshold
-        variances: numpy array of variances for genes that pass threshold
+        variances: numpy array of sample variances (ddof=1) for genes that pass threshold
         gene_mask: boolean indicator of filtered genes
 
     """
@@ -106,4 +106,4 @@ def get_means_vars_genes_backed(
     matrix_gene_mask = num_cells_above_thresh >= min_cells
     gene_mask = matrix_gene_mask.tolist()
 
-    return w_mat.mean[gene_mask], w_mat.var_p[gene_mask], gene_mask
+    return w_mat.mean[gene_mask], w_mat.var_s[gene_mask], gene_mask

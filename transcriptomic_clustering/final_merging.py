@@ -44,7 +44,7 @@ def sample_clusters(
 
     Returns
     -------
-    pd.Series that is True for cells selected for sampling
+    pd.Series that is True for cells selected for sampling and False otherwise
     """
 
     rng = default_rng(random_seed)
@@ -59,6 +59,7 @@ def sample_clusters(
     cell_samples = adata.obs_names[cell_samples_ids]
 
     cell_mask = pd.Series(
+        False,
         index=adata.obs.index,
         dtype=bool,
     )
@@ -109,6 +110,8 @@ def final_merge(
         AnnData object
     cluster_assignments
         List of arrays of cell ids, one array per cluster. This is the result returned by onestep_clust/iter_clust
+    marker_genes
+        Set or sequence of gene names. PCA uses their order in adata.var_names.
     
     """
 
@@ -118,7 +121,10 @@ def final_merge(
     
     cluster_by_obs = _cluster_obs_dict_to_list(obs_by_cluster)
 
-    if final_merge_kwargs.latent_kwargs.get("latent_component") is None:
+    if len(obs_by_cluster) == 1:
+        # merge_clusters handles leaf results without accessing reduced data.
+        projected_adata = adata
+    elif final_merge_kwargs.latent_kwargs.get("latent_component") is None:
 
         if marker_genes is None:
             raise ValueError("Need marker genes to run PCA")
@@ -130,10 +136,11 @@ def final_merge(
             random_seed=random_seed
         )
         gene_mask = pd.Series(
+            False,
             index=adata.var.index,
             dtype=bool
         )
-        gene_mask[marker_genes] = True
+        gene_mask.loc[list(marker_genes)] = True
 
         # Do PCA on cell samples and marker genes
         logger.info('Computing PCA on cell samples and marker genes')
