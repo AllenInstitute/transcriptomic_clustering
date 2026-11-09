@@ -4,6 +4,7 @@ from pathlib import Path
 import time
 import logging
 from enum import Enum
+from contextlib import ExitStack
 
 import click
 
@@ -133,24 +134,26 @@ def convert_FBM(
     tic = time.perf_counter()
     nchunks = int(nobs // chunk_size)
     ad_writer = None
-    for chunk, start, end in tqdm(
-            chunked_fbm(fbm_mat, chunk_size=chunk_size), total=nchunks):
+    with ExitStack() as resources:
+        for chunk, start, end in tqdm(
+                chunked_fbm(fbm_mat, chunk_size=chunk_size), total=nchunks):
 
-        if cast:
-            chunk = chunk.astype(out_dtype, casting="same_kind", copy=False)
-        if normalize:
-            counts_per_cell = np.ravel(chunk.sum(1))
-            chunk = sc.pp._normalization._normalize_data(
-                chunk, counts_per_cell, after=target_sum
-            )
-            chunk = sc.pp.log1p(chunk)
-        if as_sparse:
-            chunk = sparse.csr_matrix(chunk)
+            if cast:
+                chunk = chunk.astype(out_dtype, casting="same_kind", copy=False)
+            if normalize:
+                counts_per_cell = np.ravel(chunk.sum(1))
+                chunk = sc.pp._normalization._normalize_data(
+                    chunk, counts_per_cell, after=target_sum
+                )
+                chunk = sc.pp.log1p(chunk)
+            if as_sparse:
+                chunk = sparse.csr_matrix(chunk)
 
-        if ad_writer is None:
-            ad_writer = AnnDataIterWriter(out_ad_path, chunk, cell_df, gene_df, dtype=out_dtype)
-        else:
-            ad_writer.add_chunk(chunk)
+            if ad_writer is None:
+                ad_writer = AnnDataIterWriter(out_ad_path, chunk, cell_df, gene_df, dtype=out_dtype)
+                resources.callback(ad_writer.adata.file.close)
+            else:
+                ad_writer.add_chunk(chunk)
 
     toc = time.perf_counter()
     logger.info(f"Elapsed Time: {toc - tic}")

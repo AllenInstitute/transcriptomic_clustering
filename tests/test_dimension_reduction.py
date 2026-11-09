@@ -14,6 +14,32 @@ from transcriptomic_clustering.dimension_reduction import (
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 
+@pytest.mark.parametrize("cell_select", [
+    None, slice(None), slice(1, 7, 2), [1, 3, 5],
+    np.array([False, True, False, True, False, True, False, False]),
+])
+@pytest.mark.parametrize("sparse", [False, True])
+def test_pca_cell_selection_with_gene_mask(cell_select, sparse):
+    from sklearn.decomposition import PCA
+
+    values = np.random.default_rng(42).normal(size=(8, 4))
+    data = ad.AnnData(
+        scipy.sparse.csr_matrix(values) if sparse else values,
+        dtype=values.dtype, var=pd.DataFrame(index=list("abcd")),
+    )
+    selected = values[slice(None) if cell_select is None else cell_select][:, [0, 2]]
+    expected = PCA(n_components=1, svd_solver="full").fit(selected)
+    components, ratios, variances, means = tc.pca(
+        data, cell_select=cell_select, gene_mask=["a", "c"],
+        n_comps=1, svd_solver="full", random_state=0,
+    )
+    assert components.index.tolist() == ["a", "c"]
+    np.testing.assert_allclose(means[0], expected.mean_)
+    np.testing.assert_allclose(abs(components[0]), abs(expected.components_[0]))
+    np.testing.assert_allclose(ratios, expected.explained_variance_ratio_)
+    np.testing.assert_allclose(variances, expected.explained_variance_)
+
+
 @pytest.fixture
 def tasic():
     normalized_data = sc.read_h5ad(os.path.join(DATA_DIR, "input", "input_normalize_result.h5"))
@@ -57,11 +83,12 @@ def test_pca_auto(tasic):
     np.testing.assert_allclose(cos_siml, np.eye(cos_siml.shape[0]), rtol=1e-4, atol=1e-4)
 
 
-def test_pca_chunked(tasic):
+def test_pca_chunked(tasic, request):
     set_selected_cells = set(tasic['selected_cells'])
     cell_mask = [i for i, obs in enumerate(tasic['adata'].obs['cells']) if obs in set_selected_cells]
 
     tasic['adata'] = sc.read_h5ad(os.path.join(DATA_DIR, "input", "input_normalize_result.h5"), 'r')
+    request.addfinalizer(tasic['adata'].file.close)
     pcs_tc_T = tc.pca(
         tasic['adata'],
         cell_select=cell_mask, gene_mask=tasic['selected_genes'],

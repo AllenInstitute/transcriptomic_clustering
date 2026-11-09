@@ -12,10 +12,51 @@ from pandas.testing import assert_frame_equal
 from numpy.testing import assert_allclose
 
 import transcriptomic_clustering as tc
+from transcriptomic_clustering.final_merging import FinalMergeKwargs
 from transcriptomic_clustering.iterative_clustering import (
     manage_cluster_adata, create_filebacked_clusters, iter_clust,
     summarize_final_clusters,
 )
+from transcriptomic_clustering.onestep_clustering import OnestepKwargs, onestep_clust
+
+
+@pytest.mark.parametrize("clustering", [onestep_clust, iter_clust])
+@pytest.mark.parametrize("return_markers_df", [False, True])
+@pytest.mark.parametrize("marker_kwargs, expected_markers", [
+    ({}, set()),
+    ({"n_markers": None}, None),
+])
+def test_single_cluster_leaf(clustering, marker_kwargs, expected_markers, return_markers_df):
+    norm_adata = ad.AnnData(np.ones((8, 3), dtype=np.float32))
+    norm_adata.obsm["latent"] = np.zeros((8, 2), dtype=np.float32)
+    cell_indices = list(range(norm_adata.n_obs))
+    onestep_kwargs = OnestepKwargs(
+        latent_kwargs={"latent_component": "latent"},
+        merge_clusters_kwargs=marker_kwargs,
+    )
+    kwargs = {"tmp_dir": Path(".")} if clustering is iter_clust else {}
+
+    with patch.object(tc, "cluster_louvain", return_value=(
+        np.zeros(norm_adata.n_obs), {0: cell_indices}, None, None
+    )):
+        clusters, markers = clustering(
+            norm_adata, onestep_kwargs=onestep_kwargs, **kwargs
+        )
+
+    assert clusters == [cell_indices]
+    assert markers == expected_markers
+
+    merged_clusters, merged_markers = tc.final_merge(
+        norm_adata, clusters, marker_genes=markers,
+        return_markers_df=return_markers_df,
+        final_merge_kwargs=FinalMergeKwargs(merge_clusters_kwargs=marker_kwargs),
+    )
+    assert merged_clusters == clusters
+    if return_markers_df:
+        assert isinstance(merged_markers, pd.DataFrame)
+        assert merged_markers.empty
+    else:
+        assert merged_markers == expected_markers
 
 
 def test_create_filebacked_clusters_chunked():
@@ -31,8 +72,16 @@ def test_create_filebacked_clusters_chunked():
                 np.asarray([3,4,5,13,14,15],dtype=int),
                 np.asarray([6,7,8,16,17,18],dtype=int),
             ]
-            adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir=tmp_dir)
-            assert_allclose(adatas[0].X, norm_adata[clusters[0],:].X)
+            adatas = []
+            try:
+                adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir=tmp_dir)
+                for result, indices in zip(adatas, clusters):
+                    assert_allclose(result.X[:], norm_adata[indices, :].X)
+                    assert_frame_equal(result.obs, norm_adata.obs.iloc[indices])
+            finally:
+                for result in adatas:
+                    result.file.close()
+                norm_adata.file.close()
 
 
 def test_create_filebacked_clusters_not_chunked():
@@ -48,8 +97,16 @@ def test_create_filebacked_clusters_not_chunked():
                 np.asarray([3,4,5,13,14,15],dtype=int),
                 np.asarray([6,7,8,16,17,18],dtype=int),
             ]
-            adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir=tmp_dir)
-            assert_allclose(adatas[0].X, norm_adata[clusters[0],:].X)
+            adatas = []
+            try:
+                adatas = create_filebacked_clusters(norm_adata, clusters, tmp_dir=tmp_dir)
+                for result, indices in zip(adatas, clusters):
+                    assert_allclose(result.X[:], norm_adata[indices, :].X)
+                    assert_frame_equal(result.obs, norm_adata.obs.iloc[indices])
+            finally:
+                for result in adatas:
+                    result.file.close()
+                norm_adata.file.close()
 
 
 def test_manage_cluster_adata_in_memory():
@@ -112,6 +169,28 @@ def test_iter_clust():
         for samples in clusters:
             set_indxs.update(samples.tolist())
         assert set(range(n_obs)) == set(set_indxs)
+
+
+@pytest.mark.parametrize("markers_enabled", [False, True])
+def test_iter_clust_recursive_marker_aggregation(tmp_path, markers_enabled):
+    data = ad.AnnData(np.ones((8, 3), dtype=np.float32))
+
+    def onestep(adata, **kwargs):
+        if adata.n_obs == 8:
+            return [[0, 2, 4, 6], [1, 3, 5, 7]], {"root"} if markers_enabled else None
+        return [[0, 1], [2, 3]], {"leaf"} if markers_enabled else None
+
+    with patch("transcriptomic_clustering.iterative_clustering.onestep_clust",
+               side_effect=onestep) as step:
+        clusters, markers = iter_clust(
+            data, tmp_path, min_samples=4,
+            onestep_kwargs=OnestepKwargs(
+                merge_clusters_kwargs={"n_markers": 2 if markers_enabled else None}
+            ),
+        )
+    assert step.call_count == 3
+    assert [list(c) for c in clusters] == [[0, 2], [4, 6], [1, 3], [5, 7]]
+    assert markers == ({"root", "leaf"} if markers_enabled else None)
 
 
 def test_summarize_final_clusters():
